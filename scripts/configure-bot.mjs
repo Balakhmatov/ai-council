@@ -7,7 +7,7 @@ const me=await telegramApi(env.TELEGRAM_BOT_TOKEN,'getMe');
 if(env.TELEGRAM_BOT_USERNAME&&me.username.toLowerCase()!==env.TELEGRAM_BOT_USERNAME.replace(/^@/,'').toLowerCase())throw Error('Bot username does not match configured bot');
 const old=await telegramApi(env.TELEGRAM_BOT_TOKEN,'getWebhookInfo');
 if(old.url&&old.url!==webhook)throw Error('This bot already has a different webhook; refusing to replace another application');
-const commands=[{command:'start',description:'Открыть Кворум'},{command:'app',description:'Совет нейросетей'},{command:'help',description:'Как пользоваться'}];
+const commands=[{command:'start',description:'Открыть Кворум'},{command:'app',description:'Совет нейросетей'},{command:'menu',description:'Меню приложения'},{command:'web',description:'Открыть сайт'},{command:'help',description:'Как пользоваться'}];
 await telegramApi(env.TELEGRAM_BOT_TOKEN,'setMyCommands',{commands});
 await telegramApi(env.TELEGRAM_BOT_TOKEN,'setMyDescription',{description:'Кворум — совет нейросетей. Дайте задачу нескольким ИИ: они предложат идеи, проверят аргументы и соберут итог. Откройте приложение кнопкой ниже.'});
 await telegramApi(env.TELEGRAM_BOT_TOKEN,'setMyShortDescription',{short_description:'Несколько нейросетей обсуждают вашу задачу и готовят общее решение.'});

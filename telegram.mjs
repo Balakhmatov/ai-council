@@ -40,8 +40,9 @@ export function createTelegramWebhook({env,fetchImpl=fetch}){
     if(cmd==='/admin'){
      if(admin){text='Вход администратора «Кворума». В Mini App ваш Telegram-аккаунт будет распознан автоматически.';url.searchParams.set('admin','1');}
      else{text='Раздел администратора доступен только владельцу приложения.';}
-    }else if(cmd==='/help')text='Кворум — совет нейросетей.\n\n1. Откройте приложение.\n2. Выберите минимум две модели и формат.\n3. Опишите задачу и запустите обсуждение.\n\n/start — открыть приложение\n/help — помощь';
-    const buttons=[[{text:cmd==='/admin'&&admin?'Администрирование':'Открыть Кворум',web_app:{url:url.href}}]];
+    }else if(cmd==='/help')text='Кворум — совет нейросетей.\n\n1. Откройте приложение.\n2. Выберите минимум две модели и формат.\n3. Опишите задачу и запустите обсуждение.\n\n/start — открыть приложение\n/menu — меню\n/web — открыть сайт\n/help — помощь';
+    const buttons=[[{text:cmd==='/admin'&&admin?'Администрирование':'Открыть Mini App',web_app:{url:url.href}}],[{text:'🌐 Открыть сайт',url:env.TELEGRAM_APP_URL}]];
+    if(cmd==='/web')text='Веб-версия «Кворума»: '+env.TELEGRAM_APP_URL+'\n\nНажмите «Открыть сайт» ниже.';
     if(admin&&cmd!=='/admin'){const adminURL=new URL(env.TELEGRAM_APP_URL);adminURL.searchParams.set('admin','1');buttons.push([{text:'Администрирование',web_app:{url:adminURL.href}}]);}
     await telegramApi(env.TELEGRAM_BOT_TOKEN,'sendMessage',{chat_id:message.chat.id,text,reply_markup:{inline_keyboard:buttons}},fetchImpl);
    }
