@@ -95,7 +95,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    }catch{if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(visitorHash,Math.max(0,(ipActive.get(visitorHash)||1)-1));}return;
   }
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
-  const assetFiles=['quorum-logo-v1.png','quorum-icon-192-v1.png','quorum-icon-512-v1.png','apple-touch-icon-v1.png','favicon-32-v1.png'];
+  const assetFiles=['quorum-logo-v1.png','quorum-icon-192-v1.png','quorum-icon-512-v1.png','apple-touch-icon-v1.png','favicon-32-v1.png','quorum-logo-v2.png','quorum-icon-192-v2.png','quorum-icon-512-v2.png','apple-touch-icon-v2.png','favicon-32-v2.png'];
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const special=asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
   const file=special||{'/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
