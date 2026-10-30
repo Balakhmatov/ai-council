@@ -13,7 +13,7 @@ const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':n
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'', publicSession=null, available=new Set(), connected=false;
 let mode='consensus',controller=null,messages=[],running=false;const chosen=new Set(['openai','grok','mistral']);
-for(const a of agents){const label=document.createElement('label');label.className='agent';label.innerHTML=`<span class="avatar" style="--color:${a.color}">${a.letter}</span><span><strong>${a.name}</strong><small>${a.sub}</small></span><input type="checkbox" aria-label="${a.name}" ${chosen.has(a.id)?'checked':''}>`;label.querySelector('input').onchange=e=>{e.target.checked?chosen.add(a.id):chosen.delete(a.id);update();};$('agents').append(label);
+for(const a of agents){const label=document.createElement('label');label.className='agent';label.innerHTML=`<span class="avatar provider-avatar"><img src="./assets/models/${a.id}.svg" width="26" height="26" alt="" decoding="async"></span><span><strong>${a.name}</strong><small>${a.sub}</small></span><input type="checkbox" aria-label="${a.name}" ${chosen.has(a.id)?'checked':''}>`;label.querySelector('input').onchange=e=>{e.target.checked?chosen.add(a.id):chosen.delete(a.id);update();};$('agents').append(label);
 
 }
 for(const [id,[title,desc]] of Object.entries(modes)){const b=document.createElement('button');b.className='mode';b.dataset.id=id;b.innerHTML=`${title}<small>${desc}</small>`;b.onclick=()=>{mode=id;update();};$('modes').append(b);}

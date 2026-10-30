@@ -8,3 +8,5 @@
 .footer-brand{display:inline-flex;align-items:center;gap:8px;color:inherit;text-decoration:none}.footer-brand img{border-radius:7px}.admin-brand{display:flex;align-items:center;gap:8px}.admin-brand img{border-radius:8px}footer{align-items:center}@media(max-width:800px){footer{align-items:flex-start}}
 
 .logo,.orbits,.footer-brand img,.admin-brand img{border-radius:0;background:transparent}
+
+.provider-avatar{flex:none;background:transparent;border:1px solid #3b4935;border-radius:8px;width:36px;height:36px;padding:4px}.provider-avatar img{display:block;width:26px;height:26px;object-fit:contain}

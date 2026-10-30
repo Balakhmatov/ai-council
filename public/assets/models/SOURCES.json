@@ -1,0 +1,44 @@
+{
+  "package": "@lobehub/icons-static-svg",
+  "version": "1.101.0",
+  "license": "MIT",
+  "repository": "https://github.com/lobehub/lobe-icons",
+  "assets": [
+    {
+      "id": "openai",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/openai.svg",
+      "bytes": 1682
+    },
+    {
+      "id": "grok",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/grok.svg",
+      "bytes": 751
+    },
+    {
+      "id": "mistral",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/mistral-color.svg",
+      "bytes": 655
+    },
+    {
+      "id": "qwen",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/qwen-color.svg",
+      "bytes": 1016
+    },
+    {
+      "id": "deepseek",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/deepseek-color.svg",
+      "bytes": 2164
+    },
+    {
+      "id": "gemini",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/gemini-color.svg",
+      "bytes": 2836
+    },
+    {
+      "id": "claude",
+      "source": "https://unpkg.com/@lobehub/icons-static-svg@1.101.0/icons/claude-color.svg",
+      "bytes": 1696
+    }
+  ],
+  "notes": "Brand logos used to identify model providers. OpenAI and Grok monochrome currentColor is set to the UI foreground for dark backgrounds. Other SVGs are unchanged."
+}
