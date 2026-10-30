@@ -1,38 +1,77 @@
 import http from 'node:http';
+import crypto from 'node:crypto';
 import {readFile} from 'node:fs/promises';
+import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','GROK_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
-export function createServer(){let active=0;
- const grokBase=process.env.XAI_BASE_URL||'https://api.x.ai/v1';
- if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase.replace(/\/$/,'')))throw Error('Invalid Grok base URL');
- const routes={...providers,grok:[grokBase.replace(/\/$/,'')+'/chat/completions','XAI_API_KEY']};const allowed=(process.env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);return http.createServer(async(req,res)=>{
- const origin=req.headers.origin;const expected=`${req.socket.encrypted?'https':'http'}://${req.headers.host}`;const originOK=!origin||origin===expected||allowed.includes(origin);
- if(origin&&originOK){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
- res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
- const json=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
- if(req.url==='/api/chat'){
-  if(!originOK)return json(403,{error:{message:'Origin запрещён'}});
-  if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'POST'});return res.end();}
-  if(req.method!=='POST')return json(405,{error:{message:'Нужен POST'}});
-  const token=process.env.PROXY_TOKEN;if(!token)return json(503,{error:{message:'Настройте PROXY_TOKEN на сервере'}});
-  if(req.headers.authorization!==`Bearer ${token}`)return json(401,{error:{message:'Неверный токен сервера'}});
-  if(active>=10)return json(429,{error:{message:'Сервер занят, повторите позже'}});
-  let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>350000)return json(413,{error:{message:'Слишком большой запрос'}});}}catch{return json(400,{error:{message:'Ошибка чтения запроса'}});}
-  let body;try{body=JSON.parse(raw);}catch{return json(400,{error:{message:'Неверный JSON'}});}
-  const config=routes[body.provider];if(!config||typeof body.model!=='string'||!body.model.trim()||body.model.length>200||!Array.isArray(body.messages)||body.messages.length>30||!body.messages.length||body.messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return json(400,{error:{message:'Некорректные provider, model или messages'}});
-  const key=process.env[config[1]]||(body.provider==='grok'?process.env.GROK_API_KEY:'');if(!key)return json(503,{error:{message:`На сервере не настроен ${config[1]}`}});
-  body.model=process.env[body.provider.toUpperCase()+'_MODEL']||body.model;
-  active++;const controller=new AbortController();res.on('close',()=>controller.abort());
-  try{let payload={model:body.model,messages:body.messages,max_tokens:1600};if(body.provider==='grok'&&body.model==='grok-4.7')payload.reasoning_effort='low';const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
-   if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model:body.model,max_tokens:1600,system:body.messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:body.messages.filter(m=>m.role!=='system')};}
-   const upstream=await fetch(config[0],{method:'POST',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
-   if(!upstream.ok){await upstream.body?.cancel();return json(upstream.status,{error:{message:`Провайдер ${body.provider}: HTTP ${upstream.status}. Проверьте ключ, модель, квоту и регион API.`}});}
-   const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
-   if(typeof text!=='string'||!text.trim())return json(502,{error:{message:'Провайдер вернул пустой ответ'}});json(200,{text});
-  }catch{if(!res.destroyed)json(502,{error:{message:'Провайдер недоступен или превышено время ожидания'}});}finally{active--;}return;
- }
- if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
- const path=req.url?.split('?')[0];const files={'/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js'};const file=files[path];if(!file){res.writeHead(404);return res.end('Not found');}
- try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
- });}
+const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','XAI_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
+export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Date.now}={}){
+ const adminToken=env.PROXY_TOKEN||'';
+ const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
+ if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
+ const routes={...providers,grok:[grokBase+'/chat/completions','XAI_API_KEY']};
+ const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
+ const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
+ const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
+ const sessions=new Map(),issuance=new Map(),ipActive=new Map();let active=0,authFailures=new Map();
+ const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||300),ipLimit=Number(env.PUBLIC_IP_DAILY_LIMIT||60);
+ let ledger={day:'',total:0,ips:{}};
+ if(env.QUOTA_FILE){try{ledger=JSON.parse(readFileSync(env.QUOTA_FILE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw Error('Quota state unreadable');}}
+ const save=()=>{if(env.QUOTA_FILE){writeFileSync(env.QUOTA_FILE+'.tmp',JSON.stringify(ledger),{mode:0o600});renameSync(env.QUOTA_FILE+'.tmp',env.QUOTA_FILE);}};
+ const resetDay=()=>{const day=new Date(now()).toISOString().slice(0,10);if(ledger.day!==day)ledger={day,total:0,ips:{}};};
+ const tokenEquals=value=>{const a=Buffer.from(value),b=Buffer.from(adminToken);return !!b.length&&a.length===b.length&&crypto.timingSafeEqual(a,b);};
+ return http.createServer(async(req,res)=>{
+  const path=req.url?.split('?')[0];const origin=req.headers.origin;
+  const local=['127.0.0.1','::1','::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
+  const ip=env.TRUST_PROXY==='true'&&local?String(req.headers['x-real-ip']||req.socket.remoteAddress):String(req.socket.remoteAddress);
+  const ipHash=crypto.createHmac('sha256',adminToken||'quorum').update(ip).digest('hex').slice(0,32);
+  const originOK=!origin||origin===`http://${req.headers.host}`||allowed.includes(origin);
+  if(origin&&originOK){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
+  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
+  const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
+  const fail=(code,message)=>json(code,{error:{message}});
+  if(path?.startsWith('/api/')){
+   if(!originOK)return fail(403,'Origin запрещён');
+   if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET, POST'});return res.end();}
+   if(!adminToken)return fail(503,'Сервис временно не настроен');
+   const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'');const isAdmin=tokenEquals(bearer);
+   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models)});
+   if(path==='/api/admin'&&req.method==='GET'){
+    const entry=authFailures.get(ipHash);if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
+    if(!isAdmin){authFailures.set(ipHash,{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
+    authFailures.delete(ipHash);resetDay();return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),usage:{requestsToday:ledger.total,dailyLimit,perIpDailyLimit:ipLimit}});
+   }
+   if(path==='/api/session'&&req.method==='POST'){
+    if(!Object.keys(models).length)return fail(503,'Нет доступных моделей');
+    resetDay();if(ledger.total>=dailyLimit||(ledger.ips[ipHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');
+    for(const [key,value]of sessions)if(value.expires<=now())sessions.delete(key);
+    for(const [key,value]of issuance)if(value.until<=now())issuance.delete(key);
+    for(const [key,value]of authFailures)if(value.until<=now())authFailures.delete(key);
+    const issued=issuance.get(ipHash)||{count:0,until:now()+3600000};
+    if(issued.count>=20||sessions.size>=10000)return fail(429,'Слишком много подключений. Повторите позже.');
+    issued.count++;issuance.set(ipHash,issued);const token=crypto.randomBytes(32).toString('hex'),expires=now()+7200000;sessions.set(token,{ipHash,expires});return json(200,{token,expires});
+   }
+   if(path!=='/api/chat')return fail(404,'Не найдено');
+   if(req.method!=='POST')return fail(405,'Нужен POST');
+   const session=sessions.get(bearer);if(!isAdmin&&(!session||session.ipHash!==ipHash||session.expires<=now()))return fail(401,'Сессия истекла. Запустите обсуждение заново.');
+   if(active>=10||(!isAdmin&&(ipActive.get(ipHash)||0)>=7))return fail(429,'Сервер занят. Повторите позже.');
+   let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
+   let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
+   if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
+   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[ipHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[ipHash]=(ledger.ips[ipHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
+   active++;ipActive.set(ipHash,(ipActive.get(ipHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
+   try{
+    const model=models[body.provider],key=keyFor(body.provider);let payload={model,messages:body.messages,max_tokens:1600};const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
+    if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:1600,system:body.messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:body.messages.filter(m=>m.role!=='system')};}
+    const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
+    if(!upstream.ok){await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
+    const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
+    if(typeof text!=='string'||!text.trim())return fail(502,'Модель вернула пустой ответ');json(200,{text});
+   }catch{if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(ipHash,Math.max(0,(ipActive.get(ipHash)||1)-1));}return;
+  }
+  if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
+  const file={'/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
+ });
+}
 if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||8787);createServer().listen(port,process.env.HOST||'127.0.0.1',()=>console.log(`Кворум: http://localhost:${port}`));}

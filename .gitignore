@@ -3,3 +3,6 @@
 !.env.example
 node_modules/
 *.zip
+deploy/*.backup
+
+runtime/
