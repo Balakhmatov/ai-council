@@ -1,16 +1,21 @@
 [Unit]
-Description=Quorum personal AI discussion API
-After=network.target
+Description=Quorum AI Council and Telegram Mini App
+After=network-online.target
+Wants=network-online.target
 [Service]
 Type=simple
-WorkingDirectory=/root/ai-council
-ExecStart=/root/.nvm/versions/node/v22.21.1/bin/node --env-file=/root/ai-council/.env.private /root/ai-council/server.mjs
+User=quorum
+Group=quorum
+WorkingDirectory=/opt/quorum
+EnvironmentFile=/etc/quorum/quorum.env
+ExecStart=/usr/bin/node /opt/quorum/server.mjs
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
-ProtectHome=read-only
-ReadWritePaths=/root/ai-council/runtime
+ProtectHome=true
+ReadWritePaths=/var/lib/quorum
+UMask=0077
 [Install]
 WantedBy=multi-user.target

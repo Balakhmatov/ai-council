@@ -29,3 +29,23 @@ Node.js 22+, зависимостей нет. `npm test` — проверки п
 GitHub Pages публикует public/ после push в main через .github/workflows/pages.yml. Корневой index.html обеспечивает вход через public/ для публикации из ветки. На GitHub загружаются только исходники; .env.private, runtime/ и резервные копии не публикуются.
 
 В установленном экземпляре API работает отдельным systemd-сервисом quorum-api, за HTTPS nginx /quorum-api/ на stage.cityai.site. Ключи Mistral, OpenAI, Grok заданы в приватном окружении. Grok поддерживает фиксированные endpoint api.x.ai и ddtnew.com; переадресации запрещены. Другие провайдеры становятся доступными после серверной настройки их ключей и PROVIDER_MODEL.
+
+## VPS и Telegram
+
+Основной адрес: https://cityai.site/quorum/ . Код установлен в /opt/quorum, закрытое окружение — /etc/quorum/quorum.env, квоты и идентификаторы обработанных Telegram updates — /var/lib/quorum. Отдельный пользователь quorum; systemd quorum-api.service; nginx направляет только /quorum/ в локальный порт 8787. Старый stage-адрес пока совместим. Внешних изменений DNS не требуется.
+
+Установка/обновление проверенной версии на этом VPS: `python3 deploy/install-vps.py` от root из /root/ai-council. Скрипт добавляет изолированный маршрут в активную nginx-конфигурацию, проверяет nginx перед reload, копирует только исполняемые исходники и сохраняет существующие ключи и квоты. Другие приложения не перезапускаются.
+
+Для Telegram нужен отдельный бот, созданный владельцем в @BotFather через /newbot. Токен сохранить в /root/ai-council/.telegram-token с правами 600; этот файл игнорируется Git. Повторить VPS-установку, затем выполнить от root:
+
+```
+node --env-file=/etc/quorum/quorum.env /opt/quorum/scripts/configure-bot.mjs
+```
+
+Скрипт проверяет бота через getMe, не заменяет чужой webhook, устанавливает /start, /app, /help, кнопку меню Mini App и защищённый webhook. Не нужно вручную добавлять URL через BotFather для открытия кнопкой меню или кнопкой в /start. Главный профильный Launch App и короткое имя Mini App при желании отдельно настраиваются в BotFather. /admin обрабатывается только для TELEGRAM_ADMIN_IDS.
+
+При запуске Mini App клиент передаёт исходный Telegram initData серверу; сервер проверяет HMAC-SHA256, дату (не старше часа), уникальность полей и Telegram user ID. Только ID из серверного списка получает административную сессию. Подмена initDataUnsafe, URL ?admin=1 или client-side user ID не даёт административных прав. Пользовательская квота в Telegram привязана к проверенному ID; в браузере — к IP. Webhook требует X-Telegram-Bot-Api-Secret-Token и игнорирует повторные update_id. Бот отвечает на входящие сообщения в личном чате; его основная функция — запуск Mini App.
+
+Без TELEGRAM_BOT_TOKEN веб-приложение и браузерный вход владельца продолжают работать, Telegram-вход возвращает 503. Подключение реального бота и вход на устройстве в Telegram проверяются после получения нового токена; криптографические проверки и клиентская интеграция покрыты тестами и имитацией Telegram.
+
+Официальная документация: https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app ; https://core.telegram.org/bots/api .

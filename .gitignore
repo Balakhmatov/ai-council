@@ -6,3 +6,6 @@ node_modules/
 deploy/*.backup
 
 runtime/
+
+.telegram-token
+*.secret

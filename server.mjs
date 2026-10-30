@@ -1,4 +1,5 @@
 import http from 'node:http';
+import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook} from './telegram.mjs';
 import crypto from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
@@ -12,6 +13,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
  const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
+ const handleTelegram=createTelegramWebhook({env,fetchImpl});
  const sessions=new Map(),issuance=new Map(),ipActive=new Map();let active=0,authFailures=new Map();
  const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||300),ipLimit=Number(env.PUBLIC_IP_DAILY_LIMIT||60);
  let ledger={day:'',total:0,ips:{}};
@@ -29,11 +31,34 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
   const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   const fail=(code,message)=>json(code,{error:{message}});
+  const readBody=async(limit=150000)=>{let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit)throw Error('body too large');}return JSON.parse(raw||'{}');};
+  if(path==='/healthz'&&req.method==='GET')return json(200,{ok:true});
+  if(path==='/api/telegram/webhook'){
+   if(req.method!=='POST')return fail(405,'Нужен POST');
+   const provided=Buffer.from(String(req.headers['x-telegram-bot-api-secret-token']||'')),expected=Buffer.from(env.TELEGRAM_WEBHOOK_SECRET||'');
+   if(!env.TELEGRAM_BOT_TOKEN||!expected.length||provided.length!==expected.length||!crypto.timingSafeEqual(provided,expected))return fail(403,'Доступ запрещён');
+   let update;try{update=await readBody(64000);}catch{return fail(400,'Некорректное обновление');}
+   try{await handleTelegram(update);return json(200,{ok:true});}catch{return fail(502,'Telegram временно недоступен');}
+  }
   if(path?.startsWith('/api/')){
    if(!originOK)return fail(403,'Origin запрещён');
    if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET, POST'});return res.end();}
    if(!adminToken)return fail(503,'Сервис временно не настроен');
-   const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'');const isAdmin=tokenEquals(bearer);
+   const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'');
+   const session=sessions.get(bearer);const validSession=session&&session.expires>now()&&(session.telegramUser||session.ipHash===ipHash);
+   const isAdmin=tokenEquals(bearer)||(validSession&&session.isAdmin===true);
+   const visitorHash=validSession&&session.telegramUser?crypto.createHmac('sha256',adminToken).update('telegram:'+session.telegramUser.id).digest('hex').slice(0,32):ipHash;
+   if(path==='/api/telegram/auth'&&req.method==='POST'){
+    if(!env.TELEGRAM_BOT_TOKEN)return fail(503,'Telegram-бот пока не подключён');
+    let user;try{const body=await readBody(24000);user=verifyTelegramInitData(body.initData,env.TELEGRAM_BOT_TOKEN,{now:now()});}catch{return fail(401,'Не удалось подтвердить Telegram-аккаунт. Откройте приложение из бота заново.');}
+    for(const [key,value]of sessions)if(value.expires<=now())sessions.delete(key);
+    if(sessions.size>=10000)return fail(429,'Слишком много подключений. Повторите позже.');
+    const issued=issuance.get(ipHash);if(issued&&issued.until>now()&&issued.count>=20)return fail(429,'Слишком много подключений. Повторите позже.');
+    issuance.set(ipHash,{count:issued&&issued.until>now()?issued.count+1:1,until:issued&&issued.until>now()?issued.until:now()+3600000});
+    const token=crypto.randomBytes(32).toString('hex'),expires=now()+7200000,isAdmin=telegramAdminIds(env).has(String(user.id));
+    sessions.set(token,{ipHash,telegramUser:user,isAdmin,expires});return json(200,{token,expires,user,isAdmin});
+   }
+   if(path==='/api/logout'&&req.method==='POST'){sessions.delete(bearer);return json(200,{ok:true});}
    if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models)});
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get(ipHash);if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
@@ -52,13 +77,13 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    }
    if(path!=='/api/chat')return fail(404,'Не найдено');
    if(req.method!=='POST')return fail(405,'Нужен POST');
-   const session=sessions.get(bearer);if(!isAdmin&&(!session||session.ipHash!==ipHash||session.expires<=now()))return fail(401,'Сессия истекла. Запустите обсуждение заново.');
-   if(active>=10||(!isAdmin&&(ipActive.get(ipHash)||0)>=7))return fail(429,'Сервер занят. Повторите позже.');
+   if(!isAdmin&&!validSession)return fail(401,'Сессия истекла. Запустите обсуждение заново.');
+   if(active>=10||(!isAdmin&&(ipActive.get(visitorHash)||0)>=7))return fail(429,'Сервер занят. Повторите позже.');
    let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
-   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[ipHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[ipHash]=(ledger.ips[ipHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
-   active++;ipActive.set(ipHash,(ipActive.get(ipHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
+   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[visitorHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[visitorHash]=(ledger.ips[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
+   active++;ipActive.set(visitorHash,(ipActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    try{
     const model=models[body.provider],key=keyFor(body.provider);let payload={model,messages:body.messages,max_tokens:1600};const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
@@ -67,10 +92,10 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
     if(!upstream.ok){await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
     if(typeof text!=='string'||!text.trim())return fail(502,'Модель вернула пустой ответ');json(200,{text});
-   }catch{if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(ipHash,Math.max(0,(ipActive.get(ipHash)||1)-1));}return;
+   }catch{if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(visitorHash,Math.max(0,(ipActive.get(visitorHash)||1)-1));}return;
   }
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
-  const file={'/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file={'/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }
