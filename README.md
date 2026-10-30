@@ -10,6 +10,8 @@ Node.js 22+: `npm start`, открыть http://localhost:8787. Для знак�
 
 ## GitHub Pages
 
+Адрес приложения после публикации: https://balakhmatov.github.io/ai-council/ . Изменения в main автоматически запускают проверку и публикацию; ручной Run workflow не требуется.
+
 Загрузите проект в отдельный репозиторий с веткой main. Settings → Pages → Source: GitHub Actions. Workflow pages.yml тестирует проект и публикует только public/. Приложение работает в подпапке репозитория. GitHub Pages обслуживает интерфейс; серверный Node.js-код там не исполняется. На Pages можно использовать OpenRouter из браузера или указать собственный HTTPS URL сервера-посредника.
 
 ## Прямые ключи провайдеров
