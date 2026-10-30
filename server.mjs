@@ -2,7 +2,10 @@ import http from 'node:http';
 import {readFile} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','GROK_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
-export function createServer(){let active=0;const allowed=(process.env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);return http.createServer(async(req,res)=>{
+export function createServer(){let active=0;
+ const grokBase=process.env.XAI_BASE_URL||'https://api.x.ai/v1';
+ if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase.replace(/\/$/,'')))throw Error('Invalid Grok base URL');
+ const routes={...providers,grok:[grokBase.replace(/\/$/,'')+'/chat/completions','XAI_API_KEY']};const allowed=(process.env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);return http.createServer(async(req,res)=>{
  const origin=req.headers.origin;const expected=`${req.socket.encrypted?'https':'http'}://${req.headers.host}`;const originOK=!origin||origin===expected||allowed.includes(origin);
  if(origin&&originOK){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
  res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
@@ -16,10 +19,11 @@ export function createServer(){let active=0;const allowed=(process.env.ALLOWED_O
   if(active>=10)return json(429,{error:{message:'Сервер занят, повторите позже'}});
   let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>350000)return json(413,{error:{message:'Слишком большой запрос'}});}}catch{return json(400,{error:{message:'Ошибка чтения запроса'}});}
   let body;try{body=JSON.parse(raw);}catch{return json(400,{error:{message:'Неверный JSON'}});}
-  const config=providers[body.provider];if(!config||typeof body.model!=='string'||!body.model.trim()||body.model.length>200||!Array.isArray(body.messages)||body.messages.length>30||!body.messages.length||body.messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return json(400,{error:{message:'Некорректные provider, model или messages'}});
-  const key=process.env[config[1]];if(!key)return json(503,{error:{message:`На сервере не настроен ${config[1]}`}});
+  const config=routes[body.provider];if(!config||typeof body.model!=='string'||!body.model.trim()||body.model.length>200||!Array.isArray(body.messages)||body.messages.length>30||!body.messages.length||body.messages.some(m=>!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return json(400,{error:{message:'Некорректные provider, model или messages'}});
+  const key=process.env[config[1]]||(body.provider==='grok'?process.env.GROK_API_KEY:'');if(!key)return json(503,{error:{message:`На сервере не настроен ${config[1]}`}});
+  body.model=process.env[body.provider.toUpperCase()+'_MODEL']||body.model;
   active++;const controller=new AbortController();res.on('close',()=>controller.abort());
-  try{let payload={model:body.model,messages:body.messages,max_tokens:1600};const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
+  try{let payload={model:body.model,messages:body.messages,max_tokens:1600};if(body.provider==='grok'&&body.model==='grok-4.7')payload.reasoning_effort='low';const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model:body.model,max_tokens:1600,system:body.messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:body.messages.filter(m=>m.role!=='system')};}
    const upstream=await fetch(config[0],{method:'POST',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
    if(!upstream.ok){await upstream.body?.cancel();return json(upstream.status,{error:{message:`Провайдер ${body.provider}: HTTP ${upstream.status}. Проверьте ключ, модель, квоту и регион API.`}});}
