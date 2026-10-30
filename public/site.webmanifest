@@ -1,0 +1,25 @@
+{
+  "id": "./",
+  "name": "Кворум — совет нейросетей",
+  "short_name": "Кворум",
+  "lang": "ru",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#151916",
+  "theme_color": "#151916",
+  "icons": [
+    {
+      "src": "./assets/quorum-icon-192-v1.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./assets/quorum-icon-512-v1.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
