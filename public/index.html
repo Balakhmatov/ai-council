@@ -65,6 +65,10 @@
  <div id="pricingOffers"></div>
  <p class="hint">Оплата пока не подключена. Цены зафиксированы, покупка станет доступна после подключения платежей.</p>
 </section>
+<details class="account-code" id="accountCodeDetails" hidden>
+ <summary>Код аккаунта для активации тарифа</summary>
+ <code id="accountCode"></code><button class="quiet" type="button" id="copyAccountCode">Скопировать</button>
+</details>
 <div id="demoControls" hidden><label class="demo"><input id="demo" type="checkbox"> Демо без API (для тестирования)</label></div>
 </aside></div>
 <footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span></footer>
@@ -83,6 +87,21 @@
 <p id="emailStatus" role="status" aria-live="polite"></p></dialog>
 <dialog id="settings"><form method="dialog"><div class="section-title"><h2 class="admin-brand"><img src="./assets/quorum-icon-192-v2.png" width="32" height="32" alt="">Администрирование</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
-<div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
+<div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><section class="admin-grants">
+ <h3>Начислить подписку или пакет вручную</h3>
+ <p class="hint">Только для владельца. Оплата пока не подключена.</p>
+ <form id="adminGrantForm">
+  <label>Код аккаунта <input id="adminGrantAccount" type="text" placeholder="account:..." required></label>
+  <label>Тариф <select id="adminGrantSku">
+   <option value="subscription">Подписка · 500 заданий / 30 дней</option>
+   <option value="pack10">10 заданий</option>
+   <option value="pack50">50 заданий</option>
+   <option value="pack100">100 заданий</option>
+  </select></label>
+  <button class="primary" type="submit">Начислить</button>
+ </form>
+ <p id="adminGrantStatus" class="hint"></p>
+</section>
+<div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
 <script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=plans35"></script></body></html>
