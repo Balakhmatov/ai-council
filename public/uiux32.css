@@ -178,3 +178,13 @@ textarea::placeholder{color:#7d7286!important}
 .history-prompt p:not(.hint){white-space:pre-wrap;font-size:13px;line-height:1.7}
 .history-detail .message{padding:15px 0}
 @media(max-width:880px){.pricing-panel{margin-top:14px}.history-dialog{padding:14px}.history-dialog .section-title{top:-14px}}
+
+.account-code{margin-top:9px;padding:8px 0;font-size:11px;color:#86788e;border-top:1px solid #eee4ee}
+.account-code summary{cursor:pointer}
+.account-code code{display:block;overflow-wrap:anywhere;font-size:10px;margin:7px 0}
+.account-code button{font-size:11px}
+.admin-grants{border-top:1px solid #ece1f0;margin-top:18px;padding-top:14px}
+.admin-grants h3{font-size:14px;margin:0 0 8px}
+.admin-grants form{display:grid;gap:10px}
+.admin-grants input{font-size:14px}
+.admin-grants button.primary{margin:5px 0 0}
