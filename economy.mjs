@@ -8,28 +8,34 @@ const knownPrices=Object.freeze({
 function nonnegative(value,fallback){const n=Number(value);return Number.isSafeInteger(n)&&n>=0&&n<=100000?n:fallback;}
 export function createEconomy({env,now=Date.now}){
  const file=env.ACCOUNTING_FILE||'';
- const freeCoins=nonnegative(env.FREE_START_COINS,3),taskPrice=nonnegative(env.TASK_COIN_COST,1);
- let state={wallets:{},totals:{requests:0,knownCostUsd:0,unknownCostCalls:0,inputTokens:0,outputTokens:0},byModel:{},recent:[]};
+ const freeTasks=nonnegative(env.FREE_START_TASKS,3);
+ let state={allowances:{},totals:{requests:0,knownCostUsd:0,unknownCostCalls:0,inputTokens:0,outputTokens:0},byModel:{},recent:[]};
  if(file){try{
   const stored=JSON.parse(readFileSync(file,'utf8'));
-  if(stored&&typeof stored==='object'&&stored.wallets&&stored.totals&&stored.byModel&&Array.isArray(stored.recent))state=stored;
+  if(stored&&typeof stored==='object'&&(stored.allowances||stored.wallets)&&stored.totals&&stored.byModel&&Array.isArray(stored.recent)){state=stored;if(!state.allowances){state.allowances=Object.fromEntries(Object.entries(state.wallets||{}).map(([id,w])=>[id,{remainingFreeTasks:w.balance,createdAt:w.createdAt}]));delete state.wallets;}}
  }catch(e){if(e.code!=='ENOENT')throw Error('Accounting state unreadable');}}
  const tasks=new Map();
  function save(){if(file){writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});renameSync(file+'.tmp',file);}}
- function wallet(identity){
-  if(!state.wallets[identity]){state.wallets[identity]={balance:freeCoins,createdAt:new Date(now()).toISOString()};save();}
-  return state.wallets[identity];
+ function allowance(identity){
+  if(!Object.hasOwn(state.allowances,identity)){
+   state.allowances[identity]={remainingFreeTasks:freeTasks,createdAt:new Date(now()).toISOString()};
+   save();
+  }
+  return state.allowances[identity];
  }
- function balance(identity,isAdmin=false){return {coins:isAdmin?null:wallet(identity).balance,costPerTask:taskPrice,freeStartingCoins:freeCoins,admin:isAdmin,checkoutAvailable:false};}
+ function access(identity,isAdmin=false){
+  return {remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks,
+   freeStartingTasks:freeTasks,admin:isAdmin,paidPlansAvailable:false};
+ }
  function start(identity,isAdmin,params,available){
   const models=params?.participants,rounds=Number(params?.rounds),mode=params?.mode;
   if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>5||!['consensus','vote','judge','roles','brainstorm'].includes(mode))return null;
-  if(!isAdmin&&wallet(identity).balance<taskPrice)return {insufficient:true};
-  if(!isAdmin){wallet(identity).balance-=taskPrice;save();}
+  if(!isAdmin&&allowance(identity).remainingFreeTasks<1)return {insufficient:true};
+  if(!isAdmin){allowance(identity).remainingFreeTasks--;save();}
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+1+(['vote','consensus'].includes(mode)?models.length:0);
   tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin});
-  return {taskId:id,maxCalls:limit,coins:isAdmin?null:wallet(identity).balance};
+  return {taskId:id,maxCalls:limit,remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks};
  }
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
@@ -42,8 +48,8 @@ export function createEconomy({env,now=Date.now}){
  function finish(id,identity){
   const task=tasks.get(id);if(!task||task.identity!==identity)return null;
   tasks.delete(id);
-  if(!task.isAdmin&&task.successful===0){wallet(identity).balance+=taskPrice;save();}
-  return {ok:true,refunded:!task.isAdmin&&task.successful===0,coins:task.isAdmin?null:wallet(identity).balance};
+  if(!task.isAdmin&&task.successful===0){allowance(identity).remainingFreeTasks++;save();}
+  return {ok:true,refunded:!task.isAdmin&&task.successful===0,remainingFreeTasks:task.isAdmin?null:allowance(identity).remainingFreeTasks};
  }
  function record(provider,model,usage){
   const usageReported=!!usage&&typeof usage==='object';
@@ -60,6 +66,6 @@ export function createEconomy({env,now=Date.now}){
   by.requests++;by.inputTokens+=input;by.outputTokens+=output;if(usd===null)by.unknownCostCalls++;else by.knownCostUsd+=usd;
   state.byModel[provider+'/'+model]=by;state.recent.push(entry);if(state.recent.length>1000)state.recent.shift();save();
  }
- function summary(){return {totals:state.totals,byModel:state.byModel,recent:state.recent.slice(-30).reverse(),walletCount:Object.keys(state.wallets).length,priceKnownFor:Object.keys(knownPrices)};}
- return {balance,start,checkCall,success,finish,record,summary};
+ function summary(){return {totals:state.totals,byModel:state.byModel,recent:state.recent.slice(-30).reverse(),freeAccounts:Object.keys(state.allowances).length,priceKnownFor:Object.keys(knownPrices)};}
+ return {access,start,checkCall,success,finish,record,summary};
 }
