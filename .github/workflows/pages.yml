@@ -47,3 +47,25 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+
+
+  live-site-probe:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect public Quorum deployment without credentials
+        shell: bash
+        run: |
+          set +e
+          echo "Expected currently merged main: ${{ github.event.pull_request.base.sha }}"
+          echo "DNS:"
+          getent ahostsv4 cityai.site | head -3
+          echo "=== Public HTML ==="
+          curl --silent --show-error --location --max-time 20 --write-out '\nHTTP_CODE=%{http_code} FINAL_URL=%{url_effective}\n' -o /tmp/quorum-live.html https://cityai.site/quorum/
+          if test -s /tmp/quorum-live.html; then
+            grep -oE 'app.js\\?v=[A-Za-z0-9_-]+|style.css\\?v=[A-Za-z0-9_-]+|id="pricingOpen"|id="pricingDialog"' /tmp/quorum-live.html | head -20 || true
+            echo "HTML bytes: $(wc -c < /tmp/quorum-live.html)"
+          fi
+          echo "=== VPS health and deployment stamp ==="
+          curl --silent --show-error --location --max-time 20 --write-out '\nHTTP_CODE=%{http_code}\n' https://cityai.site/quorum/healthz
+          echo
