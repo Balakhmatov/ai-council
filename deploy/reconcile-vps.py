@@ -75,7 +75,11 @@ def reconcile(source, lock_path, backup_root):
 
 
 if __name__ == '__main__':
-    reconcile('/root/ai-council', '/run/lock/quorum-deploy.lock', '/root/quorum-reconcile-backups')
+    revision = reconcile('/root/ai-council', '/run/lock/quorum-deploy.lock', '/root/quorum-reconcile-backups')
+    # An explicit recovery run may retry this reviewed revision once.
+    failed = Path('/var/lib/quorum/failed-revision')
+    if failed.exists() and failed.read_text().strip() == revision:
+        failed.unlink()
     # The existing deployment service remains the only installer/activation path.
     subprocess.run(['systemctl', 'start', 'quorum-deploy.service'], check=True)
     subprocess.run(['systemctl', 'is-active', 'quorum-api.service'], check=True)
