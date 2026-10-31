@@ -2,6 +2,7 @@ import {modes,discuss} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
+import {loadRememberedSession,rememberSession,forgetSession} from './auth-state.js';
 
 const $=id=>document.getElementById(id);
 const agents=[
@@ -14,7 +15,7 @@ const agents=[
  {id:'claude',name:'Claude',sub:'Аргументы и редактура'}
 ];
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
-let telegramContext=null,telegramIdentity=null,telegramLogin=null,telegramUrl=null;
+let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null;
 const chosen=new Set(['openai','grok','mistral']);
@@ -75,63 +76,104 @@ function update(){
 $('rounds').onchange=update;$('length').onchange=update;$('judge').onchange=update;
 
 async function api(path,{method='GET',body,token,signal}={}){
- const response=await fetch(API+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,signal});
+ const response=await fetch(API+path,{method,credentials:'include',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,signal});
  let data;try{data=await response.json();}catch{throw Error('Сервис временно недоступен. Попробуйте позже.');}
  if(!response.ok){const error=new Error(data.error?.message||'Ошибка сервиса');error.status=response.status;throw error;}
  return data;
 }
 async function loginTelegram(){
- if(telegramLogin)return telegramLogin;
- telegramLogin=(async()=>{
-  telegramContext=await getTelegramContext();if(!telegramContext)return;
-  const identity=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});
-  telegramIdentity=identity;publicSession=identity;
-  if(identity.isAdmin){adminToken=identity.token;await showAdmin();}
-  else{adminToken='';sessionStorage.removeItem('quorum-admin');$('settingsOpen').hidden=true;if($('settings').open)$('settings').close();}
- })();
- return telegramLogin;
+ telegramContext=await getTelegramContext();
 }
-try{const saved=JSON.parse(localStorage.getItem('quorum-email-session')||'null');if(saved?.expires>Date.now())publicSession=saved;}catch{}
-let loginEmail='';
-$('emailOpen').onclick=async()=>{
- $('emailDialog').showModal();$('emailStatus').textContent='';
- try{const config=await api('/api/email/config');$('emailRequest').hidden=!config.enabled;
-  if(!config.enabled){$('emailVerify').hidden=true;$('emailStatus').textContent='Вход по email пока недоступен. Используйте вход через Telegram.';}
- }catch(error){$('emailStatus').textContent=error.message;}
+try{publicSession=loadRememberedSession(localStorage);}catch{}
+let loginEmail='',pendingLogin=null,pollTimer=null,polling=false;
+function saveIdentity(identity){
+ publicSession={...(publicSession||{}),...identity};
+ if(identity.isAdmin){adminToken=publicSession.token||'';telegramIdentity=publicSession;}
+ else{adminToken='';sessionStorage.removeItem('quorum-admin');}
+ try{const remembered={...publicSession};if(!location.hostname.endsWith('github.io'))delete remembered.token;rememberSession(localStorage,remembered);}catch{}
+}
+function clearIdentity(){
+ publicSession=null;adminToken='';telegramIdentity=null;
+ sessionStorage.removeItem('quorum-admin');
+ try{forgetSession(localStorage);}catch{}
+}
+function stopLoginPolling(){clearTimeout(pollTimer);pollTimer=null;pendingLogin=null;}
+function showLoginMethods(){
+ stopLoginPolling();$('authMethods').hidden=false;$('emailFlow').hidden=true;$('telegramFlow').hidden=true;$('authBack').hidden=true;$('emailStatus').textContent='';
+}
+$('loginOpen').onclick=async()=>{
+ showLoginMethods();if(!$('emailDialog').open)$('emailDialog').showModal();
+ try{const config=await api('/api/email/config');$('emailOpen').disabled=!config.enabled;if(!config.enabled)$('emailStatus').textContent='Вход по email пока недоступен. Выберите Telegram.';}
+ catch(error){$('emailStatus').textContent=error.message;}
+};
+$('authBack').onclick=showLoginMethods;
+$('emailDialog').addEventListener('close',stopLoginPolling);
+$('emailOpen').onclick=()=>{
+ $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;$('emailStatus').textContent='';$('emailAddress').focus();
 };
 $('emailRequest').onsubmit=async e=>{
  e.preventDefault();const button=e.submitter;button.disabled=true;
- try{loginEmail=$('emailAddress').value.trim();await api('/api/email/request',{method:'POST',body:{email:loginEmail}});$('emailVerify').hidden=false;$('emailStatus').textContent='Код отправлен. Он действует 10 минут.';$('emailCode').focus();}
+ try{loginEmail=$('emailAddress').value.trim();await api('/api/email/request',{method:'POST',body:{email:loginEmail}});$('emailVerify').hidden=false;$('emailStatus').textContent='Код отправлен. Подтвердите адрес — вход сохранится на этом устройстве.';$('emailCode').focus();}
  catch(error){$('emailStatus').textContent=error.message;}finally{button.disabled=false;}
 };
 $('emailVerify').onsubmit=async e=>{
  e.preventDefault();const button=e.submitter;button.disabled=true;
- try{publicSession=await api('/api/email/verify',{method:'POST',body:{email:loginEmail,code:$('emailCode').value.trim()}});localStorage.setItem('quorum-email-session',JSON.stringify(publicSession));$('emailCode').value='';$('emailDialog').close();await refreshAccess();}
+ try{saveIdentity(await api('/api/email/verify',{method:'POST',body:{email:loginEmail,code:$('emailCode').value.trim()}}));$('emailCode').value='';$('emailDialog').close();await refreshAccess();$('status').textContent='Вы вошли. Можно начать обсуждение.';}
  catch(error){$('emailStatus').textContent=error.message;}finally{button.disabled=false;}
 };
+async function pollTelegramLogin(){
+ if(!pendingLogin||polling)return;
+ if(pendingLogin.expires<=Date.now()){stopLoginPolling();$('emailStatus').textContent='Время подтверждения истекло. Начните вход заново.';return;}
+ polling=true;
+ try{
+  const login=pendingLogin;
+  const identity=await api('/api/telegram/login/poll',{method:'POST',body:{id:login.id,secret:login.secret}});
+  if(pendingLogin!==login)return;
+  if(!identity.pending){saveIdentity(identity);stopLoginPolling();$('emailDialog').close();await refreshAccess();if(identity.isAdmin)await showAdmin();$('status').textContent='Вы вошли через Telegram. Можно начать обсуждение.';return;}
+ }catch(error){
+  if(!pendingLogin)return;
+  $('emailStatus').textContent=error.message;
+  if(error.status===410){stopLoginPolling();return;}
+ }finally{polling=false;}
+ if(pendingLogin)pollTimer=setTimeout(pollTelegramLogin,2000);
+}
+$('telegramOpen').onclick=async()=>{
+ const popup=telegramContext?null:window.open('about:blank','quorum-telegram-login');
+ try{
+  if(telegramContext){saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));$('emailDialog').close();await refreshAccess();return;}
+  const login=await api('/api/telegram/login/start',{method:'POST',body:{}});
+  stopLoginPolling();pendingLogin=login;
+  $('authMethods').hidden=true;$('telegramFlow').hidden=false;$('authBack').hidden=false;
+  $('telegramCode').textContent=login.code;$('telegramContinue').href=login.url;
+  $('emailStatus').textContent='В Telegram нажмите «Запустить», затем подтвердите вход. Эту вкладку оставьте открытой.';
+  if(popup)popup.location.href=login.url;
+  pollTelegramLogin();
+ }catch(error){if(popup)popup.close();$('emailStatus').textContent=error.message;}
+};
+window.addEventListener('focus',()=>{if(pendingLogin){clearTimeout(pollTimer);pollTelegramLogin();}});
 $('emailLogout').onclick=async()=>{
- try{if(publicSession?.token)await api('/api/logout',{method:'POST',token:publicSession.token,body:{}});}finally{publicSession=null;localStorage.removeItem('quorum-email-session');await refreshAccess();}
+ try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;$('demoControls').hidden=true;showSignedOut();}
+ catch(error){$('status').textContent=error.message;}
 };
 async function ensureSession(){
  if(adminToken)return adminToken;
- if(publicSession?.token&&publicSession.expires>Date.now()+180000)return publicSession.token;
- if(telegramContext){publicSession=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});return publicSession.token;}
+ if(publicSession?.expires>Date.now())return publicSession.token||null;
+ if(telegramContext){saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));return publicSession.token;}
  return null;
 }
 function showSignedOut(){
- access=null;$('telegramOpen').hidden=!telegramUrl||!!telegramContext;$('accessChip').hidden=true;$('emailOpen').hidden=false;$('emailLogout').hidden=true;
+ access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц.';
- $('status').textContent='Для запуска обсуждения войдите через Telegram или email.';update();
+ $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
 }
 async function refreshAccess(){
- const token=await ensureSession();if(!token){showSignedOut();return;}
+ const token=await ensureSession();if(!token&&!publicSession){showSignedOut();return;}
  try{access=await api('/api/access',{token});}catch(error){
   if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток заданий. '+error.message;update();throw error;}
-  publicSession=null;localStorage.removeItem('quorum-email-session');showSignedOut();return;
+  clearIdentity();showSignedOut();return;
  }
- $('emailOpen').hidden=!!telegramContext||!!publicSession?.user?.email||access.admin;
- $('emailLogout').hidden=!publicSession?.user?.email||access.admin;
- $('telegramOpen').hidden=true;
+ $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
+ $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
  renderAccess();
 }
 function renderAccess(){
@@ -144,11 +186,14 @@ function renderAccess(){
 async function loadConfig(){
  try{
   await loginTelegram();const config=await api('/api/config');
+  if(!adminToken){
+   try{saveIdentity(await api('/api/auth/session',{token:publicSession?.token}));}
+   catch(error){if(error.status!==401)throw error;clearIdentity();if(telegramContext)saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));}
+  }
   available=new Set(config.providers);connected=true;
-  telegramUrl=config.telegramUrl;if(telegramUrl){$('telegramOpen').href=telegramUrl;$('telegramOpen').hidden=!!telegramContext;}
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
-  await refreshAccess();
+  await refreshAccess();if(access?.admin)await showAdmin();
   $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks===0?'Бесплатные задания закончились.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
@@ -347,12 +392,12 @@ $('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').v
 };
 $('adminLogout').onclick=()=>{
  api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});
- telegramIdentity=null;publicSession=null;adminToken='';access=null;sessionStorage.removeItem('quorum-admin');
+ clearIdentity();access=null;
  $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('demoControls').hidden=true;
  $('settings').close();history.replaceState(null,'',location.pathname);refreshAccess().catch(()=>{});
 };
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
-if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshAccess().catch(()=>{});});
+
 $('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
 $('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
@@ -399,7 +444,7 @@ async function request(a,chat,signal,stage={}){
  return result.text;
 }
 $('start').onclick=async()=>{
- if(!access&&!$('demo').checked){$('emailOpen').click();return;}
+ if(!access&&!$('demo').checked){$('loginOpen').click();return;}
  const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
  const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
  running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
@@ -413,7 +458,7 @@ $('start').onclick=async()=>{
    try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
    catch(error){
     if(error.status!==401||adminToken)throw error;
-    publicSession=null;localStorage.removeItem('quorum-email-session');
+    clearIdentity();
     if(!telegramContext){showSignedOut();throw Error('Войдите через Telegram или email заново.');}
     token=await ensureSession();
     activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});

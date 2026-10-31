@@ -23,7 +23,7 @@ export async function telegramApi(token,method,payload={},fetchImpl=fetch){
  if(!response.ok||!data.ok)throw Error(`Telegram ${method}: ошибка ${response.status}${data.error_code?' / '+data.error_code:''}`);
  return data.result;
 }
-export function createTelegramWebhook({env,fetchImpl=fetch}){
+export function createTelegramWebhook({env,fetchImpl=fetch,browserLogin}){
  const processed=new Set();const stateFile=env.TELEGRAM_STATE_FILE;
  if(stateFile){try{for(const id of JSON.parse(readFileSync(stateFile,'utf8')))processed.add(id);}catch(e){if(e.code!=='ENOENT')throw Error('Telegram state unreadable');}}
  const inFlight=new Map();
@@ -34,6 +34,18 @@ export function createTelegramWebhook({env,fetchImpl=fetch}){
   const work=(async()=>{
    const message=update.message;
    if(message?.chat?.type==='private'&&typeof message.text==='string'&&Number.isSafeInteger(message.from?.id)){
+    const start=message.text.trim().match(/^\/start(?:@[A-Za-z0-9_]+)? login_([A-Za-z0-9_-]{32})$/);
+    const confirm=message.text.trim().match(/^Подтвердить вход: (\d{6})$/);
+    if(browserLogin&&(start||confirm)&&message.chat.id===message.from.id&&!message.from.is_bot){
+     const user={id:message.from.id,firstName:String(message.from.first_name||'').slice(0,100),username:String(message.from.username||'').slice(0,100)};
+     if(start){
+      const code=browserLogin.begin(start[1],user);
+      await telegramApi(env.TELEGRAM_BOT_TOKEN,'sendMessage',{chat_id:user.id,text:code?'Вход на сайт «Кворум». Сверьте код '+code+' с кодом в браузере. Подтверждайте, только если вы сами начали вход.':'Запрос входа истёк. Начните вход на сайте заново.',reply_markup:code?{keyboard:[[{text:'Подтвердить вход: '+code}]],resize_keyboard:true,one_time_keyboard:true}:{remove_keyboard:true}},fetchImpl);
+     }else{
+      const approved=browserLogin.approve(confirm[1],user);
+      await telegramApi(env.TELEGRAM_BOT_TOKEN,'sendMessage',{chat_id:user.id,text:approved?'Вход подтверждён. Вернитесь в браузер — сайт войдёт автоматически.':'Запрос входа не найден или истёк. Начните вход на сайте заново.',reply_markup:{remove_keyboard:true}},fetchImpl);
+     }
+    }else{
     const cmd=message.text.trim().split(/\s/)[0].split('@')[0];const admin=telegramAdminIds(env).has(String(message.from.id));
     const url=new URL(env.TELEGRAM_APP_URL);if(url.protocol!=='https:')throw Error('Mini App requires HTTPS');
     let text='Откройте «Кворум», выберите модели и задайте тему. Нейросети обсудят задачу и подготовят итог.';
@@ -45,6 +57,7 @@ export function createTelegramWebhook({env,fetchImpl=fetch}){
     if(cmd==='/web')text='Веб-версия «Кворума»: '+env.TELEGRAM_APP_URL+'\n\nНажмите «Открыть сайт» ниже.';
     if(admin&&cmd!=='/admin'){const adminURL=new URL(env.TELEGRAM_APP_URL);adminURL.searchParams.set('admin','1');buttons.push([{text:'Администрирование',web_app:{url:adminURL.href}}]);}
     await telegramApi(env.TELEGRAM_BOT_TOKEN,'sendMessage',{chat_id:message.chat.id,text,reply_markup:{inline_keyboard:buttons}},fetchImpl);
+    }
    }
    processed.add(update.update_id);while(processed.size>500)processed.delete(processed.values().next().value);
    if(stateFile){writeFileSync(stateFile+'.tmp',JSON.stringify([...processed]),{mode:0o600});renameSync(stateFile+'.tmp',stateFile);}
@@ -52,3 +65,4 @@ export function createTelegramWebhook({env,fetchImpl=fetch}){
  }
  return handle;
 }
+

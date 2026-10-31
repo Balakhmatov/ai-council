@@ -252,3 +252,5 @@ dialog .primary{width:100%;margin-top:19px}
 .account-call{overflow-wrap:anywhere}
 .account-calls{min-width:0}
 
+
+.auth-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box}.auth-methods{display:grid;gap:12px}.auth-methods[hidden]{display:none}.auth-telegram{width:100%;min-height:44px}.auth-link{display:inline-block;text-decoration:none;text-align:center;box-sizing:border-box}.account-name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.auth-dialog form{margin-top:12px}.auth-dialog #authBack{margin-bottom:8px}@media(max-width:600px){.header-actions{flex-wrap:wrap;gap:8px}.account-name{max-width:120px}.auth-dialog{padding:18px}}
