@@ -1,0 +1,29 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {profiles} from '../public/profiles.js';
+import {getTaskHint} from '../public/examples.js';
+
+test('all five category tabs and specialized tags have correct initial data',()=>{
+ assert.equal(profiles.length,5);
+ for(const p of profiles){
+  assert.equal(p.tasks.length,6);
+  assert.ok(getTaskHint(p.id).length>50);
+  for(const t of p.tasks)assert.ok(getTaskHint(p.id,t[0]).length>50);
+ }
+});
+test('Telegram frontend loads a versioned hint module and keeps styled category/tag controls',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ assert.match(app,/import \{getTaskHint\} from '\.\/examples\.js\?v=purpose8'/);
+ assert.match(app,/function renderProfiles\(/);
+ assert.match(app,/function renderSubtasks\(/);
+ assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
+ assert.match(html,/id="profiles"/);
+ assert.match(html,/id="subtasks"/);
+ assert.match(html,/app\.js\?v=tags9/);
+ assert.match(css,/\.profile-option\.active\{background:transparent;/);
+ assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
+ assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
+});

@@ -54,8 +54,10 @@ h2,.section-title h2{margin:0;font-size:14px;font-weight:800;letter-spacing:-.2p
 .profile-option:hover:not(:disabled){background:transparent;border-bottom-color:#b39ad3}
 .profile-option.active{background:transparent;border-bottom-color:#7950d3;color:#673fac;box-shadow:none}
 .task-list{display:flex;gap:8px;flex-wrap:wrap;min-width:0;margin-top:13px}
-.task-option{max-width:100%;padding:9px 4px;border:0;border-bottom:1px solid #e9e0e6;border-radius:0;font-size:11px;font-weight:600;background:transparent;color:#796c77;overflow-wrap:anywhere}
-.task-option.active{background:transparent;border-bottom:2px solid #7950d3;color:#7147bc}
+.task-option{max-width:100%;min-height:37px;padding:9px 14px;border:1px solid #e4dbe7;border-radius:999px;font-size:12px;font-weight:600;line-height:1.25;background:#fff;color:#685a6b;overflow-wrap:anywhere;box-shadow:none}
+.task-option.active{background:#f2ebfc;border:1px solid #ac8edc;color:#7147bc;font-weight:700}
+.task-option:hover:not(:disabled){background:#faf6ff;border-color:#b69dd6}
+.task-option.active:hover:not(:disabled){background:#f2ebfc;border-color:#9270cb}
 textarea{display:block;width:100%;max-width:100%;min-width:0;min-height:206px;resize:vertical;margin-top:15px;padding:18px;border:1px solid #e9dfe6;border-radius:14px;background:#fffcfc;color:var(--ink);font-size:14px;line-height:1.77;overflow-wrap:anywhere;box-shadow:inset 0 1px 3px #513c4604}
 textarea:focus{background:#fff;border-color:#b595e7}
 textarea::placeholder{color:#a397a2}
@@ -67,8 +69,8 @@ textarea::placeholder{color:#a397a2}
 .advanced-chevron{font-size:16px;color:#a884be;flex:none}
 .advanced[open] .advanced-chevron{transform:rotate(180deg)}
 #modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:13px}
-.mode{min-width:0;display:block;text-align:left;background:transparent;border-color:#eee5ee;padding:12px;border-radius:11px;overflow-wrap:anywhere;font-size:12px}
-.mode.active{border-color:#aa8ee4;background:transparent;color:#6a43b2}
+.mode{min-width:0;display:block;text-align:left;background:#fff;border-color:#e7dfea;padding:12px;border-radius:11px;overflow-wrap:anywhere;font-size:12px}
+.mode.active{border-color:#aa8ee4;background:#f5efff;color:#6a43b2}
 .mode small{display:block;font-size:10px;line-height:1.5;font-weight:400;color:#97899a;margin-top:5px}
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
 label{font-size:12px;color:#7b6d7b}
@@ -148,7 +150,7 @@ dialog .primary{width:100%;margin-top:19px}
  .profile-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
  .profile-option{min-height:57px;padding:10px 4px;font-size:11px}
  .task-list{gap:7px}
- .task-option{font-size:11px;padding:9px 11px}
+ .task-option{font-size:11px;min-height:36px;padding:9px 12px}
  textarea{min-height:190px;padding:14px;font-size:13px}
  .advanced{padding:14px 0}
  #modes{grid-template-columns:minmax(0,1fr)}
