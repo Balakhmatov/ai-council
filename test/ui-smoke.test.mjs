@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=full-audit12/);
+ assert.match(html,/app\.js\?v=accountpricing15/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -49,3 +49,4 @@ test('owner accounting loads complete paginated request logs with task subtotals
  assert.match(app,/costBreakdownRub/);
  assert.match(app,/Скачать весь журнал CSV/);
 });
+

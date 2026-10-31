@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="./style.css?v=full-audit12">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
-<div class="header-actions"><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
+<div class="header-actions"><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><a id="telegramOpen" class="quiet" hidden target="_blank" rel="noopener noreferrer">Войти через Telegram</a><button id="emailOpen" class="quiet" type="button">Войти по email</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
 <main>
 <section class="intro"><div class="eyebrow">МАРКЕТИНГ · КОНТЕНТ · ИДЕИ</div><h1>Не ограничивайтесь<br>первым ответом <span>ИИ.</span></h1>
 <p>Несколько нейросетей предложат разные решения, проверят их и соберут готовый результат.</p></section>
@@ -46,13 +46,17 @@
 <p class="hint">Несколько независимых взглядов на задачу.</p><div id="agents"></div>
 <label class="judge-label">Кто подготовит итог<select id="judge"></select></label>
 <p id="budget" class="hint"></p>
-<div class="access-panel"><div class="access-title">Бесплатные задания</div><p id="accessInfo">Проверяем доступ…</p><p class="hint">Неделя, месяц и пакеты заданий появятся после утверждения тарифов.</p></div>
+<div class="access-panel"><div class="access-title">Бесплатные задания</div><p id="accessInfo">Проверяем доступ…</p><p class="hint">После входа через Telegram или email — 10 бесплатных заданий в месяц. Одно задание — полное обсуждение. Платные тарифы скоро появятся.</p></div>
 <div id="demoControls" hidden><label class="demo"><input id="demo" type="checkbox"> Демо без API (для тестирования)</label></div>
 </aside></div>
 <footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span></footer>
 </main>
+<dialog id="emailDialog"><form method="dialog"><div class="section-title"><h2>Вход по email</h2><button aria-label="Закрыть">✕</button></div></form>
+<p class="hint">Пришлём одноразовый код. Пароль не нужен. После входа доступно 10 бесплатных заданий в месяц.</p>
+<form id="emailRequest"><label>Email<input id="emailAddress" type="email" autocomplete="email" maxlength="254" required></label><button class="primary" type="submit">Получить код</button></form>
+<form id="emailVerify" hidden><label>Код из письма<input id="emailCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="primary" type="submit">Войти</button></form><p id="emailStatus" role="status"></p></dialog>
 <dialog id="settings"><form method="dialog"><div class="section-title"><h2 class="admin-brand"><img src="./assets/quorum-icon-192-v2.png" width="32" height="32" alt="">Администрирование</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
 <div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=full-audit12"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=accountpricing15-audit12"></script></body></html>

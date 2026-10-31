@@ -151,7 +151,7 @@ dialog .primary{width:100%;margin-top:19px}
  .profile-option{min-height:57px;padding:10px 4px;font-size:11px}
  .task-list{gap:7px}
  .task-option{font-size:11px;min-height:36px;padding:9px 12px}
- textarea{min-height:190px;padding:14px;font-size:13px}
+ textarea{min-height:190px;padding:14px}
  .advanced{padding:14px 0}
  #modes{grid-template-columns:minmax(0,1fr)}
  .controls{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -168,6 +168,10 @@ dialog .primary{width:100%;margin-top:19px}
  .brand{font-size:19px}
  .controls{grid-template-columns:minmax(0,1fr)}
  .intro{padding:22px 16px}
+}
+/* Keep focused form controls from triggering iOS automatic page zoom. */
+@media(max-width:880px),(any-pointer:coarse){
+ textarea,select,input:not([type=checkbox]):not([type=radio]){font-size:16px}
 }
 @media(prefers-reduced-motion:reduce){button{transition:none}}
 
@@ -247,3 +251,4 @@ dialog .primary{width:100%;margin-top:19px}
 .account-more:hover:not(:disabled){background:#faf7ff}
 .account-call{overflow-wrap:anywhere}
 .account-calls{min-width:0}
+

@@ -20,8 +20,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm ci --ignore-scripts
       - run: npm test
       - run: python3 -m py_compile deploy/install-vps.py deploy/auto-deploy.py
+      - run: python3 -m unittest discover -s test -p '*_test.py'
       - run: node --check server.mjs && node --check economy.mjs && node --check fx.mjs && node --check public/app.js && node --check public/engine.js
   deploy:
     if: github.event_name != 'pull_request'
@@ -35,6 +37,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - run: npm ci --ignore-scripts
       - run: npm test
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -43,3 +46,4 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+

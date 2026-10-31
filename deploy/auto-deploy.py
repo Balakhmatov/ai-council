@@ -80,7 +80,9 @@ def main():
             git('merge', '--ff-only', remote)
 
         try:
+            run('npm', 'ci', '--ignore-scripts', '--no-audit', '--no-fund', timeout=180)
             run('npm', 'test', timeout=180)
+            run(sys.executable, '-m', 'unittest', 'discover', '-s', 'test', '-p', '*_test.py', timeout=180)
             run(sys.executable, str(DEPLOY), timeout=180)
             if not healthy():
                 raise RuntimeError('Quorum health check failed after update')
@@ -106,3 +108,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+
