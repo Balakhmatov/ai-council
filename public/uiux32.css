@@ -1,4 +1,4 @@
-/* uiux32/33 — participants sheet + chips + mobile H1 */
+/* uiux34 — mobile-only UX; desktop stays default layout */
 
 .task-option-any{
   background:transparent!important;
@@ -34,114 +34,98 @@ textarea::placeholder{color:#7d7286!important}
 .controls label{font-size:11px!important;color:#9a8f9c!important;font-weight:500!important}
 .step-note,.hint{color:#7f7488!important}
 
-/* Participants block */
-.participants-top{
-  min-width:0;
-  margin:0 0 18px;
-  border:1px solid #eadff5;
-  border-radius:16px;
-  background:linear-gradient(180deg,#faf7ff,#f7f2fc);
-  overflow:hidden;
-}
-.participants-toggle{
-  width:100%;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:14px 16px;
-  border:0;
-  border-radius:0;
-  background:transparent;
-  color:#3d3148;
-  font-size:14px;
-  font-weight:800;
-  text-align:left;
-  cursor:pointer;
-}
-.participants-toggle:hover{background:#f3ebff}
-.participants-toggle-label{flex:1;min-width:0}
-.participants-count{
-  font-size:12px;
-  font-weight:800;
-  color:#8a5cc0;
-  background:#efe6fc;
-  border:1px solid #e0d0f5;
-  border-radius:999px;
-  padding:5px 10px;
-}
-.participants-chevron{
-  font-size:18px;
-  color:#9b7bc4;
-  transition:transform .2s ease;
-}
-.participants-toggle[aria-expanded="true"] .participants-chevron{transform:rotate(180deg)}
-.participants-body{
-  display:none;
-  padding:0 12px 14px;
-  border-top:1px solid #eadff5;
-}
-.participants-body.is-open{display:block}
-.participants-hint{margin:10px 4px 8px;font-size:11px}
-.agents-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:8px;
-}
-.agents-grid .agent{
-  flex-direction:column;
-  align-items:flex-start;
-  gap:6px;
-  margin:0;
-  padding:12px;
-  border:1px solid #eee5f0;
-  border-radius:12px;
-  border-bottom:1px solid #eee5f0;
-  background:#fff;
-  min-height:100%;
-}
-.agents-grid .agent input{margin-left:0;align-self:flex-end}
-.agents-grid .agent strong{font-size:12px}
-.agents-grid .agent small{font-size:10px;line-height:1.35}
-.participants-body .judge-label{margin-top:14px}
-.participants-body #budget{margin-top:8px}
+.participants-toggle-mobile{display:none}
 
-/* Desktop: participants as sticky right column */
-@media(min-width:881px){
+@media (max-width:880px){
   .workspace{
-    display:grid!important;
-    grid-template-columns:minmax(0,1fr) 300px!important;
-    gap:28px!important;
-    align-items:start!important;
+    display:flex!important;
+    flex-direction:column!important;
   }
-  .participants-top{
-    grid-column:2;
-    grid-row:1;
-    position:sticky;
-    top:18px;
-    margin:0;
+  #participantsAside{
+    order:0!important;
+    position:static!important;
+    border-left:0!important;
+    border-top:0!important;
+    padding:0!important;
+    margin:0 0 14px!important;
   }
-  .participants-body{display:block!important}
-  .participants-toggle{cursor:default}
-  .participants-toggle:hover{background:transparent}
-  .participants-chevron{display:none}
-  .board{grid-column:1;grid-row:1 / span 2}
-  .access-aside{
-    grid-column:2;
-    grid-row:2;
-    position:static;
-    border-left:0;
-    padding:16px 0 0;
-    margin-top:12px;
-  }
-  .mobile-quorum{display:none!important}
-}
+  .board{order:1!important}
 
-@media(max-width:880px){
-  .workspace{display:flex!important;flex-direction:column!important}
-  .participants-top{order:0;margin-bottom:14px}
-  .board{order:1}
-  .access-aside{order:2;border-left:0;padding:18px 0 0;border-top:1px solid #f0e5ec}
+  .participants-head{
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    flex-wrap:wrap!important;
+    margin:0!important;
+    padding:12px 14px!important;
+    border:1px solid #eadff5!important;
+    border-radius:16px!important;
+    background:linear-gradient(180deg,#faf7ff,#f7f2fc)!important;
+  }
+  .participants-head h2{margin:0!important;font-size:14px!important}
+  .participants-head #count{
+    font-size:12px!important;
+    font-weight:800!important;
+    color:#8a5cc0!important;
+    background:#efe6fc!important;
+    border:1px solid #e0d0f5!important;
+    border-radius:999px!important;
+    padding:4px 10px!important;
+  }
+  .participants-toggle-mobile{
+    display:inline-flex!important;
+    margin-left:auto!important;
+    padding:6px 12px!important;
+    border-radius:999px!important;
+    border:1px solid #dccff0!important;
+    background:#fff!important;
+    color:#6b4ea3!important;
+    font-size:12px!important;
+    font-weight:700!important;
+    cursor:pointer!important;
+  }
+  .participants-desktop-hint{display:none!important}
+
+  .agents-panel{
+    display:none!important;
+    margin-top:8px!important;
+    padding:12px!important;
+    border:1px solid #eadff5!important;
+    border-radius:14px!important;
+    background:#fcfaff!important;
+  }
+  .agents-panel.is-open{display:block!important}
+
+  .agents-grid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  .agents-grid .agent{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:flex-start!important;
+    gap:6px!important;
+    margin:0!important;
+    padding:12px!important;
+    border:1px solid #eee5f0!important;
+    border-radius:12px!important;
+    border-bottom:1px solid #eee5f0!important;
+    background:#fff!important;
+    min-height:100%!important;
+  }
+  .agents-grid .agent input{
+    margin-left:0!important;
+    align-self:flex-end!important;
+  }
+  .agents-grid .agent strong{font-size:12px!important}
+  .agents-grid .agent small{font-size:10px!important;line-height:1.35!important}
+
+  .agents-panel .judge-label{margin-top:12px!important}
+  .access-panel{margin-top:14px!important}
+
   .mobile-quorum{display:none!important}
+
   .launch{
     position:sticky!important;
     bottom:calc(10px + var(--tg-safe-bottom,0px))!important;
@@ -156,7 +140,7 @@ textarea::placeholder{color:#7d7286!important}
   }
 }
 
-@media(max-width:580px){
+@media (max-width:580px){
   h1{
     font-size:clamp(24px,6.5vw,32px)!important;
     letter-spacing:-1.2px!important;
@@ -164,10 +148,8 @@ textarea::placeholder{color:#7d7286!important}
     margin:10px 0 10px!important;
     max-width:100%!important;
   }
-  .agents-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:7px!important}
-  .agents-grid .agent{padding:10px 8px!important}
 }
 
-@media(max-width:360px){
+@media (max-width:360px){
   .agents-grid{grid-template-columns:1fr!important}
 }
