@@ -2,7 +2,7 @@ import {modes,discuss} from './engine.js';
 import {getTelegramContext} from './telegram-bridge.js';
 const $=id=>document.getElementById(id);
 const agents=[
-{id:'openai',name:'OpenAI',sub:'Логика и структура',letter:'O',color:'#3e705a',model:'gpt-4.1-mini',router:'openai/gpt-4.1-mini'},
+{id:'openai',name:'OpenAI',sub:'Логика и структура',letter:'O',color:'#3e705a',model:'gpt-6-luna',router:'openai/gpt-6-luna'},
 {id:'grok',name:'Grok',sub:'Нестандартный взгляд',letter:'X',color:'#454b4a',model:'grok-3-mini',router:'x-ai/grok-3-mini'},
 {id:'mistral',name:'Mistral',sub:'Ясность и точность',letter:'M',color:'#b97643',model:'mistral-small-latest',router:'mistralai/mistral-small-3.2-24b-instruct'},
 {id:'qwen',name:'Qwen',sub:'Детали и анализ',letter:'Q',color:'#6960a0',model:'qwen-plus',router:'qwen/qwen3-235b-a22b'},
