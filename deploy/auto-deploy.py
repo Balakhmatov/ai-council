@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 
 SOURCE = Path('/root/ai-council')
@@ -28,9 +30,22 @@ def git(*args, timeout=120):
     return run('git', *args, timeout=timeout)
 
 
-def healthy():
-    with urllib.request.urlopen(HEALTH, timeout=8) as response:
-        return response.status == 200 and json.loads(response.read()).get('ok') is True
+def healthy(timeout=30):
+    deadline = time.monotonic() + timeout
+    while True:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        try:
+            with urllib.request.urlopen(HEALTH, timeout=min(2, remaining)) as response:
+                if response.status == 200 and json.loads(response.read()).get('ok') is True:
+                    return True
+        except (OSError, urllib.error.URLError, ValueError):
+            pass
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return False
+        time.sleep(min(1, remaining))
 
 
 def stamp_revision(revision):

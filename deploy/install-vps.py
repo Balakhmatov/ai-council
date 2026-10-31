@@ -65,9 +65,6 @@ subprocess.run(['systemctl','enable','quorum-api.service'],check=True)
 subprocess.run(['systemctl','restart','quorum-api.service'],check=True)
 subprocess.run(['systemctl','reload','nginx'],check=True)
 subprocess.run(['systemctl','is-active','quorum-api.service'],check=True)
-# Mark the installed revision so the timer will not needlessly restart the service.
-revision=subprocess.run(['git','rev-parse','HEAD'],cwd=src,capture_output=True,text=True,check=True).stdout.strip()
-stamp=Path('/var/lib/quorum/deployed-revision')
-stamp.write_text(revision+'\n');os.chmod(stamp,0o600)
+# The deploy controller records the revision only after HTTP readiness succeeds.
 print('Quorum installed at https://cityai.site/quorum/; auto-deploy timer enabled; private credentials not displayed.')
 
