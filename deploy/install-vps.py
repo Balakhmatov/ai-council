@@ -16,6 +16,8 @@ subprocess.run(['/usr/bin/node','--input-type=module','-e',r'''
 import fs from 'node:fs';import {parseEnv} from 'node:util';import crypto from 'node:crypto';
 const target='/etc/quorum/quorum.env';
 const source=fs.existsSync(target)?target:'/root/ai-council/.env.private';const config=parseEnv(fs.readFileSync(source,'utf8'));
+// Migrate the existing server-pinned OpenAI model without touching credentials or custom newer models.
+if(!config.OPENAI_MODEL||/^gpt-(?:4|5)(?:[.-]|$)/.test(config.OPENAI_MODEL))config.OPENAI_MODEL='gpt-6-luna';
 config.QUOTA_FILE='/var/lib/quorum/quota.json';config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';
 config.TELEGRAM_WEBHOOK_SECRET=config.TELEGRAM_WEBHOOK_SECRET||crypto.randomBytes(32).toString('hex');
