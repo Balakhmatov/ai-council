@@ -6,7 +6,7 @@ except KeyError:subprocess.run(['useradd','--system','--home-dir','/var/lib/quor
 uid=pwd.getpwnam('quorum').pw_uid;gid=grp.getgrnam('quorum').gr_gid
 for folder in [dest,Path('/var/lib/quorum'),Path('/etc/quorum')]:folder.mkdir(parents=True,exist_ok=True)
 os.chown('/var/lib/quorum',uid,gid);os.chmod('/var/lib/quorum',0o700);os.chmod('/etc/quorum',0o700)
-for name in ['server.mjs','telegram.mjs','economy.mjs','package.json']:
+for name in ['server.mjs','telegram.mjs','economy.mjs','fx.mjs','package.json']:
  shutil.copy2(src/name,dest/name);os.chmod(dest/name,0o644)
 for name in ['public','scripts']:
  shutil.copytree(src/name,dest/name,dirs_exist_ok=True)
