@@ -36,7 +36,14 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   const fail=(code,message)=>json(code,{error:{message}});
   const readBody=async(limit=150000)=>{let raw='';for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>limit)throw Error('body too large');}return JSON.parse(raw||'{}');};
-  if(path==='/healthz'&&req.method==='GET')return json(200,{ok:true});
+  if(path==='/healthz'&&req.method==='GET'){
+   let revision=null;
+   try{
+    const value=readFileSync('/var/lib/quorum/deployed-revision','utf8').trim();
+    if(/^[0-9a-f]{40}$/.test(value))revision=value;
+   }catch{}
+   return json(200,{ok:true,revision});
+  }
   if(path==='/api/telegram/webhook'){
    if(req.method!=='POST')return fail(405,'Нужен POST');
    const provided=Buffer.from(String(req.headers['x-telegram-bot-api-secret-token']||'')),expected=Buffer.from(env.TELEGRAM_WEBHOOK_SECRET||'');
