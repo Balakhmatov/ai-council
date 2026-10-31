@@ -18,6 +18,7 @@ const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':n
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null;
+let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false;
 const chosen=new Set(['openai','grok','mistral']);
 
 function renderProfiles(){
@@ -49,7 +50,15 @@ for(const a of agents){
  const img=document.createElement('img');img.src='./assets/models/'+a.id+'.svg';img.width=26;img.height=26;img.alt='';avatar.append(img);
  const data=document.createElement('span');const strong=document.createElement('strong');strong.textContent=a.name;const small=document.createElement('small');small.textContent=a.sub;data.append(strong,small);
  const input=document.createElement('input');input.type='checkbox';input.setAttribute('aria-label',a.name);input.checked=chosen.has(a.id);
- input.onchange=()=>{input.checked?chosen.add(a.id):chosen.delete(a.id);update();};
+ input.onchange=()=>{
+  const cap=access?.maxModels??3;
+  if(input.checked&&chosen.size>=cap){
+   input.checked=false;
+   $('status').textContent=cap===3?'Без подписки можно выбрать максимум 3 модели. Снимите одну или подключите подписку.':'Выбрано максимальное число моделей.';
+   return;
+  }
+  input.checked?chosen.add(a.id):chosen.delete(a.id);update();
+ };
  label.append(avatar,data,input);$('agents').append(label);
 }
 for(const [id,[title,description]] of Object.entries(modes)){
@@ -59,7 +68,7 @@ for(const [id,[title,description]] of Object.entries(modes)){
 }
 function update(){
  const old=$('judge').value;
- $('count').textContent=chosen.size+' / 7';
+ $('count').textContent=chosen.size+' / '+(access?.maxModels??3);
  $('judge').replaceChildren(...agents.filter(a=>chosen.has(a.id)).map(a=>new Option(a.name,a.id)));
  const preferred=chosen.has(old)?old:chosen.has('grok')?'grok':agents.find(a=>chosen.has(a.id))?.id;
  if(preferred)$('judge').value=preferred;
@@ -70,7 +79,7 @@ function update(){
  if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · итог '+judgeName;
  const enough=access?.admin||access?.remainingFreeTasks>0;
  $('start').textContent=access?'Получить результат':'Войти и начать';
- $('start').disabled=running||chosen.size<2||(!connected&&!$('demo').checked)||(!!access&&!enough&&!$('demo').checked);
+ $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||(!connected&&!$('demo').checked)||(!!access&&!enough&&!$('demo').checked);
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=$('demo').checked||available.has(a.id),input=label.querySelector('input');
   input.disabled=running||!ok;label.classList.toggle('unavailable',!ok);
@@ -195,7 +204,8 @@ async function ensureSession(){
 }
 function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;
- $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц.';
+ $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц, до 3 моделей, без истории.';
+ $('historySection').hidden=true;
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
 }
 async function refreshAccess(){
@@ -206,15 +216,80 @@ async function refreshAccess(){
  }
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
- renderAccess();
+ const cap=access.maxModels??3;
+ if(chosen.size>cap){
+  for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
+  for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
+ }
+ renderAccess();refreshHistory(true).catch(()=>{});
 }
 function renderAccess(){
- $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Бесплатно: '+access.remainingFreeTasks+' / месяц';
- $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':access.remainingFreeTasks>0?
-  'Осталось '+access.remainingFreeTasks+' из '+access.freeStartingTasks+' заданий в этом месяце. Обновление страницы не сбрасывает остаток.':
-  'Бесплатные задания закончились: 0 из '+access.freeStartingTasks+'. Лимит обновится в начале следующего месяца по московскому времени.';
+ if(!access)return;
+ $('accessChip').hidden=false;
+ $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' заданий':'Осталось '+access.remainingFreeTasks+' заданий';
+ const plan=access.subscriptionActive;
+ $('accessInfo').textContent=access.admin?'Администратор: задания без ограничений.':
+  plan?'Подписка: '+access.subscriptionRemaining+' из 500 заданий, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задания: '+access.purchasedTasks+'.':
+  'Бесплатно: '+access.freeRemaining+' из '+access.freeStartingTasks+' заданий за месяц. Купленные задания: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задания не сохраняются.';
+ renderPricing();
  update();
 }
+function renderPricing(){
+ const offers=priceCatalog||access?.catalog;
+ if(!offers)return;
+ const target=$('pricingOffers');target.replaceChildren();
+ for(const key of ['subscription','pack10','pack50','pack100']){
+  const o=offers[key];if(!o)continue;
+  const item=document.createElement('div');item.className='pricing-offer';
+  const label=document.createElement('span');label.textContent=o.label;
+  const price=document.createElement('strong');price.textContent=o.priceRub+' ₽';
+  const badge=document.createElement('small');badge.textContent=o.discount?'−'+o.discount+'%':'3 ₽ за задание';
+  item.append(label,price,badge);target.append(item);
+ }
+}
+async function refreshHistory(reset=false){
+ if(!access)return;
+ if(historyBusy&&!reset)return;
+ historyBusy=true;
+ try{
+  const offset=reset?0:historyOffset;
+  const data=await api('/api/history?limit=20&offset='+offset,{token:await ensureSession()});
+  if(reset){historyOffset=0;$('historyList').replaceChildren();}
+  historyTotal=data.total;
+  for(const item of data.items){
+   const btn=document.createElement('button');btn.type='button';btn.className='history-cluster';
+   const title=document.createElement('strong');title.textContent=item.title;
+   const info=document.createElement('small');info.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задание')+(item.specialization?' / '+item.specialization:'');
+   btn.append(title,info);
+   btn.onclick=()=>openHistory(item.taskId);
+   $('historyList').append(btn);
+  }
+  historyOffset=data.nextOffset??data.total;
+  $('historyCount').textContent=data.total+' сохранённых';
+  $('historyMore').hidden=data.nextOffset==null;
+  $('historySection').hidden=!access.historyEnabled&&data.total===0;
+  if(!data.total&&access.historyEnabled&&!$('historyList').children.length){
+   const empty=document.createElement('p');empty.className='hint';
+   empty.textContent='Первое обсуждение появится здесь после завершения задания.';
+   $('historyList').append(empty);
+  }
+ }finally{historyBusy=false;}
+}
+async function openHistory(taskId){
+ try{
+  const item=await api('/api/history/'+encodeURIComponent(taskId),{token:await ensureSession()});
+  const box=$('historyBody');box.replaceChildren();
+  const prompt=document.createElement('section');prompt.className='history-prompt';
+  const heading=document.createElement('h3');heading.textContent=item.title;
+  const meta=document.createElement('p');meta.className='hint';meta.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задание');
+  const text=document.createElement('p');text.textContent=item.prompt;
+  prompt.append(heading,meta,text);box.append(prompt);
+  for(const m of item.messages)box.append(renderMessage(m));
+  $('historyDialog').showModal();
+ }catch(e){$('status').textContent='Не удалось открыть историю: '+e.message;}
+}
+$('historyClose').onclick=()=>$('historyDialog').close();
+$('historyMore').onclick=()=>refreshHistory().catch(e=>{$('status').textContent=e.message;});
 async function loadConfig(){
  try{
   await loginTelegram();const config=await api('/api/config');
@@ -222,7 +297,7 @@ async function loadConfig(){
    try{saveIdentity(await api('/api/auth/session',{token:publicSession?.token}));}
    catch(error){if(error.status!==401)throw error;clearIdentity();if(telegramContext)saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));}
   }
-  available=new Set(config.providers);connected=true;
+  available=new Set(config.providers);connected=true;priceCatalog=config.catalog;renderPricing();
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
   await refreshAccess();if(access?.admin)await showAdmin();
@@ -506,7 +581,14 @@ $('start').onclick=async()=>{
   $('status').textContent=e.name==='AbortError'?'Остановлено. Уже полученные результаты сохранены в текущей вкладке.':e.message;
  }finally{
   if(activeTask){
-   try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
+   const {profile,task:subtask}=resolveProfile(profileId,taskId);
+   const historyPayload={
+    prompt:$('task').value,profile:profile.name,
+    specialization:subtask?.[1]||'',messages:messages.map(({name,stage,text,final,error})=>({name,stage,text,final:!!final,error:!!error}))
+   };
+   try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
+    taskId:activeTask.taskId,...(activeTask.historyEnabled?{history:historyPayload}:{})
+   }});}catch(e){$('status').textContent+=' Не удалось сохранить задание: '+e.message;}
    activeTask=null;
   }
   if(!$('demo').checked)await refreshAccess().catch(()=>{});
