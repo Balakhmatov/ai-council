@@ -281,7 +281,7 @@ function renderAccounting(info){
     for(const call of result.calls)rows.push(keys.map(k=>escape(call[k])).join(';'));
     next=result.nextOffset;
    }
-   const blob=new Blob(['\\uFEFF'+rows.join('\\n')],{type:'text/csv;charset=utf-8'});
+   const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
    const url=URL.createObjectURL(blob),a=document.createElement('a');
    a.href=url;a.download='quorum-all-api-requests.csv';a.click();
    setTimeout(()=>URL.revokeObjectURL(url),1000);
