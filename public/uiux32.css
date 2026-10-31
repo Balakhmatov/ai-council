@@ -153,3 +153,28 @@ textarea::placeholder{color:#7d7286!important}
 @media (max-width:360px){
   .agents-grid{grid-template-columns:1fr!important}
 }
+
+/* Subscription pricing and per-task history clusters */
+.pricing-panel{margin-top:22px;border-top:1px solid #e9dfea;padding-top:18px}
+.pricing-panel h3{font-size:14px;margin:0 0 12px;color:#3d3044}
+#pricingOffers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.pricing-offer{display:flex;flex-direction:column;gap:5px;padding:12px;border:1px solid #e9dfea;border-radius:12px;background:#fff}
+.pricing-offer:first-child{grid-column:1/-1;border-color:#cbb4eb}
+.pricing-offer span{font-size:11px;color:#5c4f61}
+.pricing-offer strong{font-size:17px;color:#55328f}
+.pricing-offer small{font-size:10px;color:#86718f}
+.history-section{margin-top:24px;padding-top:8px;border-top:1px solid #eee4eb}
+.history-list{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.history-cluster{width:100%;display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:7px;padding:14px 16px;background:#fff;border:1px solid #eae0eb;border-radius:14px;box-shadow:none}
+.history-cluster:hover:not(:disabled){border-color:#ae90df;background:#fcfaff}
+.history-cluster strong{font-size:13px;color:#372c41;line-height:1.45;overflow-wrap:anywhere}
+.history-cluster small{font-size:10px;font-weight:400;color:#8c8093;overflow-wrap:anywhere}
+.history-more{margin-top:10px;width:100%;background:#fff;border:1px solid #dfd0ed;color:#6d4aa1}
+.history-dialog{width:min(760px,calc(100% - 20px));max-width:calc(100% - 20px);max-height:88dvh;padding:20px;overflow:auto}
+.history-dialog .section-title{position:sticky;top:-20px;background:#fff;z-index:3;padding:6px 0 14px;border-bottom:1px solid #eee5ed}
+.history-detail{overflow-wrap:anywhere}
+.history-prompt{padding:14px 0;border-bottom:1px solid #eadfed}
+.history-prompt h3{margin:0;font-size:15px}
+.history-prompt p:not(.hint){white-space:pre-wrap;font-size:13px;line-height:1.7}
+.history-detail .message{padding:15px 0}
+@media(max-width:880px){.pricing-panel{margin-top:14px}.history-dialog{padding:14px}.history-dialog .section-title{top:-14px}}
