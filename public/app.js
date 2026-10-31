@@ -2,6 +2,7 @@ import {modes,discuss} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
+import {withSessionRecovery} from './session-request.js';
 
 const $=id=>document.getElementById(id);
 const agents=[
@@ -97,10 +98,21 @@ async function ensureSession(){
  publicSession=await api('/api/session',{method:'POST',body:{}});return publicSession.token;
 }
 async function refreshAccess(){
- const token=await ensureSession();access=await api('/api/access',{token});
+ access=await sessionApi('/api/access');
  $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Бесплатно: '+access.remainingFreeTasks;
  $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':'Осталось бесплатных заданий: '+access.remainingFreeTasks+'.';
  update();
+}
+async function sessionApi(path,options={}){
+ return withSessionRecovery(async()=>api(path,{...options,token:await ensureSession()}),async()=>{
+  // A manual owner code is not a renewable visitor session.
+  if(adminToken&&adminToken!==publicSession?.token){const error=Error('Неверный код администратора');error.status=401;throw error;}
+  adminToken='';publicSession=null;
+  if(telegramContext){
+   const identity=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});
+   telegramIdentity=identity;publicSession=identity;if(identity.isAdmin)adminToken=identity.token;
+  }else await ensureSession();
+ });
 }
 async function loadConfig(){
  try{
@@ -364,8 +376,7 @@ $('start').onclick=async()=>{
  update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
  try{
   if(!$('demo').checked){
-   const token=await ensureSession();
-   activeTask=await api('/api/task/start',{method:'POST',token,body:{participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode}});
+   activeTask=await sessionApi('/api/task/start',{method:'POST',signal:controller.signal,body:{participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode}});
   }
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
   await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:Number($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
@@ -393,3 +404,4 @@ $('export').onclick=()=>{
  const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 update();
+
