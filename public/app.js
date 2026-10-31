@@ -1,5 +1,6 @@
 import {modes,discuss} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
+import {getTaskExample} from './examples.js';
 import {getTelegramContext} from './telegram-bridge.js';
 
 const $=id=>document.getElementById(id);
@@ -22,7 +23,7 @@ function renderProfiles(){
  $('profiles').replaceChildren(...profiles.map(p=>{
   const b=document.createElement('button');b.type='button';b.className='profile-option';
   b.textContent=p.name;b.title=p.summary;b.classList.toggle('active',p.id===profileId);
-  b.setAttribute('aria-pressed',String(p.id===profileId));b.onclick=()=>{profileId=p.id;taskId='';renderProfiles();renderSubtasks();};
+  b.setAttribute('aria-pressed',String(p.id===profileId));b.onclick=()=>{profileId=p.id;taskId='';renderProfiles();renderSubtasks();syncTaskExample();};
   return b;
  }));
 }
@@ -31,10 +32,14 @@ function renderSubtasks(){
  const tasks=[['','Любая задача'],...profile.tasks.map(t=>[t[0],t[1]])];
  $('subtasks').replaceChildren(...tasks.map(([id,label])=>{
   const b=document.createElement('button');b.type='button';b.className='task-option';b.classList.toggle('active',id===taskId);
-  b.textContent=label;b.setAttribute('aria-pressed',String(id===taskId));b.onclick=()=>{taskId=id;renderSubtasks();};return b;
+  b.textContent=label;b.setAttribute('aria-pressed',String(id===taskId));b.onclick=()=>{taskId=id;renderSubtasks();syncTaskExample();};return b;
  }));
 }
-renderProfiles();renderSubtasks();
+function syncTaskExample(){
+ // The placeholder must never replace the user's draft.
+ $('task').placeholder=getTaskExample(profileId,taskId);
+}
+renderProfiles();renderSubtasks();syncTaskExample();
 for(const a of agents){
  const label=document.createElement('label');label.className='agent';
  const avatar=document.createElement('span');avatar.className='avatar provider-avatar';
@@ -157,7 +162,11 @@ if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('qu
 $('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
 $('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
-$('example').onclick=()=>{$('task').value='Напишите пять разных постов для организатора свадеб. Аудитория: пары 25–35 лет, планирующие свадьбу. Формат: готовые публикации для VK, разные темы и разные вступления. Без клише и выдуманных фактов. После обсуждения выдайте только пять готовых постов.';$('task').oninput();};
+$('example').onclick=()=>{
+ if($('task').value.trim()&&!window.confirm('Заменить ваш текст выбранным примером задания?'))return;
+ $('task').value=getTaskExample(profileId,taskId);
+ $('task').oninput();
+};
 
 function renderProgress(){
  if(!events.length){$('progress').hidden=true;return;}
