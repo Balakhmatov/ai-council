@@ -1,1 +1,0 @@
-https://raw.githubusercontent.com/Balakhmatov/ai-council/93ea750403ebac700f37ddc0b27f2551b580d232/public/app.js
