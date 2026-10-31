@@ -3,12 +3,21 @@ import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 
 const knownPrices=Object.freeze({
  'openai/gpt-6-luna':{input:0.10,cached:0.01,output:0.50},
- 'mistral/mistral-large-2512':{input:0.50,cached:0.05,output:1.50}
+ 'mistral/mistral-large-2512':{input:0.50,cached:0.05,output:1.50},
+ 'grok/grok-4.7':{input:2,cached:0.50,output:6}
 });
+// DDTokens Grok(heavy) = 0.3x on its $2/$0.5/$6 list prices.
+// Its public relay catalogue expresses the resulting rates as CNY 0.60/0.15/1.80 per million.
+// 11.1 RUB per nominal CNY is an INFERRED display conversion from the user's
+// October 2026 billing screenshots, not an official FX rate or actual charge.
+const ddtokensGrokCny=Object.freeze({input:0.60,cached:0.15,output:1.80});
+function validRate(value,fallback){const n=Number(value);return Number.isFinite(n)&&n>0&&n<1000?n:fallback;}
 function nonnegative(value,fallback){const n=Number(value);return Number.isSafeInteger(n)&&n>=0&&n<=100000?n:fallback;}
 export function createEconomy({env,now=Date.now}){
  const file=env.ACCOUNTING_FILE||'';
  const freeTasks=nonnegative(env.FREE_START_TASKS,3);
+ const ddtokensProxy=/^https:\/\/ddtnew\.com\/v1\/?$/.test(env.XAI_BASE_URL||'');
+ const ddtokensRubPerCny=validRate(env.DDTOKENS_RUB_PER_CNY,11.1);
  let state={allowances:{},totals:{requests:0,knownCostUsd:0,unknownCostCalls:0,inputTokens:0,outputTokens:0},byModel:{},recent:[]};
  if(file){try{
   const stored=JSON.parse(readFileSync(file,'utf8'));
@@ -57,15 +66,28 @@ export function createEconomy({env,now=Date.now}){
   const input=nonnegative(usage.prompt_tokens??usage.input_tokens,0),output=nonnegative(usage.completion_tokens??usage.output_tokens,0);
   const cached=Math.min(input,nonnegative(usage.prompt_tokens_details?.cached_tokens??usage.cache_read_input_tokens,0));
   const reasoning=nonnegative(usage.completion_tokens_details?.reasoning_tokens,0);
-  const price=knownPrices[provider+'/'+model];
+  const isDdTokensGrok=ddtokensProxy&&provider==='grok'&&model==='grok-4.7';
+  const price=isDdTokensGrok?null:knownPrices[provider+'/'+model];
   const usd=price&&usageReported?(Math.max(0,input-cached)*price.input+cached*price.cached+output*price.output)/1e6:null;
-  const entry={at:new Date(now()).toISOString(),provider,model,input,output,cached,reasoning,usageReported,costUsd:usd};
-  const totals=state.totals;totals.requests++;totals.inputTokens+=input;totals.outputTokens+=output;
-  if(usd===null)totals.unknownCostCalls++;else totals.knownCostUsd+=usd;
+  // Approximate proxy RUB charge separately: never mix RUB and USD in one total.
+  const rub=isDdTokensGrok&&usageReported?
+   ((Math.max(0,input-cached)*ddtokensGrokCny.input+cached*ddtokensGrokCny.cached+output*ddtokensGrokCny.output)/1e6)*ddtokensRubPerCny:null;
+  const entry={at:new Date(now()).toISOString(),provider,model,input,output,cached,reasoning,usageReported,
+   costUsd:usd,estimatedCostRub:rub,costSource:rub!==null?'ddtokens-grok-heavy-estimate':usd!==null?'direct-api-list':'unknown'};
+  const totals=state.totals;
+  totals.estimatedCostRub??=0;totals.estimatedRubCalls??=0;
+  totals.requests++;totals.inputTokens+=input;totals.outputTokens+=output;
+  if(rub!==null){totals.estimatedCostRub+=rub;totals.estimatedRubCalls++;}
+  else if(usd!==null)totals.knownCostUsd+=usd;
+  else totals.unknownCostCalls++;
   const by=state.byModel[provider+'/'+model]||{requests:0,inputTokens:0,outputTokens:0,knownCostUsd:0,unknownCostCalls:0};
-  by.requests++;by.inputTokens+=input;by.outputTokens+=output;if(usd===null)by.unknownCostCalls++;else by.knownCostUsd+=usd;
+  by.estimatedCostRub??=0;by.estimatedRubCalls??=0;
+  by.requests++;by.inputTokens+=input;by.outputTokens+=output;
+  if(rub!==null){by.estimatedCostRub+=rub;by.estimatedRubCalls++;}
+  else if(usd!==null)by.knownCostUsd+=usd;
+  else by.unknownCostCalls++;
   state.byModel[provider+'/'+model]=by;state.recent.push(entry);if(state.recent.length>1000)state.recent.shift();save();
  }
- function summary(){return {totals:state.totals,byModel:state.byModel,recent:state.recent.slice(-30).reverse(),freeAccounts:Object.keys(state.allowances).length,priceKnownFor:Object.keys(knownPrices)};}
+ function summary(){return {totals:state.totals,byModel:state.byModel,recent:state.recent.slice(-30).reverse(),freeAccounts:Object.keys(state.allowances).length,priceKnownFor:Object.keys(knownPrices),ddtokensGrokPricing:ddtokensProxy?{rubPerCny:ddtokensRubPerCny,group:'Grok(heavy) ×0.3',estimated:true}:null};}
  return {access,start,checkCall,success,finish,record,summary};
 }

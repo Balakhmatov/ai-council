@@ -118,20 +118,37 @@ function showAdminAccounting(info){
  const totals=info?.totals;
  if(!totals){box.append('Статистика пока недоступна.');return;}
  const p=document.createElement('p');p.className='hint';
- p.textContent='API-вызовов: '+totals.requests+' · токены входа/выхода: '+totals.inputTokens.toLocaleString('ru')+' / '+totals.outputTokens.toLocaleString('ru')+' · известные расходы: $'+totals.knownCostUsd.toFixed(5)+' · без тарифа: '+totals.unknownCostCalls;
+ p.textContent='API-вызовов: '+totals.requests
+  +' · токены входа/выхода: '+totals.inputTokens.toLocaleString('ru')+' / '+totals.outputTokens.toLocaleString('ru')
+  +' · прямые API: USD '+Number(totals.knownCostUsd||0).toFixed(5)
+  +' · Grok через DDTokens: примерно '+Number(totals.estimatedCostRub||0).toFixed(4)+' ₽'
+  +' · без расчёта: '+Number(totals.unknownCostCalls||0);
  box.append(p);
  const table=document.createElement('div');table.className='admin-costs';
- for(const [key,value]of Object.entries(info.byModel||{})){
+ for(const [key,value] of Object.entries(info.byModel||{})){
   const row=document.createElement('p');
-  row.textContent=key+' · '+value.requests+' выз. · '+value.inputTokens+'/'+value.outputTokens+' ток. · '+(value.unknownCostCalls?'тариф не задан':'$'+value.knownCostUsd.toFixed(5));table.append(row);
+  const costs=[
+   value.estimatedRubCalls?'примерно '+Number(value.estimatedCostRub||0).toFixed(4)+' ₽ (DDTokens)':'',
+   value.knownCostUsd?'USD '+Number(value.knownCostUsd).toFixed(5):'',
+   value.unknownCostCalls?value.unknownCostCalls+' выз. без расчёта':''
+  ].filter(Boolean).join(' · ');
+  row.textContent=key+' · '+value.requests+' выз. · '+value.inputTokens+'/'+value.outputTokens+' ток. · '+(costs||'нет данных об оплате');
+  table.append(row);
  }
- if(!table.children.length)table.textContent='Пока нет запросов.';box.append(table);
+ if(!table.children.length)table.textContent='Пока нет запросов.';
+ box.append(table);
+ if(info.ddtokensGrokPricing){
+  const notice=document.createElement('p');notice.className='hint';
+  notice.textContent='Grok 4.7 через DDTokens, Grok heavy ×0,3: цена в рублях — оценка по скриншотам, не точное списание. Курс учётной единицы: '+info.ddtokensGrokPricing.rubPerCny+' ₽. Кеш влияет на итог.';
+  box.append(notice);
+ }
  const details=document.createElement('details');details.className='accounting-details';
  const summary=document.createElement('summary');summary.textContent='Последние обращения к моделям';details.append(summary);
  const recent=document.createElement('div');recent.className='admin-costs';
  for(const call of info.recent||[]){
   const line=document.createElement('p');
-  const price=call.costUsd===null?'стоимость неизвестна':'~$'+Number(call.costUsd).toFixed(6);
+  const price=call.estimatedCostRub!=null?'примерно '+Number(call.estimatedCostRub).toFixed(5)+' ₽ (DDTokens)':
+   call.costUsd!=null?'USD '+Number(call.costUsd).toFixed(6):'стоимость неизвестна';
   line.textContent=[call.at,call.provider+' / '+call.model,call.input+' вход / '+call.output+' выход',
    call.cached?'кеш '+call.cached:'',call.reasoning?'рассуждения '+call.reasoning:'',price].filter(Boolean).join(' · ');
   recent.append(line);
