@@ -103,7 +103,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
-   if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
+   if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[visitorHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[visitorHash]=(ledger.ips[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;ipActive.set(visitorHash,(ipActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    try{
@@ -115,12 +115,13 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
       ?[{...body.messages[0],content:timeContext+'\n\n'+body.messages[0].content},...body.messages.slice(1)]
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
+    const longFinal=body.stage==='final';
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
-      ?{model,messages,max_completion_tokens:4096,reasoning_effort:'medium'}
-      :{model,messages,max_tokens:1600};
+      ?{model,messages,max_completion_tokens:longFinal?10000:4096,reasoning_effort:'medium'}
+      :{model,messages,max_tokens:longFinal?7000:1800};
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:1600,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:1800,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
