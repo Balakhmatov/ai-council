@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=uiux33">
-<link rel="stylesheet" href="./uiux32.css?v=2">
+<link rel="stylesheet" href="./style.css?v=uiux34">
+<link rel="stylesheet" href="./uiux32.css?v=3">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -21,19 +21,6 @@
 <section class="intro"><div class="eyebrow">МАРКЕТИНГ · КОНТЕНТ · ИДЕИ</div><h1>Один запрос —<br>несколько сильных <span>ответов.</span></h1>
 <p>Дайте задачу сразу нескольким ИИ. Кворум сравнит подходы и подготовит готовый результат — без длинной переписки.</p></section>
 <div class="workspace">
-<div class="participants-top" id="participantsTop">
-  <button type="button" class="participants-toggle" id="agentsToggle" aria-expanded="false" aria-controls="participantsBody">
-    <span class="participants-toggle-label">Участники кворума</span>
-    <span id="count" class="participants-count">0 / 7</span>
-    <span class="participants-chevron" aria-hidden="true">⌄</span>
-  </button>
-  <div class="participants-body" id="participantsBody">
-    <p class="hint participants-hint">Несколько независимых взглядов на задачу. Нажмите, чтобы выбрать модели.</p>
-    <div id="agents" class="agents-grid"></div>
-    <label class="judge-label">Кто подготовит итог<select id="judge"></select></label>
-    <p id="budget" class="hint"></p>
-  </div>
-</div>
 <section class="board">
 <div class="section-title"><h2>01 / Выберите направление</h2><span class="step-note">Можно выбрать без уточнения задачи</span></div>
 <div id="profiles" class="profile-list" role="group" aria-label="Направление работы"></div>
@@ -55,7 +42,17 @@
 <div class="discussion-title"><h2>Результат</h2><button class="quiet" id="export" disabled type="button">Скачать .md</button></div>
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 </section>
-<aside class="access-aside">
+<aside id="participantsAside">
+<div class="section-title participants-head">
+  <h2>Участники</h2><span id="count"></span>
+  <button type="button" class="participants-toggle-mobile" id="agentsToggle" aria-expanded="false" aria-controls="agents">Показать</button>
+</div>
+<p class="hint participants-desktop-hint">Несколько независимых взглядов на задачу.</p>
+<div id="agentsPanel" class="agents-panel">
+  <div id="agents" class="agents-grid"></div>
+  <label class="judge-label">Кто подготовит итог<select id="judge"></select></label>
+  <p id="budget" class="hint"></p>
+</div>
 <div class="access-panel"><div class="access-title">Бесплатные задания</div><p id="accessInfo">Проверяем доступ…</p><p class="hint">После входа через Telegram или email — 10 бесплатных заданий в месяц. Одно задание — полное обсуждение. Платные тарифы скоро появятся.</p></div>
 <div id="demoControls" hidden><label class="demo"><input id="demo" type="checkbox"> Демо без API (для тестирования)</label></div>
 </aside></div>
@@ -73,4 +70,4 @@
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
 <div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=uiux33"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=uiux34"></script></body></html>
