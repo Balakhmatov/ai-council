@@ -267,14 +267,16 @@ test('subscription-only history is isolated, retained after expiry and requires 
   assert.equal((await t.send('/api/history',undefined,b.token)).data.total,0);
   assert.equal((await t.send('/api/history',undefined)).status,401);
   tick+=31*86400000;
-  assert.equal((await t.send('/api/access',undefined,a.token)).data.historyEnabled,false);
-  assert.equal((await t.send('/api/history',undefined,a.token)).data.total,1);
-  assert.equal((await t.send('/api/history/'+subStart.taskId,undefined,a.token)).data.messages[1].text,'Answer');
-  const noSub=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},a.token)).data;
+  const afterExpiry=(await t.login('a@example.com')).data;
+  const expiredToken=afterExpiry.token;
+  assert.equal((await t.send('/api/access',undefined,expiredToken)).data.historyEnabled,false);
+  assert.equal((await t.send('/api/history',undefined,expiredToken)).data.total,1);
+  assert.equal((await t.send('/api/history/'+subStart.taskId,undefined,expiredToken)).data.messages[1].text,'Answer');
+  const noSub=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},expiredToken)).data;
   assert.equal(noSub.historyEnabled,false);
-  const ended=await t.send('/api/task/finish',{taskId:noSub.taskId,history:{prompt:'new free',messages:[{name:'x',stage:'y',text:'free'}]}},a.token);
+  const ended=await t.send('/api/task/finish',{taskId:noSub.taskId,history:{prompt:'new free',messages:[{name:'x',stage:'y',text:'free'}]}},expiredToken);
   assert.equal(ended.data.historySaved,false);
-  assert.equal((await t.send('/api/history',undefined,a.token)).data.total,1);
+  assert.equal((await t.send('/api/history',undefined,expiredToken)).data.total,1);
   const pack=await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'pack100'},'admin-test-only');
   assert.equal(pack.data.access.purchasedTasks,100);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
