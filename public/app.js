@@ -98,9 +98,20 @@ async function ensureSession(){
  publicSession=await api('/api/session',{method:'POST',body:{}});return publicSession.token;
 }
 async function refreshAccess(){
- access=await sessionApi('/api/access');
+ try{access=await sessionApi('/api/access');}
+ catch(error){
+  access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';
+  $('accessInfo').textContent='Не удалось проверить остаток заданий. '+error.message;
+  update();throw error;
+ }
+ renderAccess();
+}
+function renderAccess(){
  $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Бесплатно: '+access.remainingFreeTasks;
- $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':'Осталось бесплатных заданий: '+access.remainingFreeTasks+'.';
+ $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':access.remainingFreeTasks>0?
+  'Осталось бесплатных заданий: '+access.remainingFreeTasks+' из '+access.freeStartingTasks+'. Обновление страницы не восстанавливает задания.':
+  'Бесплатные задания закончились: осталось 0 из '+access.freeStartingTasks+'. Платные тарифы пока не открыты.';
+ if(!running&&!access.admin&&access.remainingFreeTasks===0)$('status').textContent='Бесплатные задания закончились. Новое обсуждение недоступно.';
  update();
 }
 async function sessionApi(path,options={}){
@@ -121,7 +132,7 @@ async function loadConfig(){
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
   await refreshAccess();
-  $('status').textContent=available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
+  if(access.admin||access.remainingFreeTasks>0)$('status').textContent=available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
 let latestAccounting=null;
@@ -377,18 +388,21 @@ $('start').onclick=async()=>{
  try{
   if(!$('demo').checked){
    activeTask=await sessionApi('/api/task/start',{method:'POST',signal:controller.signal,body:{participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode}});
+   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   }
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
   await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:Number($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
+  if(e.status===402&&access){access={...access,remainingFreeTasks:0};renderAccess();}
   $('status').textContent=e.name==='AbortError'?'Остановлено. Уже полученные результаты сохранены в текущей вкладке.':e.message;
  }finally{
   if(activeTask){
    try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
-   activeTask=null;refreshAccess().catch(()=>{});
+   activeTask=null;
   }
+  if(!$('demo').checked)await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
   document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
   update();
