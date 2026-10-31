@@ -206,6 +206,7 @@ function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц, до 3 моделей, без истории.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
+ $('accountCodeDetails').hidden=true;
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
 }
 async function refreshAccess(){
@@ -231,9 +232,15 @@ function renderAccess(){
  $('accessInfo').textContent=access.admin?'Администратор: задания без ограничений.':
   plan?'Подписка: '+access.subscriptionRemaining+' из 500 заданий, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задания: '+access.purchasedTasks+'.':
   'Бесплатно: '+access.freeRemaining+' из '+access.freeStartingTasks+' заданий за месяц. Купленные задания: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задания не сохраняются.';
+ $('accountCodeDetails').hidden=!access.accountRef;
+ $('accountCode').textContent=access.accountRef||'';
  renderPricing();
  update();
 }
+$('copyAccountCode').onclick=async()=>{
+ try{await navigator.clipboard.writeText($('accountCode').textContent);$('status').textContent='Код аккаунта скопирован.';}
+ catch{$('status').textContent='Выделите и скопируйте код аккаунта вручную.';}
+};
 function renderPricing(){
  const offers=priceCatalog||access?.catalog;
  if(!offers)return;
@@ -487,6 +494,19 @@ function renderAccounting(info){
  };
  box.append(exportButton);
 }
+$('adminGrantForm').onsubmit=async event=>{
+ event.preventDefault();
+ const submit=event.submitter;
+ submit.disabled=true;$('adminGrantStatus').textContent='Начисляем доступ…';
+ try{
+  const ref=$('adminGrantAccount').value.trim();
+  const sku=$('adminGrantSku').value;
+  const result=await api('/api/admin/billing/grant',{method:'POST',token:adminToken,body:{accountRef:ref,sku}});
+  $('adminGrantStatus').textContent='Начислено: '+result.access.plan+' · доступно '+result.access.remainingFreeTasks+' заданий.';
+  if(access?.accountRef===ref)await refreshAccess();
+ }catch(e){$('adminGrantStatus').textContent='Не удалось начислить: '+e.message;}
+ finally{submit.disabled=false;}
+};
 async function showAdmin(){
  const config=await api('/api/admin',{token:adminToken});
  $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
