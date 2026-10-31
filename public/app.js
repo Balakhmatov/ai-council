@@ -1,6 +1,6 @@
 import {modes,discuss} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
-import {getTaskHint} from './examples.js';
+import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
 
 const $=id=>document.getElementById(id);
