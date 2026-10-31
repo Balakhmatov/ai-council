@@ -97,3 +97,13 @@ test('forced CBR rate update requires owner authentication',async()=>{
   assert.equal((await t.send('/api/admin/exchange-rate',{},'admin-test-only')).status,200);
  }finally{await t.close();}
 });
+
+test('health check exposes an installed revision identifier for diagnosing VPS auto-deploy',async()=>{
+ const t=await setup();try{
+  const health=await t.send('/healthz');
+  assert.equal(health.status,200);
+  assert.equal(health.data.ok,true);
+  assert.ok(Object.hasOwn(health.data,'revision'));
+  assert.ok(health.data.revision===null||/^[a-f0-9]{40}$/.test(health.data.revision));
+ }finally{await t.close();}
+});

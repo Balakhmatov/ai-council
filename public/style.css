@@ -222,11 +222,19 @@ dialog .primary{width:100%;margin-top:19px}
  .account-call-head{align-items:flex-start;flex-direction:column;gap:4px}
 }
 
-/* iOS Safari / Telegram WebView: editable controls below 16px trigger focus zoom. */
-@media (max-width: 880px) {
+/* Mobile input focus: use at least 16 CSS px on touch devices even when
+   Telegram WebView reports a desktop-sized layout viewport. */
+@media (max-width: 880px), (pointer: coarse) {
  textarea,
  select,
  input:not([type='checkbox']):not([type='radio']) {
-  font-size: 16px;
+  font-size: max(16px, 1rem);
+ }
+}
+@supports (-webkit-touch-callout: none) {
+ textarea,
+ select,
+ input:not([type='checkbox']):not([type='radio']) {
+  font-size: 16px !important;
  }
 }
