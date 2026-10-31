@@ -126,7 +126,14 @@ function showAdminAccounting(info){
  const recent=document.createElement('div');recent.className='admin-costs';
  for(const call of info.recent||[]){
   const line=document.createElement('p');
-  line.textContent=call.at+' · '+call.provider+' / '+call.model+' · '+call.input+' вход / '+call.output+' выход'+(call.cached?' (кеш '+call.cached+')':'')+(call.reasoning?' · рассуждения '+call.reasoning:'')+' · '+(call.costUsd===null?'стоимость неизвестна':'~
+  const price=call.costUsd===null?'стоимость неизвестна':'~$'+Number(call.costUsd).toFixed(6);
+  line.textContent=[call.at,call.provider+' / '+call.model,call.input+' вход / '+call.output+' выход',
+   call.cached?'кеш '+call.cached:'',call.reasoning?'рассуждения '+call.reasoning:'',price].filter(Boolean).join(' · ');
+  recent.append(line);
+ }
+ if(!recent.children.length)recent.textContent='Пока нет обращений.';
+ details.append(recent);box.append(details);
+}
 async function showAdmin(){
  const config=await api('/api/admin',{token:adminToken});
  $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
