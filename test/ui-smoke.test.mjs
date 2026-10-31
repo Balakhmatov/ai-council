@@ -27,3 +27,14 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
 });
+
+test('iOS fields use 16px text to prevent WebView focus zoom without disabling user zoom',()=>{
+ const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const fix=css.slice(css.indexOf('/* iOS Safari / Telegram WebView:'));
+ assert.match(fix,/@media\s*\(max-width:\s*880px\)/);
+ assert.match(fix,/textarea,\s*select,\s*input:not\(\[type='checkbox'\]\):not\(\[type='radio'\]\)/);
+ assert.match(fix,/font-size:\s*16px/);
+ assert.match(html,/style\.css\?v=ios-focus10/);
+ assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
+});
