@@ -22,7 +22,7 @@ jobs:
           node-version: 22
       - run: npm test
       - run: python3 -m py_compile deploy/install-vps.py deploy/auto-deploy.py
-      - run: node --check server.mjs && node --check economy.mjs && node --check public/app.js && node --check public/engine.js
+      - run: node --check server.mjs && node --check economy.mjs && node --check fx.mjs && node --check public/app.js && node --check public/engine.js
   deploy:
     if: github.event_name != 'pull_request'
     needs: test

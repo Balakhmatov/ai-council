@@ -1,5 +1,7 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';import {createServer} from '../server.mjs';import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
-async function setup(overrides={},options={}){let calls=[];const env={PROXY_TOKEN:'admin-test-only',OPENAI_API_KEY:'private-test-key',OPENAI_MODEL:'server-pinned-model',PUBLIC_IP_DAILY_LIMIT:'2',PUBLIC_DAILY_LIMIT:'10',...overrides};const s=createServer({env,now:options.now||Date.now,fetchImpl:async(url,options)=>{calls.push({url,options});return Response.json({choices:[{message:{content:'OK'}}]});}});await new Promise((resolve,reject)=>{s.once('error',reject);s.listen(0,'127.0.0.1',resolve);});const base=`http://127.0.0.1:${s.address().port}`;return {calls,env,send:async(path,body,token,extra={})=>{const r=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(token?{Authorization:'Bearer '+token}:{}),...extra},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,data:await r.json()};},close:()=>new Promise(r=>s.close(r))};}
+async function setup(overrides={},options={}){let calls=[];const env={PROXY_TOKEN:'admin-test-only',OPENAI_API_KEY:'private-test-key',OPENAI_MODEL:'server-pinned-model',PUBLIC_IP_DAILY_LIMIT:'2',PUBLIC_DAILY_LIMIT:'10',...overrides};const s=createServer({env,now:options.now||Date.now,
+ fxFetchImpl:options.fxFetchImpl||(async()=>new Response("<ValCurs Date=\"31.10.2026\"><Valute><CharCode>USD</CharCode><Nominal>1</Nominal><Value>82,5000</Value></Valute><Valute><CharCode>CNY</CharCode><Nominal>10</Nominal><Value>117,5000</Value></Valute></ValCurs>")),
+ fetchImpl:async(url,requestOptions)=>{calls.push({url,options:requestOptions});return options.upstream?options.upstream(url,requestOptions):Response.json({choices:[{message:{content:'OK'}}]});}});await new Promise((resolve,reject)=>{s.once('error',reject);s.listen(0,'127.0.0.1',resolve);});const base=`http://127.0.0.1:${s.address().port}`;return {calls,env,send:async(path,body,token,extra={})=>{const r=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(token?{Authorization:'Bearer '+token}:{}),...extra},body:body===undefined?undefined:JSON.stringify(body)});return {status:r.status,data:await r.json()};},close:()=>new Promise(r=>s.close(r))};}
 const body={provider:'openai',model:'client-expensive-model',messages:[{role:'user',content:'hello'}]};
 test('public config omits secrets; admin requires real authentication',async()=>{const t=await setup();try{const c=await t.send('/api/config');assert.deepEqual(c.data,{providers:['openai']});assert.equal((await t.send('/api/admin')).status,401);const admin=await t.send('/api/admin',undefined,'admin-test-only');assert.equal(admin.status,200);assert.equal(admin.data.providers[0].model,'server-pinned-model');assert(!JSON.stringify(admin.data).includes('private-test-key'));assert.equal((await t.send('/api/chat',body)).status,401);assert.equal((await t.send('/api/session',{},undefined,{Origin:'https://evil.example'})).status,403);}finally{await t.close();}});
 test('visitor gets an automatic session, pinned model, quota shared across sessions',async()=>{const t=await setup({MISTRAL_API_KEY:'mistral-test',MISTRAL_MODEL:'mistral-large-2512'});try{const a=await t.send('/api/session',{}),b=await t.send('/api/session',{});assert.equal(a.status,200);assert.notEqual(a.data.token,b.data.token);const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'consensus'},a.data.token)).data;assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},a.data.token)).status,200);assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},b.data.token)).status,200);assert.equal(JSON.parse(t.calls[0].options.body).model,'server-pinned-model');assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},a.data.token)).status,429);assert.equal((await t.send('/api/session',{})).status,429);assert.equal(t.calls.length,2);}finally{await t.close();}});
@@ -61,5 +63,37 @@ test('no more than one long final per task',async()=>{
   assert.equal(first.status,200);
   assert.equal(JSON.parse(t.calls[0].options.body).max_tokens,7000);
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId,stage:'final'},session.token)).status,403);
+ }finally{await t.close();}
+});
+
+test('three model API logs and whole discussion costs are reported in RUB only',async()=>{
+ const models={OPENAI_MODEL:'gpt-6-luna',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-2512',XAI_API_KEY:'g',XAI_BASE_URL:'https://ddtnew.com/v1',GROK_MODEL:'grok-4.7'};
+ const t=await setup(models,{upstream:async()=>Response.json({choices:[{message:{content:'Model answer'}}],usage:{prompt_tokens:7835,completion_tokens:828,prompt_tokens_details:{cached_tokens:0}}})});
+ try{
+  const token='admin-test-only';
+  const task=(await t.send('/api/task/start',{participants:['openai','mistral','grok'],rounds:3,mode:'consensus'},token)).data;
+  assert.equal(typeof task.taskId,'string');
+  for(const provider of ['openai','mistral','grok']){
+   const b={provider,messages:[{role:'user',content:'test'}],taskId:task.taskId,step:'Раунд 1'};
+   assert.equal((await t.send('/api/chat',b,token)).status,200);
+  }
+  assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},token)).status,200);
+  const summary=(await t.send('/api/admin',undefined,token)).data.accounting;
+  assert.equal(summary.fx.usdRub,82.5);assert.equal(summary.fx.cnyRub,11.75);
+  assert.equal(summary.prices.length,3);
+  assert.ok(summary.prices.every(p=>p.currency==='RUB'&&p.input>0));
+  assert.equal(summary.discussions[0].requests,3);
+  assert.equal(summary.recent.length,3);
+  assert.ok(summary.recent.every(c=>c.costRub>0&&c.rateUsed>0&&c.step==='Раунд 1'));
+  assert.equal(summary.totals.unknownCostCalls,0);
+  assert.equal(t.calls.length,3);
+ }finally{await t.close();}
+});
+test('forced CBR rate update requires owner authentication',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-2512'});
+ try{
+  const session=(await t.send('/api/session',{})).data;
+  assert.equal((await t.send('/api/admin/exchange-rate',{},session.token)).status,403);
+  assert.equal((await t.send('/api/admin/exchange-rate',{},'admin-test-only')).status,200);
  }finally{await t.close();}
 });

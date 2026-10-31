@@ -168,3 +168,54 @@ dialog .primary{width:100%;margin-top:19px}
  .intro{padding:22px 16px}
 }
 @media(prefers-reduced-motion:reduce){button{transition:none}}
+
+/* Owner-only cost dashboard */
+#adminAccounting{min-width:0;max-width:100%;overflow-wrap:anywhere}
+#adminAccounting h3{font-size:17px;margin:4px 0 13px}
+#adminAccounting h4{font-size:13px;margin:25px 0 10px}
+.account-rate{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px;border:1px solid #e7daee;background:#faf6ff;padding:11px 13px;border-radius:11px;font-size:11px;color:#66526f;line-height:1.6}
+.account-rate .quiet{flex:none}
+.account-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+.account-stat{background:#fdf9fc;border:1px solid #eee2eb;border-radius:13px;padding:13px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.account-stat span{font-size:10px;color:#897a8e}
+.account-stat strong{font-size:17px;font-weight:800;color:#3a2a43;overflow-wrap:anywhere}
+.account-price-list,.account-model-list,.account-groups,.account-calls{display:flex;flex-direction:column;gap:8px;min-width:0}
+.account-price-row,.account-model-row,.account-call,.account-group{border-radius:12px;border:1px solid #ece3ed;background:#fff;padding:11px 12px;min-width:0}
+.account-price-row strong,.account-model-row strong{font-size:12px}
+.account-price-values{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:9px 0}
+.account-price-values span{background:#faf6ff;border-radius:8px;padding:8px 6px;font-size:10px;overflow-wrap:anywhere}
+.account-price-row small,.account-call small{color:#948296;font-size:10px}
+.account-model-row{display:flex;justify-content:space-between;align-items:center;gap:9px}
+.account-model-right{display:flex;flex-direction:column;gap:5px;text-align:right;min-width:0}
+.account-model-right b{font-size:13px}
+.account-model-right small{color:#938495;font-size:10px}
+.account-group{padding:0;overflow:hidden}
+.account-group summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;padding:12px;font-size:10px;line-height:1.6}
+.account-group summary strong{font-size:13px;white-space:nowrap}
+.account-group summary span{text-align:right}
+.account-group[open] summary{background:#fbf7ff}
+.account-group-body{padding:8px 12px 12px;border-top:1px solid #efe7ef}
+.account-group-body p{font-size:11px;color:#88798a;line-height:1.5}
+.account-group-model{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:11px;overflow-wrap:anywhere}
+.account-log-title{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:17px}
+.account-filter{max-width:160px;width:auto;margin:0!important}
+.account-call{display:flex;flex-direction:column;gap:8px}
+.account-call.is-error{border-color:#f2cecd;background:#fffafa}
+.account-call-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.account-call-head strong{font-size:11px}
+.account-call-head b{font-size:13px;white-space:nowrap}
+.account-call-line,.account-call-tokens{display:flex;flex-wrap:wrap;gap:6px 12px;color:#8c7d90;font-size:10px}
+.account-call-tokens span{background:#faf5fa;border-radius:7px;padding:5px 7px;color:#695c6b}
+.account-export{margin-top:14px;width:100%;color:#6945a7;background:#f7f0ff;border-color:#e4d5f2}
+@media(max-width:540px){
+ dialog{padding:15px}
+ .account-stats{gap:7px}
+ .account-stat{padding:11px}
+ .account-stat strong{font-size:14px}
+ .account-price-values{grid-template-columns:minmax(0,1fr)}
+ .account-model-row{align-items:flex-start;flex-direction:column}
+ .account-model-right{text-align:left}
+ .account-group summary{align-items:flex-start;flex-direction:column;gap:4px}
+ .account-group summary span{text-align:left}
+ .account-call-head{align-items:flex-start;flex-direction:column;gap:4px}
+}

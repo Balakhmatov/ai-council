@@ -112,56 +112,135 @@ async function loadConfig(){
   $('status').textContent=available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
-function showAdminAccounting(info){
+let latestAccounting=null;
+function rub(value,empty='—'){
+ if(value==null||!Number.isFinite(Number(value)))return empty;
+ const n=Number(value),fraction=n>0&&n<.01?6:n>0&&n<1?4:2;
+ return n.toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:fraction})+' ₽';
+}
+function num(value){return Number(value||0).toLocaleString('ru-RU');}
+function node(tag,text,cls){
+ const el=document.createElement(tag);if(text!=null)el.textContent=String(text);if(cls)el.className=cls;return el;
+}
+function stat(label,value){
+ const card=node('div',null,'account-stat');card.append(node('span',label),node('strong',value));return card;
+}
+function renderAccounting(info){
+ latestAccounting=info;
  const box=$('adminAccounting');box.replaceChildren();
- const title=document.createElement('h3');title.textContent='Расходы на AI';box.append(title);
- const totals=info?.totals;
- if(!totals){box.append('Статистика пока недоступна.');return;}
- const p=document.createElement('p');p.className='hint';
- p.textContent='API-вызовов: '+totals.requests
-  +' · токены входа/выхода: '+totals.inputTokens.toLocaleString('ru')+' / '+totals.outputTokens.toLocaleString('ru')
-  +' · прямые API: USD '+Number(totals.knownCostUsd||0).toFixed(5)
-  +' · Grok через DDTokens: примерно '+Number(totals.estimatedCostRub||0).toFixed(4)+' ₽'
-  +' · без расчёта: '+Number(totals.unknownCostCalls||0);
- box.append(p);
- const table=document.createElement('div');table.className='admin-costs';
- for(const [key,value] of Object.entries(info.byModel||{})){
-  const row=document.createElement('p');
-  const costs=[
-   value.estimatedRubCalls?'примерно '+Number(value.estimatedCostRub||0).toFixed(4)+' ₽ (DDTokens)':'',
-   value.knownCostUsd?'USD '+Number(value.knownCostUsd).toFixed(5):'',
-   value.unknownCostCalls?value.unknownCostCalls+' выз. без расчёта':''
-  ].filter(Boolean).join(' · ');
-  row.textContent=key+' · '+value.requests+' выз. · '+value.inputTokens+'/'+value.outputTokens+' ток. · '+(costs||'нет данных об оплате');
-  table.append(row);
+ const title=node('h3','Расходы на модели');
+ box.append(title);
+ const fx=info.fx;
+ const rateLine=node('div',null,'account-rate');
+ const fxText=fx?
+  'Курс ЦБ на '+(fx.rateDate||'последнюю дату')+': USD '+rub(fx.usdRub)+' · CNY '+rub(fx.cnyRub)+(fx.stale?' · данные устарели':''):
+  'Курс ЦБ пока недоступен — новые расходы без курса не оцениваются.';
+ rateLine.append(node('span',fxText));
+ const updateRate=node('button','Обновить курс','quiet');
+ updateRate.type='button';
+ updateRate.onclick=async()=>{
+  updateRate.disabled=true;updateRate.textContent='Обновляем…';
+  try{
+   const result=await api('/api/admin/exchange-rate',{method:'POST',token:adminToken,body:{}});
+   renderAccounting(result.accounting);
+  }catch(e){updateRate.disabled=false;updateRate.textContent='Обновить курс';$('adminStatus').textContent=e.message;}
+ };
+ rateLine.append(updateRate);box.append(rateLine);
+ const totals=info.totals||{};
+ const stats=node('div',null,'account-stats');
+ const discussions=(info.discussions||[]).filter(x=>x.status==='done').length;
+ stats.append(stat('Расходы API',rub(totals.costRub)),
+  stat('API-вызовов',num(totals.requests)),stat('Завершено обсуждений',num(discussions)),
+  stat('Без расчёта',num(totals.unknownCostCalls)));
+ box.append(stats);
+ if(info.legacyCurrencyNotice)box.append(node('p','Старые долларовые записи пересчитаны в рубли по текущему курсу приблизительно. Для новых вызовов курс сохраняется в логе.','hint'));
+ const note=node('p','Все суммы приблизительные: тарифы провайдеров и курс ЦБ. Фактическое списание DDTokens может отличаться.','hint');
+ box.append(note);
+ box.append(node('h4','Прайс · за 1 млн токенов'));
+ const prices=node('div',null,'account-price-list');
+ for(const p of info.prices||[]){
+  const row=node('div',null,'account-price-row');
+  row.append(node('strong',(agents.find(a=>a.id===p.provider)?.name||p.provider)+' · '+p.model));
+  const values=node('div',null,'account-price-values');
+  values.append(node('span','Вход: '+rub(p.input)),
+   node('span','Кеш: '+rub(p.cached)),node('span','Выход: '+rub(p.output)));
+  row.append(values,node('small',p.source||''));prices.append(row);
  }
- if(!table.children.length)table.textContent='Пока нет запросов.';
- box.append(table);
- if(info.ddtokensGrokPricing){
-  const notice=document.createElement('p');notice.className='hint';
-  notice.textContent='Grok 4.7 через DDTokens, Grok heavy ×0,3: цена в рублях — оценка по скриншотам, не точное списание. Курс учётной единицы: '+info.ddtokensGrokPricing.rubPerCny+' ₽. Кеш влияет на итог.';
-  box.append(notice);
+ box.append(prices);
+ box.append(node('h4','Расходы по моделям'));
+ const modelList=node('div',null,'account-model-list');
+ for(const [id,data] of Object.entries(info.byModel||{})){
+  const model=node('div',null,'account-model-row');
+  model.append(node('strong',id));
+  const modelRight=node('div',null,'account-model-right');
+  modelRight.append(node('b',rub(data.costRub)),node('small',num(data.requests)+' выз. · '+num(data.inputTokens)+' вход / '+num(data.outputTokens)+' выход'+(data.unknownCostCalls?' · '+num(data.unknownCostCalls)+' без цены':'')));
+  model.append(modelRight);modelList.append(model);
  }
- const details=document.createElement('details');details.className='accounting-details';
- const summary=document.createElement('summary');summary.textContent='Последние обращения к моделям';details.append(summary);
- const recent=document.createElement('div');recent.className='admin-costs';
- for(const call of info.recent||[]){
-  const line=document.createElement('p');
-  const price=call.estimatedCostRub!=null?'примерно '+Number(call.estimatedCostRub).toFixed(5)+' ₽ (DDTokens)':
-   call.costUsd!=null?'USD '+Number(call.costUsd).toFixed(6):'стоимость неизвестна';
-  line.textContent=[call.at,call.provider+' / '+call.model,call.input+' вход / '+call.output+' выход',
-   call.cached?'кеш '+call.cached:'',call.reasoning?'рассуждения '+call.reasoning:'',price].filter(Boolean).join(' · ');
-  recent.append(line);
+ if(!modelList.children.length)modelList.append(node('p','Пока нет обращений.','hint'));
+ box.append(modelList);
+ const groups=info.discussions||[];
+ box.append(node('h4','Обсуждения · стоимость целиком'));
+ const groupList=node('div',null,'account-groups');
+ for(const group of groups.slice(0,40)){
+  const details=node('details',null,'account-group');
+  const summary=node('summary');
+  summary.append(node('strong',rub(group.costRub)),node('span',new Date(group.startedAt).toLocaleString('ru-RU')+' · '+group.participants.join(', ')+' · '+group.rounds+' раунда · '+({done:'готово',failed:'ошибка',running:'в работе',interrupted:'прервано'}[group.status]||group.status)+(group.unknownCostCalls?' · '+group.unknownCostCalls+' без цены':'')));
+  details.append(summary);
+  const content=node('div',null,'account-group-body');
+  content.append(node('p',num(group.requests)+' выз. · '+num(group.inputTokens)+' вход / '+num(group.outputTokens)+' выход · '+num(group.cachedTokens)+' кеш · '+num(group.errors)+' ошибок'));
+  for(const [key,vals]of Object.entries(group.byModel||{})){
+   const line=node('div',null,'account-group-model');
+   line.append(node('span',key),node('b',rub(vals.costRub)));
+   content.append(line);
+  }
+  details.append(content);groupList.append(details);
  }
- if(!recent.children.length)recent.textContent='Пока нет обращений.';
- details.append(recent);box.append(details);
+ if(!groupList.children.length)groupList.append(node('p','Стоимость обсуждений начнёт группироваться после этого обновления.','hint'));
+ box.append(groupList);
+ const logTitle=node('div',null,'account-log-title');logTitle.append(node('h4','Журнал API-вызовов'));
+ const filter=node('select',null,'account-filter');
+ for(const [value,label]of [['','Все модели'],['openai','Luna'],['mistral','Mistral'],['grok','Grok']])filter.append(new Option(label,value));
+ logTitle.append(filter);box.append(logTitle);
+ const logList=node('div',null,'account-calls');
+ const calls=info.recent||[];
+ const drawCalls=()=>{
+  logList.replaceChildren();
+  const match=calls.filter(c=>!filter.value||c.provider===filter.value).slice(0,100);
+  for(const call of match){
+   const item=node('div',null,'account-call'+(call.status==='error'?' is-error':''));
+   const head=node('div',null,'account-call-head');
+   head.append(node('strong',(agents.find(a=>a.id===call.provider)?.name||call.provider)+' · '+call.model),node('b',rub(call.costRub)));
+   const line=node('div',null,'account-call-line');
+   line.append(node('span',new Date(call.at).toLocaleString('ru-RU')),
+    node('span',(call.status==='error'?'Ошибка '+(call.httpStatus||''):call.step||call.stage||'Ответ')+' · '+(call.durationMs!=null?(call.durationMs/1000).toFixed(1)+' сек':'—')));
+   const counts=node('div',null,'account-call-tokens');
+   counts.append(node('span','Вход '+num(call.input)),node('span','Кеш '+num(call.cached)),
+    node('span','Выход '+num(call.output)),node('span','Размышления '+num(call.reasoning)));
+   item.append(head,line,counts);
+   if(call.rateUsed)item.append(node('small','Курс при запросе: '+rub(call.rateUsed)+' / '+call.rateCurrency+(call.historicalRateEstimated?' (пересчитано)':'')));
+   else if(call.historicalRateEstimated)item.append(node('small','Старый вызов: оценка по текущему курсу'));
+   else if(call.costRub==null)item.append(node('small','Нет данных для расчёта стоимости'));
+   logList.append(item);
+  }
+  if(!match.length)logList.append(node('p','По выбранной модели вызовов нет.','hint'));
+ };
+ filter.onchange=drawCalls;drawCalls();box.append(logList);
+ const exportButton=node('button','Экспорт журнала CSV','account-export');
+ exportButton.type='button';exportButton.onclick=()=>{
+  const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+  const keys=['at','provider','model','step','status','httpStatus','input','cached','output','reasoning','costRub','durationMs','taskId','rateUsed','rateCurrency'];
+  const rows=[keys.join(';'),...calls.map(c=>keys.map(k=>escape(c[k])).join(';'))];
+  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='quorum-api-costs.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ };
+ box.append(exportButton);
 }
 async function showAdmin(){
  const config=await api('/api/admin',{token:adminToken});
  $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
  $('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;}));
  $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит на посетителя: '+config.usage.perIpDailyLimit+'.';
- showAdminAccounting(config.accounting);$('adminStatus').textContent='';
+ renderAccounting(config.accounting);$('adminStatus').textContent='';
 }
 $('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
 $('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';
@@ -222,7 +301,7 @@ async function request(a,chat,signal,stage={}){
   if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';
   return '[ДЕМО — не ответ модели] '+a.name+': этот пример не вызывает API. Для настоящего результата отключите демо.';
  }
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  return result.text;
 }

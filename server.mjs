@@ -2,13 +2,15 @@ import http from 'node:http';
 import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook} from './telegram.mjs';
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
+import {createFxUpdater} from './fx.mjs';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','XAI_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
-export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Date.now}={}){
+export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetchImpl=globalThis.fetch,now=Date.now}={}){
  const adminToken=env.PROXY_TOKEN||'';
  const economy=createEconomy({env,now});
+ const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
  const routes={...providers,grok:[grokBase+'/chat/completions','XAI_API_KEY']};
@@ -65,7 +67,12 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get(ipHash);if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
     if(!isAdmin){authFailures.set(ipHash,{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
-    authFailures.delete(ipHash);resetDay();return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),usage:{requestsToday:ledger.total,dailyLimit,perIpDailyLimit:ipLimit},accounting:economy.summary()});
+    authFailures.delete(ipHash);
+    await fx.refresh();
+    resetDay();
+    return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),
+      usage:{requestsToday:ledger.total,dailyLimit,perIpDailyLimit:ipLimit},accounting:economy.summary(models)});
+
    }
    if(path==='/api/session'&&req.method==='POST'){
     if(!Object.keys(models).length)return fail(503,'Нет доступных моделей');
@@ -85,6 +92,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    if(path==='/api/task/start'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректное задание');}
+    await fx.refresh();
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
     if(!task)return fail(400,'Некорректные параметры задания');
     if(task.insufficient)return fail(402,'Бесплатные задания закончились. Платные тарифы пока не открыты.');
@@ -96,6 +104,11 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
     const closed=economy.finish(info.taskId,visitorHash);
     return closed?json(200,closed):fail(404,'Задание не найдено');
    }
+   if(path==='/api/admin/exchange-rate'&&req.method==='POST'){
+    if(!isAdmin)return fail(403,'Доступ запрещён');
+    const rates=await fx.refresh({force:true});
+    return json(200,{fx:rates,accounting:economy.summary(models)});
+   }
    if(path!=='/api/chat')return fail(404,'Не найдено');
    if(req.method!=='POST')return fail(405,'Нужен POST');
    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла. Запустите обсуждение заново.');
@@ -106,8 +119,11 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[visitorHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[visitorHash]=(ledger.ips[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;ipActive.set(visitorHash,(ipActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
+   const callStarted=now();let upstreamLogged=false;
+   const log=(model,status,usage=null,httpStatus=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:body.step,status,usage,httpStatus,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};
    try{
     const model=models[body.provider],key=keyFor(body.provider);
+    await fx.refresh();
     // The server clock, not the browser or the model's training cutoff, is authoritative.
     const currentUtc=new Date(now()).toISOString();
     const timeContext=`Текущие дата и время: ${currentUtc} (UTC). Это реальное время запроса, а не дата окончания обучения. Не принимай события прошлых лет за текущие. У тебя нет автоматического доступа к свежим новостям: отделяй проверенные факты от предположений и прямо указывай, если актуальность сведений не подтверждена.`;
@@ -123,13 +139,13 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
     if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:1800,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
-    if(!upstream.ok){await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
+    if(!upstream.ok){log(model,'error',null,upstream.status);await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
-    if(typeof text!=='string'||!text.trim())return fail(502,'Модель вернула пустой ответ');
-    try{economy.record(body.provider,model,data.usage);}catch(e){console.error('Quorum usage accounting failed',e);}
+    if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502);return fail(502,'Модель вернула пустой ответ');}
+    log(model,'ok',data.usage,200);
     economy.success(body.taskId);
     json(200,{text});
-   }catch{if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(visitorHash,Math.max(0,(ipActive.get(visitorHash)||1)-1));}return;
+   }catch{if(!upstreamLogged)log(models[body.provider],'error',null,502);if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(visitorHash,Math.max(0,(ipActive.get(visitorHash)||1)-1));}return;
   }
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
   const assetFiles=['quorum-logo-v1.png','quorum-icon-192-v1.png','quorum-icon-512-v1.png','apple-touch-icon-v1.png','favicon-32-v1.png','quorum-logo-v2.png','quorum-icon-192-v2.png','quorum-icon-512-v2.png','apple-touch-icon-v2.png','favicon-32-v2.png'];
