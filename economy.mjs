@@ -41,8 +41,8 @@ export function createEconomy({env,now=Date.now}){
  // Keep a separate append-only audit of every metered API call. The rolling
  // recent preview is no longer the only record of billing history.
  if(logFile&&!existsSync(logFile)){
-  const previous=state.recent.map(x=>JSON.stringify(x)).join('\\n');
-  writeFileSync(logFile,previous?previous+'\\n':'',{mode:0o600,flag:'wx'});
+  const previous=state.recent.map(x=>JSON.stringify(x)).join('\n');
+  writeFileSync(logFile,previous?previous+'\n':'',{mode:0o600,flag:'wx'});
  }
  const tasks=new Map();
  function save(){if(file){writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});renameSync(file+'.tmp',file);}}
@@ -149,7 +149,7 @@ export function createEconomy({env,now=Date.now}){
   state.recent.push(entry);
   if(state.recent.length>300)state.recent.splice(0,state.recent.length-300);
   save();
-  if(logFile)appendFileSync(logFile,JSON.stringify(entry)+'\\n',{mode:0o600});
+  if(logFile)appendFileSync(logFile,JSON.stringify(entry)+'\n',{mode:0o600});
   return entry;
  }
  function record(provider,model,usage,context={}){return logCall({provider,model,usage,...context});}
@@ -160,7 +160,7 @@ export function createEconomy({env,now=Date.now}){
   if(logFile&&existsSync(logFile)){
    // The file contains only metering metadata: no prompts, responses or credentials.
    const raw=readFileSync(logFile,'utf8');
-   calls=raw.split('\\n').filter(Boolean).map(line=>{
+   calls=raw.split('\n').filter(Boolean).map(line=>{
     try{return JSON.parse(line);}catch{return null;}
    }).filter(Boolean);
   }
