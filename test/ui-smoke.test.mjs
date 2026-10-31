@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=tags9/);
+ assert.match(html,/app\.js\?v=full-audit12/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -37,6 +37,15 @@ test('iOS fields use 16px text to prevent WebView focus zoom without disabling u
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=touch-focus11/);
+ assert.match(html,/style\.css\?v=full-audit12/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
+});
+
+test('owner accounting loads complete paginated request logs with task subtotals',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/api\/admin\/logs\?limit=50/);
+ assert.match(app,/api\/admin\/logs\?taskId=/);
+ assert.match(app,/discussionAccumulatedRub/);
+ assert.match(app,/costBreakdownRub/);
+ assert.match(app,/Скачать весь журнал CSV/);
 });

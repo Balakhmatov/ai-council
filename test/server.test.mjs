@@ -107,3 +107,31 @@ test('health check exposes an installed revision identifier for diagnosing VPS a
   assert.ok(health.data.revision===null||/^[a-f0-9]{40}$/.test(health.data.revision));
  }finally{await t.close();}
 });
+
+test('only the owner can page through every model request and its RUB price',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-admin-logs-'));
+ const t=await setup({ACCOUNTING_FILE:join(dir,'accounting.json'),OPENAI_MODEL:'gpt-6-luna',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-2512',XAI_API_KEY:'g',GROK_MODEL:'grok-4.7',XAI_BASE_URL:'https://ddtnew.com/v1'},{
+  upstream:async()=>Response.json({choices:[{message:{content:'ok'}}],usage:{prompt_tokens:7835,completion_tokens:828}})
+ });
+ try{
+  const session=(await t.send('/api/session',{})).data;
+  assert.equal((await t.send('/api/admin/logs?limit=10',undefined,session.token)).status,403);
+  assert.equal((await t.send('/api/admin/logs?limit=10')).status,403);
+  const task=(await t.send('/api/task/start',{participants:['openai','mistral','grok'],rounds:2,mode:'judge'},'admin-test-only')).data;
+  for(const provider of ['openai','mistral','grok']){
+   const result=await t.send('/api/chat',{provider,taskId:task.taskId,stage:'intermediate',step:'Независимая идея',messages:[{role:'user',content:'test'}]},'admin-test-only');
+   assert.equal(result.status,200);
+  }
+  const a=await t.send('/api/admin/logs?limit=2&offset=0',undefined,'admin-test-only');
+  assert.equal(a.status,200);assert.equal(a.data.total,3);
+  assert.equal(a.data.calls.length,2);
+  assert.equal(a.data.nextOffset,2);
+  assert.ok(a.data.calls.every(x=>x.costRub>0&&x.costBreakdownRub&&x.discussionAccumulatedRub>0));
+  const b=await t.send('/api/admin/logs?limit=2&offset=2',undefined,'admin-test-only');
+  assert.equal(b.data.calls.length,1);assert.equal(b.data.nextOffset,null);
+  const grok=await t.send('/api/admin/logs?provider=grok&taskId='+task.taskId,undefined,'admin-test-only');
+  assert.equal(grok.data.total,1);
+  assert.equal(grok.data.calls[0].model,'grok-4.7');
+  assert.equal((await t.send('/api/admin/logs?taskId=invalid',undefined,'admin-test-only')).status,400);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});

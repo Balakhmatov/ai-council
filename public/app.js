@@ -125,6 +125,35 @@ function node(tag,text,cls){
 function stat(label,value){
  const card=node('div',null,'account-stat');card.append(node('span',label),node('strong',value));return card;
 }
+function renderAuditCall(call){
+ const item=node('div',null,'account-call'+(call.status==='error'?' is-error':''));
+ const head=node('div',null,'account-call-head');
+ const name=(agents.find(a=>a.id===call.provider)?.name||call.provider)+' · '+call.model;
+ head.append(node('strong',name),node('b',rub(call.costRub)));
+ const meta=node('div',null,'account-call-line');
+ meta.append(
+  node('span',new Date(call.at).toLocaleString('ru-RU')),
+  node('span',call.status==='error'?'Ошибка '+(call.httpStatus||''):call.step||call.stage||'Ответ'),
+  node('span',call.durationMs!=null?(call.durationMs/1000).toFixed(1)+' сек':'—')
+ );
+ const counts=node('div',null,'account-call-tokens');
+ counts.append(node('span','Вход '+num(call.input)),node('span','Кеш '+num(call.cached)),
+  node('span','Выход '+num(call.output)),node('span','Размышления '+num(call.reasoning)));
+ item.append(head,meta,counts);
+ if(call.costBreakdownRub){
+  const b=call.costBreakdownRub;
+  item.append(node('small','Цена: вход '+rub(b.input)+' + кеш '+rub(b.cached)+' + выход '+rub(b.output)+' = '+rub(call.costRub)));
+ }
+ if(call.discussionAccumulatedRub!=null){
+  item.append(node('strong','Накоплено в обсуждении: '+rub(call.discussionAccumulatedRub),'account-call-cumulative'));
+ }else if(call.modelAccumulatedRub!=null){
+  item.append(node('small','Накоплено по модели: '+rub(call.modelAccumulatedRub)));
+ }
+ if(call.rateUsed)item.append(node('small','Курс при запросе: '+rub(call.rateUsed)+' / '+call.rateCurrency+(call.historicalRateEstimated?' (пересчитано)':'')));
+ else if(call.historicalRateEstimated)item.append(node('small','Историческая оценка по текущему курсу'));
+ else if(call.costRub==null)item.append(node('small','Стоимость неизвестна: отсутствуют токены или курс'));
+ return item;
+}
 function renderAccounting(info){
  latestAccounting=info;
  const box=$('adminAccounting');box.replaceChildren();
@@ -193,45 +222,71 @@ function renderAccounting(info){
    line.append(node('span',key),node('b',rub(vals.costRub)));
    content.append(line);
   }
-  details.append(content);groupList.append(details);
+  const requestBox=node('div',null,'account-group-requests');
+  details.addEventListener('toggle',async()=>{
+   if(!details.open||requestBox.dataset.loaded)return;
+   requestBox.dataset.loaded='loading';
+   requestBox.textContent='Загружаем запросы обсуждения…';
+   try{
+    const result=await api('/api/admin/logs?taskId='+encodeURIComponent(group.taskId)+'&limit=100',{token:adminToken});
+    requestBox.replaceChildren(node('strong','Все вызовы этого обсуждения ('+num(result.total)+')'));
+    for(const call of result.calls.slice().reverse())requestBox.append(renderAuditCall(call));
+    if(!result.calls.length)requestBox.append(node('p','Нет сохранённых записей для этого обсуждения.','hint'));
+    requestBox.dataset.loaded='yes';
+   }catch(e){requestBox.dataset.loaded='';requestBox.textContent='Не удалось загрузить запросы: '+e.message;}
+  });
+  content.append(requestBox);details.append(content);groupList.append(details);
  }
  if(!groupList.children.length)groupList.append(node('p','Стоимость обсуждений начнёт группироваться после этого обновления.','hint'));
  box.append(groupList);
- const logTitle=node('div',null,'account-log-title');logTitle.append(node('h4','Журнал API-вызовов'));
+ const logTitle=node('div',null,'account-log-title');logTitle.append(node('h4','Все API-вызовы · цена каждого'));
  const filter=node('select',null,'account-filter');
  for(const [value,label]of [['','Все модели'],['openai','Luna'],['mistral','Mistral'],['grok','Grok']])filter.append(new Option(label,value));
  logTitle.append(filter);box.append(logTitle);
- const logList=node('div',null,'account-calls');
- const calls=info.recent||[];
- const drawCalls=()=>{
-  logList.replaceChildren();
-  const match=calls.filter(c=>!filter.value||c.provider===filter.value).slice(0,100);
-  for(const call of match){
-   const item=node('div',null,'account-call'+(call.status==='error'?' is-error':''));
-   const head=node('div',null,'account-call-head');
-   head.append(node('strong',(agents.find(a=>a.id===call.provider)?.name||call.provider)+' · '+call.model),node('b',rub(call.costRub)));
-   const line=node('div',null,'account-call-line');
-   line.append(node('span',new Date(call.at).toLocaleString('ru-RU')),
-    node('span',(call.status==='error'?'Ошибка '+(call.httpStatus||''):call.step||call.stage||'Ответ')+' · '+(call.durationMs!=null?(call.durationMs/1000).toFixed(1)+' сек':'—')));
-   const counts=node('div',null,'account-call-tokens');
-   counts.append(node('span','Вход '+num(call.input)),node('span','Кеш '+num(call.cached)),
-    node('span','Выход '+num(call.output)),node('span','Размышления '+num(call.reasoning)));
-   item.append(head,line,counts);
-   if(call.rateUsed)item.append(node('small','Курс при запросе: '+rub(call.rateUsed)+' / '+call.rateCurrency+(call.historicalRateEstimated?' (пересчитано)':'')));
-   else if(call.historicalRateEstimated)item.append(node('small','Старый вызов: оценка по текущему курсу'));
-   else if(call.costRub==null)item.append(node('small','Нет данных для расчёта стоимости'));
-   logList.append(item);
-  }
-  if(!match.length)logList.append(node('p','По выбранной модели вызовов нет.','hint'));
+ const logCount=node('p','Загружаем журнал…','hint');
+ box.append(logCount);
+ const logList=node('div',null,'account-calls');box.append(logList);
+ const more=node('button','Показать ещё 50 запросов','account-more');more.type='button';more.hidden=true;box.append(more);
+ let offset=0,loading=false,version=0;
+ const loadPage=async(reset=false)=>{
+  if(loading&&!reset)return;
+  const requestedVersion=reset?++version:version;
+  if(reset){offset=0;logList.replaceChildren();more.hidden=true;}
+  loading=true;more.disabled=true;
+  try{
+   const path='/api/admin/logs?limit=50&offset='+offset+'&provider='+encodeURIComponent(filter.value);
+   const result=await api(path,{token:adminToken});
+   if(requestedVersion!==version)return;
+   offset=result.nextOffset??result.total;
+   for(const call of result.calls)logList.append(renderAuditCall(call));
+   logCount.textContent='Показано '+num(Math.min(offset,result.total))+' из '+num(result.total)+' запросов';
+   if(!result.total)logList.append(node('p','По выбранной модели запросов пока нет.','hint'));
+   more.hidden=result.nextOffset==null;
+  }catch(e){if(requestedVersion===version)logCount.textContent='Ошибка загрузки журнала: '+e.message;}
+  finally{if(requestedVersion===version){loading=false;more.disabled=false;}}
  };
- filter.onchange=drawCalls;drawCalls();box.append(logList);
- const exportButton=node('button','Экспорт журнала CSV','account-export');
- exportButton.type='button';exportButton.onclick=()=>{
-  const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
-  const keys=['at','provider','model','step','status','httpStatus','input','cached','output','reasoning','costRub','durationMs','taskId','rateUsed','rateCurrency'];
-  const rows=[keys.join(';'),...calls.map(c=>keys.map(k=>escape(c[k])).join(';'))];
-  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='quorum-api-costs.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ filter.onchange=()=>{loadPage(true);};
+ more.onclick=()=>{loadPage();};
+ loadPage(true);
+ const exportButton=node('button','Скачать весь журнал CSV','account-export');
+ exportButton.type='button';exportButton.onclick=async()=>{
+  exportButton.disabled=true;exportButton.textContent='Готовим полный CSV…';
+  try{
+   const keys=['at','provider','model','step','status','httpStatus','input','cached','output','reasoning','costRub','discussionAccumulatedRub','modelAccumulatedRub','durationMs','taskId','rateUsed','rateCurrency','rateDate','costSource'];
+   const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
+   const rows=[keys.join(';')];
+   let next=0;
+   for(let page=0;page<10000&&next!=null;page++){
+    const result=await api('/api/admin/logs?limit=200&offset='+next,{token:adminToken});
+    for(const call of result.calls)rows.push(keys.map(k=>escape(call[k])).join(';'));
+    next=result.nextOffset;
+   }
+   const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+   const url=URL.createObjectURL(blob),a=document.createElement('a');
+   a.href=url;a.download='quorum-all-api-requests.csv';a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+  }catch(e){$('adminStatus').textContent='Не удалось выгрузить журнал: '+e.message;}
+  finally{exportButton.disabled=false;exportButton.textContent='Скачать весь журнал CSV';}
  };
  box.append(exportButton);
 }

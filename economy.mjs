@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import {readFileSync,writeFileSync,renameSync} from 'node:fs';
+import {readFileSync,writeFileSync,renameSync,appendFileSync,existsSync} from 'node:fs';
 
 const direct=Object.freeze({
  'openai/gpt-6-luna':{input:0.10,cached:0.01,output:0.50,currency:'USD',source:'OpenAI Standard'},
@@ -24,6 +24,7 @@ function addMetrics(target,entry){
 }
 export function createEconomy({env,now=Date.now}){
  const file=env.ACCOUNTING_FILE||'';
+ const logFile=env.ACCOUNTING_LOG_FILE||(file?file+'.requests.jsonl':'');
  const freeTasks=safeInt(env.FREE_START_TASKS,3);
  const ddtokensProxy=(env.XAI_BASE_URL||'').replace(/\/$/,'')==='https://ddtnew.com/v1';
  const ddtokensRubPerCny=rate(env.DDTOKENS_RUB_PER_CNY)||11.1;
@@ -37,6 +38,12 @@ export function createEconomy({env,now=Date.now}){
    if(!state.fx)state.fx=null;
   }
  }catch(e){if(e.code!=='ENOENT')throw Error('Accounting state unreadable');}}
+ // Keep a separate append-only audit of every metered API call. The rolling
+ // recent preview is no longer the only record of billing history.
+ if(logFile&&!existsSync(logFile)){
+  const previous=state.recent.map(x=>JSON.stringify(x)).join('\n');
+  writeFileSync(logFile,previous?previous+'\n':'',{mode:0o600,flag:'wx'});
+ }
  const tasks=new Map();
  function save(){if(file){writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});renameSync(file+'.tmp',file);}}
  function allowance(identity){
@@ -115,29 +122,61 @@ export function createEconomy({env,now=Date.now}){
   const cached=Math.min(input,safeInt(usage?.prompt_tokens_details?.cached_tokens??usage?.cache_read_input_tokens,0,100000000));
   const reasoning=safeInt(usage?.completion_tokens_details?.reasoning_tokens,0,100000000);
   const p=price(provider,model);
-  const amount=hasUsage&&p&&p.rate!=null?(Math.max(0,input-cached)*p.input+cached*p.cached+output*p.output)/1000000:null;
+  const breakdown=hasUsage&&p&&p.rate!=null?{
+   input:(input-cached)*p.input/1000000,
+   cached:cached*p.cached/1000000,
+   output:output*p.output/1000000
+  }:null;
+  const amount=breakdown?breakdown.input+breakdown.cached+breakdown.output:null;
   const entry={
    id:crypto.randomBytes(8).toString('hex'),taskId:typeof taskId==='string'&&/^[a-f0-9]{48}$/.test(taskId)?taskId:null,
    at:new Date(now()).toISOString(),provider,model,stage:typeof stage==='string'?stage.slice(0,32):'',
    step:typeof step==='string'?step.slice(0,48):'',status:status==='ok'?'ok':'error',
    httpStatus:Number.isInteger(httpStatus)?httpStatus:null,durationMs:safeInt(durationMs,0,3600000),
    input,output,cached,reasoning,usageReported:hasUsage,
-   costRub:amount,currency:'RUB',rateUsed:p?.rate??null,rateCurrency:p?.rateCurrency??null,
+   costRub:amount,costBreakdownRub:breakdown,currency:'RUB',rateUsed:p?.rate??null,rateCurrency:p?.rateCurrency??null,
    rateDate:p?.rateDate??null,unitPriceRub:p?{input:p.input,cached:p.cached,output:p.output}:null,
    costSource:amount!=null?p.source:'unknown'
   };
-  addMetrics(state.totals,entry);
   const key=provider+'/'+model;
   const modelSummary=state.byModel[key]||emptyMetrics();
-  addMetrics(modelSummary,entry);state.byModel[key]=modelSummary;
   const group=state.discussions.find(x=>x.taskId===entry.taskId);
+  entry.discussionAccumulatedRub=group?Number(group.costRub||0)+(amount||0):null;
+  entry.modelAccumulatedRub=Number(modelSummary.costRub||0)+(amount||0);
+  addMetrics(state.totals,entry);
+  addMetrics(modelSummary,entry);state.byModel[key]=modelSummary;
   if(group){addMetrics(group,entry);const sub=group.byModel[key]||emptyMetrics();addMetrics(sub,entry);group.byModel[key]=sub;}
   state.recent.push(entry);
-  if(state.recent.length>3000)state.recent.splice(0,state.recent.length-3000);
+  if(state.recent.length>300)state.recent.splice(0,state.recent.length-300);
   save();
+  if(logFile)appendFileSync(logFile,JSON.stringify(entry)+'\n',{mode:0o600});
   return entry;
  }
  function record(provider,model,usage,context={}){return logCall({provider,model,usage,...context});}
+ function listCalls({limit=50,offset=0,provider='',taskId=''}={}){
+  const take=Math.max(1,Math.min(200,safeInt(limit,50,200)));
+  const skip=safeInt(offset,0,10000000);
+  let calls=state.recent;
+  if(logFile&&existsSync(logFile)){
+   // The file contains only metering metadata: no prompts, responses or credentials.
+   const raw=readFileSync(logFile,'utf8');
+   calls=raw.split('\n').filter(Boolean).map(line=>{
+    try{return JSON.parse(line);}catch{return null;}
+   }).filter(Boolean);
+  }
+  const matches=calls.filter(call=>
+   (!provider||call.provider===provider)&&(!taskId||call.taskId===taskId));
+  const page=matches.slice().reverse().slice(skip,skip+take);
+  const fx=exchangeRates();
+  const enrich=call=>({
+   ...call,
+   costRub:call.costRub??(call.estimatedCostRub??(call.costUsd!=null&&fx?call.costUsd*fx.usdRub:null)),
+   historicalRateEstimated:call.costRub==null&&(call.costUsd!=null||call.estimatedCostRub!=null)
+  });
+  return {total:matches.length,offset:skip,limit:take,
+   nextOffset:skip+page.length<matches.length?skip+page.length:null,
+   calls:page.map(enrich)};
+ }
  function summary(models={}){
   const fx=exchangeRates();
   const legacyTotals=state.totals||{};
@@ -160,5 +199,5 @@ export function createEconomy({env,now=Date.now}){
    prices:prices(models),fx:fx?{...fx,stale:now()-Date.parse(fx.fetchedAt)>48*3600000}:null,
    legacyCurrencyNotice:Number(legacyTotals.knownCostUsd||0)>0};
  }
- return {access,start,checkCall,success,finish,record,logCall,summary,prices,exchangeRates,updateExchangeRates};
+ return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates};
 }

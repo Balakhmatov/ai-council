@@ -111,6 +111,17 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const closed=economy.finish(info.taskId,visitorHash);
     return closed?json(200,closed):fail(404,'Задание не найдено');
    }
+   if(path==='/api/admin/logs'&&req.method==='GET'){
+    if(!isAdmin)return fail(403,'Доступ запрещён');
+    const q=new URL(req.url,'http://localhost').searchParams;
+    const provider=q.get('provider')||'';
+    const taskId=q.get('taskId')||'';
+    if(provider&&!Object.hasOwn(routes,provider))return fail(400,'Некорректная модель');
+    if(taskId&&!/^[0-9a-f]{48}$/.test(taskId))return fail(400,'Некорректный номер обсуждения');
+    return json(200,economy.listCalls({
+     limit:q.get('limit')||50,offset:q.get('offset')||0,provider,taskId
+    }));
+   }
    if(path==='/api/admin/exchange-rate'&&req.method==='POST'){
     if(!isAdmin)return fail(403,'Доступ запрещён');
     const rates=await fx.refresh({force:true});

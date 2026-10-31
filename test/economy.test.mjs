@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {mkdtempSync,rmSync,readFileSync} from 'node:fs';
 import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createEconomy} from '../economy.mjs';
@@ -80,4 +80,48 @@ test('legacy USD and estimated RUB entries remain visible as approximate RUB tot
  const before=econ.summary().totals.costRub;
  econ.updateExchangeRates({...fx,usdRub:100,cnyRub:14,fetchedAt:'2026-11-01T00:00:00Z'});
  assert.equal(econ.summary().totals.costRub,before);
+});
+
+test('append-only request audit keeps all calls through more than rolling preview and restart',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-audit-'));
+ try{
+  const env={ACCOUNTING_FILE:join(dir,'accounting.json'),XAI_BASE_URL:'https://ddtnew.com/v1'};
+  let economy=createEconomy({env,now:()=>Date.parse('2026-10-31T10:00:00Z')});
+  economy.updateExchangeRates(fx);
+  const group=task(economy);
+  const usage={prompt_tokens:7835,completion_tokens:828};
+  let last;
+  for(let i=0;i<350;i++){
+   last=economy.logCall({provider:'grok',model:'grok-4.7',taskId:group.taskId,step:'Раунд '+i,usage,durationMs:13000});
+  }
+  assert.equal(economy.summary().totals.requests,350);
+  assert.equal(economy.summary().recent.length,200);
+  assert.equal(economy.listCalls({limit:200,offset:0}).calls.length,200);
+  assert.equal(economy.listCalls({limit:200,offset:200}).calls.length,150);
+  assert.equal(economy.listCalls({limit:10,offset:345}).calls.length,5);
+  assert.equal(economy.listCalls({provider:'mistral'}).total,0);
+  assert.equal(economy.listCalls({provider:'grok',taskId:group.taskId}).total,350);
+  assert.equal(last.modelAccumulatedRub,last.discussionAccumulatedRub);
+  assert.ok(Math.abs(last.discussionAccumulatedRub-economy.summary().totals.costRub)<1e-8);
+  assert.ok(Math.abs(last.costBreakdownRub.input+last.costBreakdownRub.cached+last.costBreakdownRub.output-last.costRub)<1e-12);
+  economy=createEconomy({env,now:()=>Date.parse('2026-10-31T10:01:00Z')});
+  assert.equal(economy.listCalls({limit:200,offset:200}).total,350);
+  assert.equal(economy.listCalls({limit:200,offset:200}).nextOffset,null);
+  const audit=readFileSync(env.ACCOUNTING_FILE+'.requests.jsonl','utf8');
+  assert.equal(audit.trim().split('\n').length,350);
+  assert.ok(!audit.includes('example prompt content'));
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
+test('old rolling records are copied into first audit file on upgrade',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-audit-migration-'));
+ try{
+  const filename=join(dir,'accounting.json');
+  const baseline=createEconomy({env:{ACCOUNTING_FILE:filename}});
+  baseline.logCall({provider:'grok',model:'grok-4.7',usage:{prompt_tokens:1000,completion_tokens:200}});
+  const auditFile=filename+'.requests.jsonl';
+  rmSync(auditFile,{force:true});
+  const reloaded=createEconomy({env:{ACCOUNTING_FILE:filename}});
+  assert.equal(reloaded.listCalls().total,1);
+  assert.equal(readFileSync(auditFile,'utf8').trim().split('\n').length,1);
+ }finally{rmSync(dir,{recursive:true,force:true});}
 });
