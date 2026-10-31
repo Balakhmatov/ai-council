@@ -7,6 +7,12 @@ const direct=Object.freeze({
  'grok/grok-4.7':{input:2,cached:0.50,output:6,currency:'USD',source:'xAI direct'}
 });
 const grokHeavyCny=Object.freeze({input:0.60,cached:0.15,output:1.80});
+export const BILLING_CATALOG=Object.freeze({
+ subscription:{label:'Подписка · 30 дней',tasks:500,priceRub:1200,discount:20,monthly:true},
+ pack10:{label:'10 заданий',tasks:10,priceRub:30,discount:0},
+ pack50:{label:'50 заданий',tasks:50,priceRub:135,discount:10},
+ pack100:{label:'100 заданий',tasks:100,priceRub:255,discount:15}
+});
 // Effective RUB rates reconciled against the owner's DDTokens receipts.
 // Dynamic group prices are estimates, not USD converted at the CBR rate.
 const ddtokensRates=Object.freeze({
@@ -37,7 +43,7 @@ export function createEconomy({env,now=Date.now}){
  const limitFor=()=>monthlyTasks;
  const ddtokensProxy=(env.XAI_BASE_URL||'').replace(/\/$/,'')==='https://ddtnew.com/v1';
  const ddtokensRubPerCny=rate(env.DDTOKENS_RUB_PER_CNY)||11.1;
- let state={allowances:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],fx:null};
+ let state={allowances:{},subscriptions:{},purchasedCredits:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],fx:null};
  if(file){try{
   const stored=JSON.parse(readFileSync(file,'utf8'));
   if(stored&&typeof stored==='object'&&stored.totals&&stored.byModel&&Array.isArray(stored.recent)&&(stored.allowances||stored.wallets)){
@@ -45,6 +51,7 @@ export function createEconomy({env,now=Date.now}){
    if(!state.allowances){state.allowances=Object.fromEntries(Object.entries(state.wallets||{}).map(([id,w])=>[id,{remainingFreeTasks:w.balance,createdAt:w.createdAt}]));delete state.wallets;}
    if(!Array.isArray(state.discussions))state.discussions=[];
    if(!state.fx)state.fx=null;
+   state.subscriptions??={};state.purchasedCredits??={};
   }
  }catch(e){if(e.code!=='ENOENT')throw Error('Accounting state unreadable');}}
  // Keep a separate append-only audit of every metered API call. The rolling
@@ -66,8 +73,48 @@ export function createEconomy({env,now=Date.now}){
   }
   return entry;
  }
+ function subscription(identity){
+  const s=state.subscriptions[identity];
+  return s&&Number.isFinite(Date.parse(s.expiresAt))&&Date.parse(s.expiresAt)>now()?s:null;
+ }
+ function catalog(){return BILLING_CATALOG;}
  function access(identity,isAdmin=false){
-  return {remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks,freeStartingTasks:limitFor(identity),period:'month',resetTimezone:'Europe/Moscow',authenticated:true,admin:isAdmin,paidPlansAvailable:false};
+  const free=identity?allowance(identity):null,sub=identity?subscription(identity):null;
+  const packs=identity?Math.max(0,state.purchasedCredits[identity]||0):0;
+  return {
+   accountRef:identity||null,
+   plan:isAdmin?'admin':sub?'subscription':'free',
+   subscriptionActive:!!sub,
+   subscriptionExpiresAt:sub?.expiresAt||null,
+   subscriptionRemaining:sub?.remainingTasks??0,
+   purchasedTasks:packs,
+   remainingFreeTasks:isAdmin?null:(sub?sub.remainingTasks+(packs||0):free.remainingFreeTasks+packs),
+   freeRemaining:free?.remainingFreeTasks??0,
+   freeStartingTasks:limitFor(identity),
+   period:'month',resetTimezone:'Europe/Moscow',
+   maxModels:isAdmin||sub?7:3,
+   historyEnabled:isAdmin||!!sub,
+   authenticated:true,admin:isAdmin,
+   paidPlansAvailable:false,
+   catalog:BILLING_CATALOG
+  };
+ }
+ function grant(identity,sku){
+  if(typeof identity!=='string'||!/^account:[0-9a-f]{32}$/.test(identity))throw Error('Некорректный ID аккаунта');
+  const offer=BILLING_CATALOG[sku];
+  if(!offer)throw Error('Неизвестный тариф');
+  if(sku==='subscription'){
+   state.subscriptions[identity]={
+    activatedAt:new Date(now()).toISOString(),
+    expiresAt:new Date(now()+30*86400000).toISOString(),
+    remainingTasks:offer.tasks
+   };
+  }else state.purchasedCredits[identity]=Math.max(0,state.purchasedCredits[identity]||0)+offer.tasks;
+  save();return access(identity);
+ }
+ function activeTaskAccess(id,identity){
+  const task=tasks.get(id);
+  return task&&task.identity===identity?{historyEnabled:!!task.historyEnabled,successful:task.successful,taskId:id}:null;
  }
  function exchangeRates(){return state.fx||null;}
  function updateExchangeRates(rates){
@@ -101,17 +148,26 @@ export function createEconomy({env,now=Date.now}){
  function start(identity,isAdmin,params,available){
   const models=params?.participants,rounds=Number(params?.rounds),mode=params?.mode;
   if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>5||!['consensus','vote','judge','roles','brainstorm'].includes(mode))return null;
-  if(!isAdmin&&allowance(identity).remainingFreeTasks<1)return {insufficient:true};
-  if(!isAdmin){allowance(identity).remainingFreeTasks--;save();}
+  const allowedModels=isAdmin||!!subscription(identity)?7:3;
+  if(!isAdmin&&models.length>allowedModels)return {upgradeRequired:true};
+  const sub=isAdmin?null:subscription(identity);
+  let source='admin';
+  if(!isAdmin){
+   if(sub&&sub.remainingTasks>0){sub.remainingTasks--;source='subscription';}
+   else if(!sub&&allowance(identity).remainingFreeTasks>0){allowance(identity).remainingFreeTasks--;source='free';}
+   else if((state.purchasedCredits[identity]||0)>0){state.purchasedCredits[identity]--;source='pack';}
+   else return {insufficient:true};
+   save();
+  }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+1+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin,period:periodFor(identity)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,historyEnabled:isAdmin||!!sub});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
   if(state.discussions.length>300)state.discussions.splice(0,state.discussions.length-300);
   save();
-  return {taskId:id,maxCalls:limit,remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks};
+  return {taskId:id,maxCalls:limit,remainingFreeTasks:isAdmin?null:access(identity).remainingFreeTasks,historyEnabled:isAdmin||!!sub};
  }
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
@@ -125,11 +181,16 @@ export function createEconomy({env,now=Date.now}){
   const task=tasks.get(id);if(!task||task.identity!==identity)return null;
   tasks.delete(id);
   const refunded=!task.isAdmin&&task.successful===0;
-  if(refunded&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks++;
+  if(refunded){
+   if(task.source==='subscription'&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
+    state.subscriptions[identity].remainingTasks++;
+   else if(task.source==='free'&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks++;
+   else if(task.source==='pack')state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+1;
+  }
   const group=state.discussions.find(x=>x.taskId===id);
   if(group){group.endedAt=new Date(now()).toISOString();group.status=task.successful?'done':'failed';}
   save();
-  return {ok:true,refunded,remainingFreeTasks:task.isAdmin?null:allowance(identity).remainingFreeTasks};
+  return {ok:true,refunded,remainingFreeTasks:task.isAdmin?null:access(identity).remainingFreeTasks};
  }
  function logCall({taskId=null,provider,model,stage='intermediate',step='',status='ok',httpStatus=null,durationMs=null,usage=null}){
   const hasUsage=!!usage&&typeof usage==='object'&&(
@@ -225,6 +286,6 @@ export function createEconomy({env,now=Date.now}){
    prices:prices(models),fx:fx?{...fx,stale:now()-Date.parse(fx.fetchedAt)>48*3600000}:null,
    legacyCurrencyNotice:Number(legacyTotals.knownCostUsd||0)>0};
  }
- return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates};
+ return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates,grant,catalog,activeTaskAccess};
 }
 
