@@ -241,6 +241,8 @@ $('copyAccountCode').onclick=async()=>{
  try{await navigator.clipboard.writeText($('accountCode').textContent);$('status').textContent='Код аккаунта скопирован.';}
  catch{$('status').textContent='Выделите и скопируйте код аккаунта вручную.';}
 };
+$('pricingOpen').onclick=()=>{if(!$('pricingDialog').open)$('pricingDialog').showModal();};
+$('pricingClose').onclick=()=>$('pricingDialog').close();
 function renderPricing(){
  const offers=priceCatalog||access?.catalog;
  if(!offers)return;
@@ -249,8 +251,12 @@ function renderPricing(){
   const o=offers[key];if(!o)continue;
   const item=document.createElement('div');item.className='pricing-offer';
   const label=document.createElement('span');label.textContent=o.label;
-  const price=document.createElement('strong');price.textContent=o.priceRub+' ₽';
-  const badge=document.createElement('small');badge.textContent=o.discount?'−'+o.discount+'%':'3 ₽ за задание';
+  const price=document.createElement('strong');price.textContent=o.priceRub.toLocaleString('ru-RU')+' ₽';
+  const badge=document.createElement('small');
+  badge.textContent=key==='subscription'?
+   o.tasks+' заданий · до 7 моделей · история навсегда · −'+o.discount+'%':
+   o.discount?'−'+o.discount+'% · '+(o.priceRub/o.tasks).toLocaleString('ru-RU')+' ₽/задание':
+   (o.priceRub/o.tasks).toLocaleString('ru-RU')+' ₽/задание';
   item.append(label,price,badge);target.append(item);
  }
 }

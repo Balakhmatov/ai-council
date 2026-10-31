@@ -188,3 +188,29 @@ textarea::placeholder{color:#7d7286!important}
 .admin-grants form{display:grid;gap:10px}
 .admin-grants input{font-size:14px}
 .admin-grants button.primary{margin:5px 0 0}
+
+/* Prominent tariff access; static HTML pricing loads even before API login. */
+.pricing-open{flex:none;border-radius:999px;border:1px solid #cbb7e7;background:#f6f0ff;color:#6542a6;font-size:12px;line-height:1.2;font-weight:750;padding:9px 13px;white-space:nowrap;min-height:36px}
+.pricing-open:hover:not(:disabled){background:#eee3fb;border-color:#a988d4}
+.pricing-dialog{width:min(500px,calc(100% - 24px));max-width:calc(100% - 24px);max-height:88dvh;overflow:auto;padding:22px;border-radius:20px}
+.pricing-modal-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.pricing-modal-head h2{margin:4px 0 0;font-size:25px;line-height:1.2;color:#35253f}
+.pricing-eyebrow{font-size:10px;letter-spacing:1.6px;font-weight:800;color:#9075b6}
+.pricing-modal-head .quiet{min-height:37px;min-width:37px;padding:7px 11px}
+.pricing-intro{font-size:13px;line-height:1.6;color:#776a7b;margin:14px 0 17px}
+.pricing-dialog .pricing-panel{margin:0;border:0;padding:0}
+.pricing-dialog #pricingOffers{gap:10px}
+.pricing-dialog .pricing-offer{min-width:0;gap:8px;padding:16px;background:transparent;border-color:#e4daeb;border-radius:14px}
+.pricing-dialog .pricing-offer:first-child{border-color:#b49bdf;background:#faf6ff}
+.pricing-dialog .pricing-offer span{font-size:12px;font-weight:650;color:#5c4d67}
+.pricing-dialog .pricing-offer strong{font-size:25px;letter-spacing:-.45px;color:#543291}
+.pricing-dialog .pricing-offer small{line-height:1.5;font-size:11px;color:#7d6b8d}
+.pricing-footnote{font-size:12px;line-height:1.65;margin:17px 0 0;color:#62576b}
+.pricing-payment-note{font-size:11px;line-height:1.6;margin:12px 0 0}
+@media(max-width:580px){
+ .pricing-open{font-size:12px;padding:8px 11px;min-height:34px}
+ .pricing-dialog{padding:17px}
+ .pricing-dialog .pricing-offer{padding:13px}
+ .pricing-dialog .pricing-offer strong{font-size:22px}
+ .pricing-dialog .pricing-offer small{font-size:10px}
+}
