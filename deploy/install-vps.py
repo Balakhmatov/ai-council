@@ -56,9 +56,16 @@ except:
  if changed:nginx.write_text(before)
  raise
 shutil.copy2(src/'deploy/quorum-api.service','/etc/systemd/system/quorum-api.service')
+shutil.copy2(src/'deploy/quorum-deploy.service','/etc/systemd/system/quorum-deploy.service')
+shutil.copy2(src/'deploy/quorum-deploy.timer','/etc/systemd/system/quorum-deploy.timer')
 subprocess.run(['systemctl','daemon-reload'],check=True)
+subprocess.run(['systemctl','enable','--now','quorum-deploy.timer'],check=True)
 subprocess.run(['systemctl','enable','quorum-api.service'],check=True)
 subprocess.run(['systemctl','restart','quorum-api.service'],check=True)
 subprocess.run(['systemctl','reload','nginx'],check=True)
 subprocess.run(['systemctl','is-active','quorum-api.service'],check=True)
-print('Quorum installed at https://cityai.site/quorum/; private credentials not displayed.')
+# Mark the installed revision so the timer will not needlessly restart the service.
+revision=subprocess.run(['git','rev-parse','HEAD'],cwd=src,capture_output=True,text=True,check=True).stdout.strip()
+stamp=Path('/var/lib/quorum/deployed-revision')
+stamp.write_text(revision+'\\n');os.chmod(stamp,0o600)
+print('Quorum installed at https://cityai.site/quorum/; auto-deploy timer enabled; private credentials not displayed.')
