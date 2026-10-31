@@ -30,7 +30,7 @@ function renderProfiles(){
 }
 function renderSubtasks(){
  const {profile}=resolveProfile(profileId,taskId);
- const tasks=[['','Любая задача'],...profile.tasks.map(t=>[t[0],t[1]])];
+ const tasks=[['','Без уточнения'],...profile.tasks.map(t=>[t[0],t[1]])];
  $('subtasks').replaceChildren(...tasks.map(([id,label])=>{
   const b=document.createElement('button');b.type='button';b.className='task-option'+(id===''?' task-option-any':'');
   b.classList.toggle('active',id===taskId);
@@ -53,7 +53,7 @@ for(const a of agents){
  label.append(avatar,data,input);$('agents').append(label);
 }
 for(const [id,[title,description]] of Object.entries(modes)){
- const b=document.createElement('button');b.type='button';b.className='mode';b.dataset.id=id;
+ const b=document.createElement('button');b.type='button';b.className='mode'+((id==='judge'||id==='roles')?' mode-secondary':'');b.dataset.id=id;
  const name=document.createElement('span');name.textContent=title;const small=document.createElement('small');small.textContent=description;
  b.append(name,small);b.onclick=()=>{mode=id;update();};$('modes').append(b);
 }
@@ -81,7 +81,11 @@ function update(){
 $('rounds').onchange=update;$('length').onchange=update;$('judge').onchange=update;
 $('mobileQuorumJump')?.addEventListener('click',()=>{
   const el=document.querySelector('aside');
-  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+  const btn=$('mobileQuorumJump');
+  if(!el||!btn)return;
+  const open=el.classList.toggle('is-open');
+  btn.setAttribute('aria-expanded',String(open));
+  btn.textContent=open?'Скрыть участников':'Участники';
 });
 
 async function api(path,{method='GET',body,token,signal}={}){
