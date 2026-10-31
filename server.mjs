@@ -78,16 +78,16 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
     issued.count++;issuance.set(ipHash,issued);const token=crypto.randomBytes(32).toString('hex'),expires=now()+7200000;sessions.set(token,{ipHash,expires});return json(200,{token,expires});
    }
 
-   if(path==='/api/wallet'&&req.method==='GET'){
+   if(path==='/api/access'&&req.method==='GET'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    return json(200,economy.balance(visitorHash,isAdmin));
+    return json(200,economy.access(visitorHash,isAdmin));
    }
    if(path==='/api/task/start'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректное задание');}
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
     if(!task)return fail(400,'Некорректные параметры задания');
-    if(task.insufficient)return fail(402,'Недостаточно монет. Покупка пакетов пока не открыта.');
+    if(task.insufficient)return fail(402,'Бесплатные задания закончились. Платные тарифы пока не открыты.');
     return json(200,task);
    }
    if(path==='/api/task/finish'&&req.method==='POST'){
