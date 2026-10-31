@@ -12,6 +12,7 @@ SOURCE = Path('/root/ai-council')
 DEPLOY = SOURCE / 'deploy/install-vps.py'
 STAMP = Path('/var/lib/quorum/deployed-revision')
 LOCK = Path('/run/lock/quorum-deploy.lock')
+FAILED = Path('/var/lib/quorum/failed-revision')
 HEALTH = 'http://127.0.0.1:8787/healthz'
 
 
@@ -69,6 +70,9 @@ def main():
         installed = STAMP.read_text(encoding='utf-8').strip() if STAMP.exists() else ''
         if previous == remote and installed == previous:
             return
+        if FAILED.exists() and FAILED.read_text(encoding='utf-8').strip() == remote:
+            print('Skipping previously failed Quorum revision', remote[:10], flush=True)
+            return
 
         if previous != remote:
             git('merge-base', '--is-ancestor', previous, remote)
@@ -81,9 +85,12 @@ def main():
             if not healthy():
                 raise RuntimeError('Quorum health check failed after update')
             stamp_revision(git('rev-parse', 'HEAD'))
+            FAILED.unlink(missing_ok=True)
             print('Quorum deployed and healthy', flush=True)
         except Exception as error:
             print('Quorum deployment failed:', error, file=sys.stderr, flush=True)
+            FAILED.write_text(remote + '\\n', encoding='utf-8')
+            os.chmod(FAILED, 0o600)
             if previous != remote:
                 try:
                     git('reset', '--hard', previous)
