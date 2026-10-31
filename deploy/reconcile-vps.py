@@ -57,7 +57,7 @@ def reconcile(source, lock_path, backup_root):
                 with tarfile.open(fileobj=output, mode='w:gz') as archive:
                     for path in captured:
                         archive.add(source / path, arcname=path, recursive=False)
-            git(source, 'stash', 'push', '--include-untracked', '-m',
+            git(source, '-c', 'user.name=Quorum recovery', '-c', 'user.email=quorum-recovery@localhost', 'stash', 'push', '--include-untracked', '-m',
                 'Preserved reviewed VPS snapshot before GitHub reconciliation', '--', *captured)
             saved = git(source, 'rev-parse', 'refs/stash')
             try:
