@@ -56,6 +56,8 @@ class ReconcileTest(unittest.TestCase):
         return module.reconcile(self.source, self.root / 'deploy.lock', self.root / 'backups')
 
     def test_preserves_snapshot_and_secrets_then_fast_forwards(self):
+        self.run_git(self.source, 'config', '--unset', 'user.name')
+        self.run_git(self.source, 'config', '--unset', 'user.email')
         revision = self.reconcile()
         self.assertEqual(self.run_git(self.source, 'rev-parse', 'HEAD'), revision)
         self.assertEqual((self.source / 'app.mjs').read_text(), 'release with prices')
