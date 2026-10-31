@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=plans35/);
+ assert.match(html,/app\.js\?v=pricing36/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -37,7 +37,7 @@ test('iOS fields use 16px text to prevent WebView focus zoom without disabling u
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=plans35/);
+ assert.match(html,/style\.css\?v=pricing36/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
 });
 
@@ -50,3 +50,19 @@ test('owner accounting loads complete paginated request logs with task subtotals
  assert.match(app,/Скачать весь журнал CSV/);
 });
 
+
+test('tariff prices have an always-visible entry point and static fallback before API loads',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const ui=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ assert.match(html,/<button id="pricingOpen"[^>]*>Тарифы<\/button>/);
+ assert.match(html,/<dialog id="pricingDialog"[^>]*>/);
+ assert.match(html,/id="pricingOffers"/);
+ for(const text of ['1 200 ₽','30 ₽','135 ₽','255 ₽','500 заданий','до 7 моделей'])
+  assert.ok(html.includes(text),'Static tariff must be visible without server response: '+text);
+ assert.match(app,/\$\('pricingOpen'\)\.onclick=/);
+ assert.match(app,/\$\('pricingDialog'\)\.showModal\(\)/);
+ assert.match(ui,/\.pricing-open\{/);
+ assert.match(ui,/\.pricing-dialog\{/);
+ assert.ok(html.indexOf('id="pricingOpen"')<html.indexOf('<main>'),'Price opener must be above the fold');
+});
