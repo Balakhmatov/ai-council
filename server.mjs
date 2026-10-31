@@ -105,7 +105,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     try{return json(200,issueSession({telegramUser:user}));}catch(error){return fail(error.status||503,error.message);}
    }
    if(path==='/api/logout'&&req.method==='POST'){try{sessions.delete(bearer);sessionCookie('',now());return json(200,{ok:true});}catch{return fail(503,'Не удалось завершить выход. Попробуйте ещё раз.');}}
-   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
+   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,catalog:economy.catalog(),telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get('admin');if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
     if(!isAdmin){authFailures.set('admin',{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
