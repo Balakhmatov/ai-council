@@ -46,13 +46,14 @@ export function createEconomy({env,now=Date.now}){
   return {ok:true,refunded:!task.isAdmin&&task.successful===0,coins:task.isAdmin?null:wallet(identity).balance};
  }
  function record(provider,model,usage){
-  if(!usage||typeof usage!=='object')return;
+  const usageReported=!!usage&&typeof usage==='object';
+  usage=usageReported?usage:{};
   const input=nonnegative(usage.prompt_tokens??usage.input_tokens,0),output=nonnegative(usage.completion_tokens??usage.output_tokens,0);
   const cached=Math.min(input,nonnegative(usage.prompt_tokens_details?.cached_tokens??usage.cache_read_input_tokens,0));
   const reasoning=nonnegative(usage.completion_tokens_details?.reasoning_tokens,0);
   const price=knownPrices[provider+'/'+model];
-  const usd=price?(Math.max(0,input-cached)*price.input+cached*price.cached+output*price.output)/1e6:null;
-  const entry={at:new Date(now()).toISOString(),provider,model,input,output,cached,reasoning,costUsd:usd};
+  const usd=price&&usageReported?(Math.max(0,input-cached)*price.input+cached*price.cached+output*price.output)/1e6:null;
+  const entry={at:new Date(now()).toISOString(),provider,model,input,output,cached,reasoning,usageReported,costUsd:usd};
   const totals=state.totals;totals.requests++;totals.inputTokens+=input;totals.outputTokens+=output;
   if(usd===null)totals.unknownCostCalls++;else totals.knownCostUsd+=usd;
   const by=state.byModel[provider+'/'+model]||{requests:0,inputTokens:0,outputTokens:0,knownCostUsd:0,unknownCostCalls:0};
