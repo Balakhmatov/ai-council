@@ -5,27 +5,27 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createEconomy} from '../economy.mjs';
 
-test('wallet balance persists, successful task costs once, empty task is refunded',()=>{
- const dir=mkdtempSync(join(tmpdir(),'quorum-coins-'));
+test('free task allowance persists, successful task costs once, empty task is refunded',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-free-tasks-'));
  try{
-  const env={ACCOUNTING_FILE:join(dir,'accounting.json'),FREE_START_COINS:'3',TASK_COIN_COST:'1'};
+  const env={ACCOUNTING_FILE:join(dir,'accounting.json'),FREE_START_TASKS:'3'};
   const economy=createEconomy({env,now:()=>Date.parse('2026-10-31T06:00:00Z')});
-  assert.equal(economy.balance('visitor').coins,3);
+  assert.equal(economy.access('visitor').remainingFreeTasks,3);
   const first=economy.start('visitor',false,{participants:['openai','mistral'],mode:'consensus',rounds:3},['openai','mistral']);
-  assert.equal(first.coins,2);
+  assert.equal(first.remainingFreeTasks,2);
   assert.equal(economy.checkCall(first.taskId,'visitor','openai'),true);
   economy.success(first.taskId);
   assert.equal(economy.finish(first.taskId,'visitor').refunded,false);
-  assert.equal(economy.balance('visitor').coins,2);
+  assert.equal(economy.access('visitor').remainingFreeTasks,2);
   const second=economy.start('visitor',false,{participants:['openai','mistral'],mode:'consensus',rounds:3},['openai','mistral']);
   assert.equal(economy.finish(second.taskId,'visitor').refunded,true);
-  assert.equal(economy.balance('visitor').coins,2);
+  assert.equal(economy.access('visitor').remainingFreeTasks,2);
   const restored=createEconomy({env,now:()=>Date.parse('2026-10-31T06:00:01Z')});
-  assert.equal(restored.balance('visitor').coins,2);
+  assert.equal(restored.access('visitor').remainingFreeTasks,2);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 test('task cannot call unselected providers or create multiple final generations',()=>{
- const economy=createEconomy({env:{FREE_START_COINS:'1'}});
+ const economy=createEconomy({env:{FREE_START_TASKS:'1'}});
  const t=economy.start('one',false,{participants:['openai','mistral'],mode:'judge',rounds:2},['openai','mistral','grok']);
  assert.equal(economy.checkCall(t.taskId,'someone-else','openai'),false);
  assert.equal(economy.checkCall(t.taskId,'one','grok'),false);
