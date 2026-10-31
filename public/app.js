@@ -184,7 +184,7 @@ function renderAccounting(info){
  for(const group of groups.slice(0,40)){
   const details=node('details',null,'account-group');
   const summary=node('summary');
-  summary.append(node('strong',rub(group.costRub)),node('span',new Date(group.startedAt).toLocaleString('ru-RU')+' · '+group.participants.join(', ')+' · '+group.rounds+' раунда · '+({done:'готово',failed:'ошибка',running:'в работе',interrupted:'прервано'}[group.status]||group.status)));
+  summary.append(node('strong',rub(group.costRub)),node('span',new Date(group.startedAt).toLocaleString('ru-RU')+' · '+group.participants.join(', ')+' · '+group.rounds+' раунда · '+({done:'готово',failed:'ошибка',running:'в работе',interrupted:'прервано'}[group.status]||group.status)+(group.unknownCostCalls?' · '+group.unknownCostCalls+' без цены':'')));
   details.append(summary);
   const content=node('div',null,'account-group-body');
   content.append(node('p',num(group.requests)+' выз. · '+num(group.inputTokens)+' вход / '+num(group.outputTokens)+' выход · '+num(group.cachedTokens)+' кеш · '+num(group.errors)+' ошибок'));
