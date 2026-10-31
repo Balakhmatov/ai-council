@@ -6,7 +6,7 @@ except KeyError:subprocess.run(['useradd','--system','--home-dir','/var/lib/quor
 uid=pwd.getpwnam('quorum').pw_uid;gid=grp.getgrnam('quorum').gr_gid
 for folder in [dest,Path('/var/lib/quorum'),Path('/etc/quorum')]:folder.mkdir(parents=True,exist_ok=True)
 os.chown('/var/lib/quorum',uid,gid);os.chmod('/var/lib/quorum',0o700);os.chmod('/etc/quorum',0o700)
-for name in ['server.mjs','email-auth.mjs','telegram.mjs','economy.mjs','fx.mjs','package.json','package-lock.json']:
+for name in ['server.mjs','email-auth.mjs','auth-sessions.mjs','telegram.mjs','economy.mjs','fx.mjs','package.json','package-lock.json']:
  shutil.copy2(src/name,dest/name);os.chmod(dest/name,0o644)
 subprocess.run(['npm','ci','--omit=dev','--ignore-scripts','--no-audit','--no-fund'],cwd=dest,check=True)
 for name in ['public','scripts']:
@@ -21,6 +21,7 @@ const source=fs.existsSync(target)?target:'/root/ai-council/.env.private';const 
 if(!config.OPENAI_MODEL||/^gpt-(?:4|5)(?:[.-]|$)/.test(config.OPENAI_MODEL))config.OPENAI_MODEL='gpt-6-luna';
 if(!config.MISTRAL_MODEL||config.MISTRAL_MODEL==='mistral-large-4'||config.MISTRAL_MODEL==='mistral-large-latest'||config.MISTRAL_MODEL==='mistral-small-latest')config.MISTRAL_MODEL='mistral-large-2512';
 config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/quorum/accounting.json';
+config.SESSION_FILE='/var/lib/quorum/sessions.enc';
 config.ACCOUNT_MONTHLY_TASKS=(!config.ACCOUNT_MONTHLY_TASKS||config.ACCOUNT_MONTHLY_TASKS==='5')?'10':config.ACCOUNT_MONTHLY_TASKS;delete config.FREE_START_TASKS;delete config.GUEST_DAILY_TASKS;delete config.PUBLIC_IP_DAILY_LIMIT;delete config.FREE_START_COINS;delete config.TASK_COIN_COST;config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';
 config.TELEGRAM_WEBHOOK_SECRET=config.TELEGRAM_WEBHOOK_SECRET||crypto.randomBytes(32).toString('hex');

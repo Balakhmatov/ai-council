@@ -12,10 +12,10 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=full-audit12">
+<link rel="stylesheet" href="./style.css?v=persistentauth18">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
-<div class="header-actions"><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><a id="telegramOpen" class="quiet" hidden target="_blank" rel="noopener noreferrer">Войти через Telegram</a><button id="emailOpen" class="quiet" type="button">Войти по email</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
+<div class="header-actions"><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
 <main>
 <section class="intro"><div class="eyebrow">МАРКЕТИНГ · КОНТЕНТ · ИДЕИ</div><h1>Не ограничивайтесь<br>первым ответом <span>ИИ.</span></h1>
 <p>Несколько нейросетей предложат разные решения, проверят их и соберут готовый результат.</p></section>
@@ -51,12 +51,16 @@
 </aside></div>
 <footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span></footer>
 </main>
-<dialog id="emailDialog"><form method="dialog"><div class="section-title"><h2>Вход по email</h2><button aria-label="Закрыть">✕</button></div></form>
-<p class="hint">Пришлём одноразовый код. Пароль не нужен. После входа доступно 10 бесплатных заданий в месяц.</p>
+<dialog id="emailDialog" class="auth-dialog"><form method="dialog"><div class="section-title"><h2>Войти в Кворум</h2><button aria-label="Закрыть">✕</button></div></form>
+<div id="authMethods" class="auth-methods"><p class="hint">Выберите способ входа. На этом устройстве вход сохранится.</p><button id="emailOpen" class="primary" type="button">Войти через email</button><button id="telegramOpen" class="quiet auth-telegram" type="button">Войти через Telegram</button></div>
+<button id="authBack" class="quiet" type="button" hidden>← Другой способ входа</button>
+<div id="emailFlow" hidden><p class="hint">При первом входе подтвердите email кодом из письма. Пароль не нужен. Аккаунт создастся автоматически.</p>
 <form id="emailRequest"><label>Email<input id="emailAddress" type="email" autocomplete="email" maxlength="254" required></label><button class="primary" type="submit">Получить код</button></form>
-<form id="emailVerify" hidden><label>Код из письма<input id="emailCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="primary" type="submit">Войти</button></form><p id="emailStatus" role="status"></p></dialog>
+<form id="emailVerify" hidden><label>Код из письма<input id="emailCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="primary" type="submit">Подтвердить и войти</button></form></div>
+<div id="telegramFlow" hidden><p>Сверьте код в Telegram: <strong id="telegramCode"></strong></p><a id="telegramContinue" class="primary auth-link" target="_blank" rel="noopener noreferrer">Открыть Telegram</a><p class="hint">Подтвердите вход в боте и вернитесь сюда. Вход завершится автоматически.</p></div>
+<p id="emailStatus" role="status" aria-live="polite"></p></dialog>
 <dialog id="settings"><form method="dialog"><div class="section-title"><h2 class="admin-brand"><img src="./assets/quorum-icon-192-v2.png" width="32" height="32" alt="">Администрирование</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
 <div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=accountpricing15-audit12"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=persistentauth18"></script></body></html>

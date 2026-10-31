@@ -1,6 +1,7 @@
 import http from 'node:http';
 import {createEmailAuth} from './email-auth.mjs';
-import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook} from './telegram.mjs';
+import {createSessionStore,createTelegramBrowserLogin,SESSION_LIFETIME} from './auth-sessions.mjs';
+import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramApi} from './telegram.mjs';
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
 import {createFxUpdater} from './fx.mjs';
@@ -24,8 +25,11 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
  const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
- const handleTelegram=createTelegramWebhook({env,fetchImpl});
- const sessions=new Map(),issuance=new Map(),accountActive=new Map();let active=0,authFailures=new Map();
+ const sessions=createSessionStore({env,now}),browserLogin=createTelegramBrowserLogin({now});
+ const handleTelegram=createTelegramWebhook({env,fetchImpl,browserLogin});
+ const issuance=new Map(),accountActive=new Map();let active=0,authFailures=new Map();
+ let botUsername='';
+ const botName=async()=>{if(!/^[A-Za-z0-9_]{5,32}$/.test(botUsername)){const me=await telegramApi(env.TELEGRAM_BOT_TOKEN,'getMe',{},fetchImpl);if(!/^[A-Za-z0-9_]{5,32}$/.test(me?.username))throw Error('Telegram bot unavailable');botUsername=me.username;}return botUsername;};
  const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||300),accountLimit=Number(env.ACCOUNT_DAILY_CALL_LIMIT||60);
  let ledger={day:'',total:0,accounts:{}};
  if(env.QUOTA_FILE){try{ledger=JSON.parse(readFileSync(env.QUOTA_FILE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw Error('Quota state unreadable');}}
@@ -36,7 +40,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  return http.createServer(async(req,res)=>{
   const path=req.url?.split('?')[0];const origin=req.headers.origin;
   const originOK=!origin||origin===`http://${req.headers.host}`||allowed.includes(origin);
-  if(origin&&originOK){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Vary','Origin');}
+  if(origin&&originOK){res.setHeader('Access-Control-Allow-Origin',origin);res.setHeader('Access-Control-Allow-Credentials','true');res.setHeader('Vary','Origin');}
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');
   const json=(code,data)=>{res.writeHead(code,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(data));};
   const fail=(code,message)=>json(code,{error:{message}});
@@ -60,35 +64,45 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(!originOK)return fail(403,'Origin запрещён');
    if(req.method==='OPTIONS'){res.writeHead(204,{'Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Allow-Methods':'GET, POST'});return res.end();}
    if(!adminToken)return fail(503,'Сервис временно не настроен');
-   const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'');
+   const cookie=String(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('quorum_session='))?.slice(15)||'';
+   const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'')||cookie;
    const session=sessions.get(bearer);const validSession=session&&session.expires>now()&&!!(session.telegramUser||session.emailUser);
-   const isAdmin=tokenEquals(bearer)||(validSession&&session.isAdmin===true);
+   const isAdmin=tokenEquals(bearer)||(validSession&&session.telegramUser&&telegramAdminIds(env).has(String(session.telegramUser.id)));
+   const sessionCookie=(token,expires)=>res.setHeader('Set-Cookie','quorum_session='+token+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+Math.max(0,Math.floor((expires-now())/1000))+(String(env.TELEGRAM_APP_URL||'').startsWith('https:')?'; Secure':''));
+   const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser,isAdmin:!!(value.telegramUser&&telegramAdminIds(env).has(String(value.telegramUser.id)))});
+   const issueSession=value=>{sessions.prune();if(sessions.size>=10000)throw Object.assign(Error('Слишком много подключений. Повторите позже.'),{status:429});const token=crypto.randomBytes(32).toString('hex');value.expires=now()+SESSION_LIFETIME;sessions.set(token,value);sessionCookie(token,value.expires);return sessionIdentity(value,token);};
    const visitorHash=validSession&&(session.telegramUser||session.emailUser)?'account:'+crypto.createHmac('sha256',adminToken).update(session.telegramUser?'telegram:'+session.telegramUser.id:'email:'+session.emailUser.id).digest('hex').slice(0,32):null;
+   if(path==='/api/auth/session'&&req.method==='GET'){
+    if(!validSession)return fail(401,'Войдите в аккаунт.');
+    return json(200,sessionIdentity(session));
+   }
+   if(path==='/api/telegram/login/start'&&req.method==='POST'){
+    if(!env.TELEGRAM_BOT_TOKEN)return fail(503,'Вход через Telegram пока не настроен.');
+    try{const username=await botName(),login=browserLogin.start();return json(200,{...login,url:'https://t.me/'+username+'?start=login_'+login.id});}
+    catch(error){return fail(error.status||503,error.status?error.message:'Telegram временно недоступен. Попробуйте позже.');}
+   }
+   if(path==='/api/telegram/login/poll'&&req.method==='POST'){
+    try{const body=await readBody(1000),user=browserLogin.inspect(body.id,body.secret);if(!user)return json(200,{pending:true});const identity=issueSession({telegramUser:user});browserLogin.consume(body.id);return json(200,identity);}
+    catch(error){return fail(error.status||400,error.status?error.message:'Не удалось завершить вход. Попробуйте заново.');}
+   }
    if(path==='/api/email/config'&&req.method==='GET')return json(200,{enabled:emailAuth.enabled});
    if(['/api/email/request','/api/email/verify'].includes(path)&&req.method==='POST'){
     try{
      const body=await readBody(2000);
      if(path.endsWith('/request'))return json(200,await emailAuth.request(body.email));
-     for(const [key,value]of sessions)if(value.expires<=now())sessions.delete(key);
-     if(sessions.size>=10000)return fail(429,'Повторите позже.');
      const user=emailAuth.verify(body.email,body.code);
-     const token=crypto.randomBytes(32).toString('hex'),expires=now()+30*86400000;
-     sessions.set(token,{emailUser:user,expires});
-     return json(200,{token,expires,user:{email:user.email},isAdmin:false});
+     return json(200,issueSession({emailUser:user}));
     }catch(e){return fail(e.status||400,e.status?e.message:'Некорректный запрос');}
    }
    if(path==='/api/telegram/auth'&&req.method==='POST'){
     if(!env.TELEGRAM_BOT_TOKEN)return fail(503,'Telegram-бот пока не подключён');
     let user;try{const body=await readBody(24000);user=verifyTelegramInitData(body.initData,env.TELEGRAM_BOT_TOKEN,{now:now()});}catch{return fail(401,'Не удалось подтвердить Telegram-аккаунт. Откройте приложение из бота заново.');}
-    for(const [key,value]of sessions)if(value.expires<=now())sessions.delete(key);
-    if(sessions.size>=10000)return fail(429,'Слишком много подключений. Повторите позже.');
     const loginId='telegram:'+user.id;
     const issued=issuance.get(loginId);if(issued&&issued.until>now()&&issued.count>=20)return fail(429,'Слишком много подключений. Повторите позже.');
     issuance.set(loginId,{count:issued&&issued.until>now()?issued.count+1:1,until:issued&&issued.until>now()?issued.until:now()+3600000});
-    const token=crypto.randomBytes(32).toString('hex'),expires=now()+7200000,isAdmin=telegramAdminIds(env).has(String(user.id));
-    sessions.set(token,{telegramUser:user,isAdmin,expires});return json(200,{token,expires,user,isAdmin});
+    try{return json(200,issueSession({telegramUser:user}));}catch(error){return fail(error.status||503,error.message);}
    }
-   if(path==='/api/logout'&&req.method==='POST'){sessions.delete(bearer);return json(200,{ok:true});}
+   if(path==='/api/logout'&&req.method==='POST'){try{sessions.delete(bearer);sessionCookie('',now());return json(200,{ok:true});}catch{return fail(503,'Не удалось завершить выход. Попробуйте ещё раз.');}}
    if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get('admin');if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
@@ -180,7 +194,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const providerAsset=['openai','grok','mistral','qwen','deepseek','gemini','claude'].find(id=>path==='/assets/models/'+id+'.svg');
   const special=providerAsset?'assets/models/'+providerAsset+'.svg':asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
-  const file=special||{'/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':file.endsWith('.ico')?'image/x-icon':file.endsWith('.webmanifest')?'application/manifest+json':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':file.endsWith('.html')||file.endsWith('.js')?'no-store':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }
