@@ -90,7 +90,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
     const currentUtc=new Date(now()).toISOString();
     const timeContext=`Текущие дата и время: ${currentUtc} (UTC). Это реальное время запроса, а не дата окончания обучения. Не принимай события прошлых лет за текущие. У тебя нет автоматического доступа к свежим новостям: отделяй проверенные факты от предположений и прямо указывай, если актуальность сведений не подтверждена.`;
     const messages=body.messages[0].role==='system'
-      ?[{...body.messages[0],content:timeContext+'\\n\\n'+body.messages[0].content},...body.messages.slice(1)]
+      ?[{...body.messages[0],content:timeContext+'\n\n'+body.messages[0].content},...body.messages.slice(1)]
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
