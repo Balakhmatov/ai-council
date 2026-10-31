@@ -11,7 +11,7 @@ function task(economy){
 test('free tasks persist; completed task costs one, empty task refunds',()=>{
  const dir=mkdtempSync(join(tmpdir(),'quorum-cost-'));
  try{
-  const env={ACCOUNTING_FILE:join(dir,'ledger.json'),FREE_START_TASKS:'3'};
+  const env={ACCOUNTING_FILE:join(dir,'ledger.json'),ACCOUNT_MONTHLY_TASKS:'3'};
   const econ=createEconomy({env,now:()=>Date.parse('2026-10-31T06:00:00Z')});
   econ.updateExchangeRates(fx);
   assert.equal(econ.access('visitor').remainingFreeTasks,3);
@@ -27,7 +27,7 @@ test('free tasks persist; completed task costs one, empty task refunds',()=>{
  }finally{rmSync(dir,{force:true,recursive:true});}
 });
 test('cannot call unselected providers or invoke multiple long finals',()=>{
- const econ=createEconomy({env:{FREE_START_TASKS:'1'}});
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'1'}});
  const t=econ.start('one',false,{participants:['openai','mistral'],mode:'judge',rounds:2},['openai','mistral','grok']);
  assert.equal(econ.checkCall(t.taskId,'another','openai'),false);
  assert.equal(econ.checkCall(t.taskId,'one','grok'),false);
@@ -124,4 +124,16 @@ test('old rolling records are copied into first audit file on upgrade',()=>{
   assert.equal(reloaded.listCalls().total,1);
   assert.equal(readFileSync(auditFile,'utf8').trim().split('\n').length,1);
  }finally{rmSync(dir,{recursive:true,force:true});}
+});
+
+test('monthly quota resets on Moscow month boundary and old refunds do not add credits',()=>{
+ let time=Date.parse('2026-10-30T20:59:00Z');
+ const econ=createEconomy({env:{},now:()=>time}),identity='account:email-user';
+ const params={participants:['openai','mistral'],rounds:2,mode:'judge'};
+ for(let i=0;i<9;i++){const task=econ.start(identity,false,params,params.participants);econ.success(task.taskId);econ.finish(task.taskId,identity);}
+ const pending=econ.start(identity,false,params,params.participants);
+ assert(econ.start(identity,false,params,params.participants).insufficient);
+ time=Date.parse('2026-10-30T21:00:00Z');assert.equal(econ.access(identity).remainingFreeTasks,0);
+ time=Date.parse('2026-10-31T21:00:00Z');econ.finish(pending.taskId,identity);
+ assert.equal(econ.access(identity).remainingFreeTasks,10);assert.equal(econ.access(identity).period,'month');
 });

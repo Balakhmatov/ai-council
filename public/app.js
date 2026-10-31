@@ -14,7 +14,7 @@ const agents=[
  {id:'claude',name:'Claude',sub:'Аргументы и редактура'}
 ];
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
-let telegramContext=null,telegramIdentity=null,telegramLogin=null;
+let telegramContext=null,telegramIdentity=null,telegramLogin=null,telegramUrl=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null;
 const chosen=new Set(['openai','grok','mistral']);
@@ -63,7 +63,8 @@ function update(){
  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
  $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · итог подготовит '+(agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель');
  const enough=access?.admin||access?.remainingFreeTasks>0;
- $('start').disabled=running||chosen.size<2||(!connected&&!$('demo').checked)||(!enough&&!$('demo').checked);
+ $('start').textContent=access?'Получить результат':'Войти и начать';
+ $('start').disabled=running||chosen.size<2||(!connected&&!$('demo').checked)||(!!access&&!enough&&!$('demo').checked);
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=$('demo').checked||available.has(a.id),input=label.querySelector('input');
   input.disabled=running||!ok;label.classList.toggle('unavailable',!ok);
@@ -90,26 +91,65 @@ async function loginTelegram(){
  })();
  return telegramLogin;
 }
+try{const saved=JSON.parse(localStorage.getItem('quorum-email-session')||'null');if(saved?.expires>Date.now())publicSession=saved;}catch{}
+let loginEmail='';
+$('emailOpen').onclick=async()=>{
+ $('emailDialog').showModal();$('emailStatus').textContent='';
+ try{const config=await api('/api/email/config');$('emailRequest').hidden=!config.enabled;
+  if(!config.enabled){$('emailVerify').hidden=true;$('emailStatus').textContent='Вход по email пока недоступен. Используйте вход через Telegram.';}
+ }catch(error){$('emailStatus').textContent=error.message;}
+};
+$('emailRequest').onsubmit=async e=>{
+ e.preventDefault();const button=e.submitter;button.disabled=true;
+ try{loginEmail=$('emailAddress').value.trim();await api('/api/email/request',{method:'POST',body:{email:loginEmail}});$('emailVerify').hidden=false;$('emailStatus').textContent='Код отправлен. Он действует 10 минут.';$('emailCode').focus();}
+ catch(error){$('emailStatus').textContent=error.message;}finally{button.disabled=false;}
+};
+$('emailVerify').onsubmit=async e=>{
+ e.preventDefault();const button=e.submitter;button.disabled=true;
+ try{publicSession=await api('/api/email/verify',{method:'POST',body:{email:loginEmail,code:$('emailCode').value.trim()}});localStorage.setItem('quorum-email-session',JSON.stringify(publicSession));$('emailCode').value='';$('emailDialog').close();await refreshAccess();}
+ catch(error){$('emailStatus').textContent=error.message;}finally{button.disabled=false;}
+};
+$('emailLogout').onclick=async()=>{
+ try{if(publicSession?.token)await api('/api/logout',{method:'POST',token:publicSession.token,body:{}});}finally{publicSession=null;localStorage.removeItem('quorum-email-session');await refreshAccess();}
+};
 async function ensureSession(){
  if(adminToken)return adminToken;
  if(publicSession?.token&&publicSession.expires>Date.now()+180000)return publicSession.token;
  if(telegramContext){publicSession=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});return publicSession.token;}
- publicSession=await api('/api/session',{method:'POST',body:{}});return publicSession.token;
+ return null;
+}
+function showSignedOut(){
+ access=null;$('telegramOpen').hidden=!telegramUrl||!!telegramContext;$('accessChip').hidden=true;$('emailOpen').hidden=false;$('emailLogout').hidden=true;
+ $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц.';
+ $('status').textContent='Для запуска обсуждения войдите через Telegram или email.';update();
 }
 async function refreshAccess(){
- const token=await ensureSession();access=await api('/api/access',{token});
- $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Бесплатно: '+access.remainingFreeTasks;
- $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':'Осталось бесплатных заданий: '+access.remainingFreeTasks+'.';
+ const token=await ensureSession();if(!token){showSignedOut();return;}
+ try{access=await api('/api/access',{token});}catch(error){
+  if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток заданий. '+error.message;update();throw error;}
+  publicSession=null;localStorage.removeItem('quorum-email-session');showSignedOut();return;
+ }
+ $('emailOpen').hidden=!!telegramContext||!!publicSession?.user?.email||access.admin;
+ $('emailLogout').hidden=!publicSession?.user?.email||access.admin;
+ $('telegramOpen').hidden=true;
+ renderAccess();
+}
+function renderAccess(){
+ $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Бесплатно: '+access.remainingFreeTasks+' / месяц';
+ $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':access.remainingFreeTasks>0?
+  'Осталось '+access.remainingFreeTasks+' из '+access.freeStartingTasks+' заданий в этом месяце. Обновление страницы не сбрасывает остаток.':
+  'Бесплатные задания закончились: 0 из '+access.freeStartingTasks+'. Лимит обновится в начале следующего месяца по московскому времени.';
  update();
 }
 async function loadConfig(){
  try{
   await loginTelegram();const config=await api('/api/config');
   available=new Set(config.providers);connected=true;
+  telegramUrl=config.telegramUrl;if(telegramUrl){$('telegramOpen').href=telegramUrl;$('telegramOpen').hidden=!!telegramContext;}
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
   await refreshAccess();
-  $('status').textContent=available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
+  $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks===0?'Бесплатные задания закончились.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
 let latestAccounting=null;
@@ -297,7 +337,7 @@ async function showAdmin(){
  const config=await api('/api/admin',{token:adminToken});
  $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
  $('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;}));
- $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит на посетителя: '+config.usage.perIpDailyLimit+'.';
+ $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит вызовов на аккаунт: '+config.usage.perAccountDailyLimit+'.';
  renderAccounting(config.accounting);$('adminStatus').textContent='';
 }
 $('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
@@ -359,6 +399,7 @@ async function request(a,chat,signal,stage={}){
  return result.text;
 }
 $('start').onclick=async()=>{
+ if(!access&&!$('demo').checked){$('emailOpen').click();return;}
  const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
  const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
  running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
@@ -367,20 +408,31 @@ $('start').onclick=async()=>{
  update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
  try{
   if(!$('demo').checked){
-   const token=await ensureSession();
-   activeTask=await api('/api/task/start',{method:'POST',token,body:{participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode}});
+   let token=await ensureSession();
+   const startBody={participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode};
+   try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
+   catch(error){
+    if(error.status!==401||adminToken)throw error;
+    publicSession=null;localStorage.removeItem('quorum-email-session');
+    if(!telegramContext){showSignedOut();throw Error('Войдите через Telegram или email заново.');}
+    token=await ensureSession();
+    activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});
+   }
+   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   }
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
   await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:Number($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
+  if(e.status===402&&access){access={...access,remainingFreeTasks:0};renderAccess();}
   $('status').textContent=e.name==='AbortError'?'Остановлено. Уже полученные результаты сохранены в текущей вкладке.':e.message;
  }finally{
   if(activeTask){
    try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
-   activeTask=null;refreshAccess().catch(()=>{});
+   activeTask=null;
   }
+  if(!$('demo').checked)await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
   document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
   update();

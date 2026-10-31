@@ -51,10 +51,10 @@ For a target margin m and payment commission c, an initial price model is
 Use measured upper-percentile discussion costs and bounded token/round budgets
 before fixing package prices; do not infer a safe unlimited plan from six calls.
 
-## Deployment prerequisite
+## Deployment
 
-GitHub main currently lacks the VPS email-auth/monthly-quota changes. Preserve
-and import those complete source changes before promoting this pricing patch.
-The VPS deployer correctly rejects a dirty checkout: do not remove its guard or
-discard those changes. Merely merging this patch cannot repair that checkout.
-No production deployment or live VPS synchronization is performed by this PR.
+The release imports and preserves the VPS email-auth/monthly-quota changes while
+retaining the newer GitHub request audit. Use deploy/reconcile-vps.py once to
+back up the reviewed local snapshot and fast-forward the checkout to main.
+It refuses changed/unreviewed files and then invokes the existing deploy service.
+Further releases use the normal main/timer path; the dirty-check guard remains.

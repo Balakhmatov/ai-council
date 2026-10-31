@@ -32,7 +32,9 @@ function addMetrics(target,entry){
 export function createEconomy({env,now=Date.now}){
  const file=env.ACCOUNTING_FILE||'';
  const logFile=env.ACCOUNTING_LOG_FILE||(file?file+'.requests.jsonl':'');
- const freeTasks=safeInt(env.FREE_START_TASKS,3);
+ const monthlyTasks=safeInt(env.ACCOUNT_MONTHLY_TASKS,10);
+ const periodFor=()=>new Date(now()+10800000).toISOString().slice(0,7);
+ const limitFor=()=>monthlyTasks;
  const ddtokensProxy=(env.XAI_BASE_URL||'').replace(/\/$/,'')==='https://ddtnew.com/v1';
  const ddtokensRubPerCny=rate(env.DDTOKENS_RUB_PER_CNY)||11.1;
  let state={allowances:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],fx:null};
@@ -54,13 +56,18 @@ export function createEconomy({env,now=Date.now}){
  const tasks=new Map();
  function save(){if(file){writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});renameSync(file+'.tmp',file);}}
  function allowance(identity){
-  if(!Object.hasOwn(state.allowances,identity)){
-   state.allowances[identity]={remainingFreeTasks:freeTasks,createdAt:new Date(now()).toISOString()};save();
+  if(!Object.hasOwn(state.allowances,identity)||state.allowances[identity].period!==periodFor(identity)){
+   state.allowances[identity]={remainingFreeTasks:limitFor(identity),limit:limitFor(identity),period:periodFor(identity),createdAt:new Date(now()).toISOString()};save();
   }
-  return state.allowances[identity];
+  const entry=state.allowances[identity],limit=limitFor(identity),previous=entry.limit??5;
+  if(entry.limit!==limit){
+   entry.remainingFreeTasks=Math.max(0,Math.min(limit,entry.remainingFreeTasks+limit-previous));
+   entry.limit=limit;save();
+  }
+  return entry;
  }
  function access(identity,isAdmin=false){
-  return {remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks,freeStartingTasks:freeTasks,admin:isAdmin,paidPlansAvailable:false};
+  return {remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks,freeStartingTasks:limitFor(identity),period:'month',resetTimezone:'Europe/Moscow',authenticated:true,admin:isAdmin,paidPlansAvailable:false};
  }
  function exchangeRates(){return state.fx||null;}
  function updateExchangeRates(rates){
@@ -98,7 +105,7 @@ export function createEconomy({env,now=Date.now}){
   if(!isAdmin){allowance(identity).remainingFreeTasks--;save();}
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+1+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin,period:periodFor(identity)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
@@ -118,7 +125,7 @@ export function createEconomy({env,now=Date.now}){
   const task=tasks.get(id);if(!task||task.identity!==identity)return null;
   tasks.delete(id);
   const refunded=!task.isAdmin&&task.successful===0;
-  if(refunded)allowance(identity).remainingFreeTasks++;
+  if(refunded&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks++;
   const group=state.discussions.find(x=>x.taskId===id);
   if(group){group.endedAt=new Date(now()).toISOString();group.status=task.successful?'done':'failed';}
   save();
