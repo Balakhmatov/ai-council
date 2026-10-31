@@ -6,7 +6,7 @@ except KeyError:subprocess.run(['useradd','--system','--home-dir','/var/lib/quor
 uid=pwd.getpwnam('quorum').pw_uid;gid=grp.getgrnam('quorum').gr_gid
 for folder in [dest,Path('/var/lib/quorum'),Path('/etc/quorum')]:folder.mkdir(parents=True,exist_ok=True)
 os.chown('/var/lib/quorum',uid,gid);os.chmod('/var/lib/quorum',0o700);os.chmod('/etc/quorum',0o700)
-for name in ['server.mjs','telegram.mjs','package.json']:
+for name in ['server.mjs','telegram.mjs','economy.mjs','package.json']:
  shutil.copy2(src/name,dest/name);os.chmod(dest/name,0o644)
 for name in ['public','scripts']:
  shutil.copytree(src/name,dest/name,dirs_exist_ok=True)
@@ -18,7 +18,8 @@ const target='/etc/quorum/quorum.env';
 const source=fs.existsSync(target)?target:'/root/ai-council/.env.private';const config=parseEnv(fs.readFileSync(source,'utf8'));
 // Migrate the existing server-pinned OpenAI model without touching credentials or custom newer models.
 if(!config.OPENAI_MODEL||/^gpt-(?:4|5)(?:[.-]|$)/.test(config.OPENAI_MODEL))config.OPENAI_MODEL='gpt-6-luna';
-config.QUOTA_FILE='/var/lib/quorum/quota.json';config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
+if(!config.MISTRAL_MODEL||config.MISTRAL_MODEL==='mistral-large-4'||config.MISTRAL_MODEL==='mistral-large-latest'||config.MISTRAL_MODEL==='mistral-small-latest')config.MISTRAL_MODEL='mistral-large-2512';
+config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/quorum/accounting.json';config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';
 config.TELEGRAM_WEBHOOK_SECRET=config.TELEGRAM_WEBHOOK_SECRET||crypto.randomBytes(32).toString('hex');
 config.ALLOWED_ORIGINS=[...new Set((config.ALLOWED_ORIGINS||'').split(',').concat(['https://cityai.site','https://stage.cityai.site','https://balakhmatov.github.io']))].filter(Boolean).join(',');

@@ -1,12 +1,14 @@
 import http from 'node:http';
 import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook} from './telegram.mjs';
 import crypto from 'node:crypto';
+import {createEconomy} from './economy.mjs';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','XAI_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
 export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Date.now}={}){
  const adminToken=env.PROXY_TOKEN||'';
+ const economy=createEconomy({env,now});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
  const routes={...providers,grok:[grokBase+'/chat/completions','XAI_API_KEY']};
@@ -63,7 +65,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get(ipHash);if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
     if(!isAdmin){authFailures.set(ipHash,{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
-    authFailures.delete(ipHash);resetDay();return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),usage:{requestsToday:ledger.total,dailyLimit,perIpDailyLimit:ipLimit}});
+    authFailures.delete(ipHash);resetDay();return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),usage:{requestsToday:ledger.total,dailyLimit,perIpDailyLimit:ipLimit},accounting:economy.summary()});
    }
    if(path==='/api/session'&&req.method==='POST'){
     if(!Object.keys(models).length)return fail(503,'Нет доступных моделей');
@@ -75,6 +77,25 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
     if(issued.count>=20||sessions.size>=10000)return fail(429,'Слишком много подключений. Повторите позже.');
     issued.count++;issuance.set(ipHash,issued);const token=crypto.randomBytes(32).toString('hex'),expires=now()+7200000;sessions.set(token,{ipHash,expires});return json(200,{token,expires});
    }
+
+   if(path==='/api/wallet'&&req.method==='GET'){
+    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
+    return json(200,economy.balance(visitorHash,isAdmin));
+   }
+   if(path==='/api/task/start'&&req.method==='POST'){
+    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
+    let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректное задание');}
+    const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
+    if(!task)return fail(400,'Некорректные параметры задания');
+    if(task.insufficient)return fail(402,'Недостаточно монет. Покупка пакетов пока не открыта.');
+    return json(200,task);
+   }
+   if(path==='/api/task/finish'&&req.method==='POST'){
+    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
+    let info;try{info=await readBody(1000);}catch{return fail(400,'Некорректное задание');}
+    const closed=economy.finish(info.taskId,visitorHash);
+    return closed?json(200,closed):fail(404,'Задание не найдено');
+   }
    if(path!=='/api/chat')return fail(404,'Не найдено');
    if(req.method!=='POST')return fail(405,'Нужен POST');
    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла. Запустите обсуждение заново.');
@@ -82,6 +103,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
+   if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[visitorHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[visitorHash]=(ledger.ips[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;ipActive.set(visitorHash,(ipActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    try{
@@ -93,16 +115,20 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
       ?[{...body.messages[0],content:timeContext+'\n\n'+body.messages[0].content},...body.messages.slice(1)]
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
+    const longFinal=body.stage==='final';
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
-      ?{model,messages,max_completion_tokens:4096,reasoning_effort:'medium'}
-      :{model,messages,max_tokens:1600};
+      ?{model,messages,max_completion_tokens:longFinal?10000:4096,reasoning_effort:'medium'}
+      :{model,messages,max_tokens:longFinal?7000:1800};
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:1600,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:1800,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
-    if(typeof text!=='string'||!text.trim())return fail(502,'Модель вернула пустой ответ');json(200,{text});
+    if(typeof text!=='string'||!text.trim())return fail(502,'Модель вернула пустой ответ');
+    try{economy.record(body.provider,model,data.usage);}catch(e){console.error('Quorum usage accounting failed',e);}
+    economy.success(body.taskId);
+    json(200,{text});
    }catch{if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;ipActive.set(visitorHash,Math.max(0,(ipActive.get(visitorHash)||1)-1));}return;
   }
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
@@ -110,7 +136,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const providerAsset=['openai','grok','mistral','qwen','deepseek','gemini','claude'].find(id=>path==='/assets/models/'+id+'.svg');
   const special=providerAsset?'assets/models/'+providerAsset+'.svg':asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
-  const file=special||{'/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file=special||{'/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':file.endsWith('.ico')?'image/x-icon':file.endsWith('.webmanifest')?'application/manifest+json':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }

@@ -1,51 +1,343 @@
 import {modes,discuss} from './engine.js';
+import {profiles,resolveProfile} from './profiles.js';
 import {getTelegramContext} from './telegram-bridge.js';
+
 const $=id=>document.getElementById(id);
 const agents=[
-{id:'openai',name:'OpenAI',sub:'Логика и структура',letter:'O',color:'#3e705a',model:'gpt-6-luna',router:'openai/gpt-6-luna'},
-{id:'grok',name:'Grok',sub:'Нестандартный взгляд',letter:'X',color:'#454b4a',model:'grok-3-mini',router:'x-ai/grok-3-mini'},
-{id:'mistral',name:'Mistral',sub:'Ясность и точность',letter:'M',color:'#b97643',model:'mistral-small-latest',router:'mistralai/mistral-small-3.2-24b-instruct'},
-{id:'qwen',name:'Qwen',sub:'Детали и анализ',letter:'Q',color:'#6960a0',model:'qwen-plus',router:'qwen/qwen3-235b-a22b'},
-{id:'deepseek',name:'DeepSeek',sub:'Глубина рассуждений',letter:'D',color:'#456ca3',model:'deepseek-chat',router:'deepseek/deepseek-chat'},
-{id:'gemini',name:'Gemini',sub:'Широта контекста',letter:'G',color:'#668661',model:'gemini-2.5-flash',router:'google/gemini-2.5-flash'},
-{id:'claude',name:'Claude',sub:'Аргументы и редактура',letter:'C',color:'#a57461',model:'claude-sonnet-4-20250514',router:'anthropic/claude-sonnet-4'}];
+ {id:'openai',name:'OpenAI',sub:'Логика и структура'},
+ {id:'grok',name:'Grok',sub:'Нестандартный взгляд'},
+ {id:'mistral',name:'Mistral',sub:'Ясность и точность'},
+ {id:'qwen',name:'Qwen',sub:'Детали и анализ'},
+ {id:'deepseek',name:'DeepSeek',sub:'Глубина рассуждений'},
+ {id:'gemini',name:'Gemini',sub:'Широта контекста'},
+ {id:'claude',name:'Claude',sub:'Аргументы и редактура'}
+];
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
-let telegramContext=null,telegramIdentity=null;
-let adminToken=sessionStorage.getItem('quorum-admin')||'', publicSession=null, available=new Set(), connected=false;
-let mode='consensus',controller=null,messages=[],running=false;const chosen=new Set(['openai','grok','mistral']);
-for(const a of agents){const label=document.createElement('label');label.className='agent';label.innerHTML=`<span class="avatar provider-avatar"><img src="./assets/models/${a.id}.svg" width="26" height="26" alt="" decoding="async"></span><span><strong>${a.name}</strong><small>${a.sub}</small></span><input type="checkbox" aria-label="${a.name}" ${chosen.has(a.id)?'checked':''}>`;label.querySelector('input').onchange=e=>{e.target.checked?chosen.add(a.id):chosen.delete(a.id);update();};$('agents').append(label);
+let telegramContext=null,telegramIdentity=null,telegramLogin=null;
+let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,wallet=null;
+let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null;
+const chosen=new Set(['openai','grok','mistral']);
 
+function renderProfiles(){
+ $('profiles').replaceChildren(...profiles.map(p=>{
+  const b=document.createElement('button');b.type='button';b.className='profile-option';
+  b.textContent=p.name;b.title=p.summary;b.classList.toggle('active',p.id===profileId);
+  b.setAttribute('aria-pressed',String(p.id===profileId));b.onclick=()=>{profileId=p.id;taskId='';renderProfiles();renderSubtasks();};
+  return b;
+ }));
 }
-for(const [id,[title,desc]] of Object.entries(modes)){const b=document.createElement('button');b.className='mode';b.dataset.id=id;b.innerHTML=`${title}<small>${desc}</small>`;b.onclick=()=>{mode=id;update();};$('modes').append(b);}
-function update(){const old=$('judge').value;$('count').textContent=`${chosen.size} / 7`;$('judge').replaceChildren(...agents.filter(a=>chosen.has(a.id)).map(a=>new Option(a.name,a.id)));if(chosen.has(old))$('judge').value=old;document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));const n=chosen.size,r=Number($('rounds').value);$('budget').textContent=`До ${n*r+1+(['vote','consensus'].includes(mode)?n:0)} запросов за обсуждение.`;$('start').disabled=running||n<2||(!connected&&!$('demo').checked);document.querySelectorAll('.agent').forEach((label,i)=>{const a=agents[i],ok=$('demo').checked||available.has(a.id);label.querySelector('input').disabled=running||!ok;label.classList.toggle('unavailable',!ok);label.querySelector('small').textContent=ok?a.sub:'Скоро';});}
-$('rounds').onchange=update;update();
-async function api(path,{method='GET',body,token,signal}={}) {
+function renderSubtasks(){
+ const {profile}=resolveProfile(profileId,taskId);
+ const tasks=[['','Любая задача'],...profile.tasks.map(t=>[t[0],t[1]])];
+ $('subtasks').replaceChildren(...tasks.map(([id,label])=>{
+  const b=document.createElement('button');b.type='button';b.className='task-option';b.classList.toggle('active',id===taskId);
+  b.textContent=label;b.setAttribute('aria-pressed',String(id===taskId));b.onclick=()=>{taskId=id;renderSubtasks();};return b;
+ }));
+}
+renderProfiles();renderSubtasks();
+for(const a of agents){
+ const label=document.createElement('label');label.className='agent';
+ const avatar=document.createElement('span');avatar.className='avatar provider-avatar';
+ const img=document.createElement('img');img.src='./assets/models/'+a.id+'.svg';img.width=26;img.height=26;img.alt='';avatar.append(img);
+ const data=document.createElement('span');const strong=document.createElement('strong');strong.textContent=a.name;const small=document.createElement('small');small.textContent=a.sub;data.append(strong,small);
+ const input=document.createElement('input');input.type='checkbox';input.setAttribute('aria-label',a.name);input.checked=chosen.has(a.id);
+ input.onchange=()=>{input.checked?chosen.add(a.id):chosen.delete(a.id);update();};
+ label.append(avatar,data,input);$('agents').append(label);
+}
+for(const [id,[title,description]] of Object.entries(modes)){
+ const b=document.createElement('button');b.type='button';b.className='mode';b.dataset.id=id;
+ const name=document.createElement('span');name.textContent=title;const small=document.createElement('small');small.textContent=description;
+ b.append(name,small);b.onclick=()=>{mode=id;update();};$('modes').append(b);
+}
+function update(){
+ const old=$('judge').value;
+ $('count').textContent=chosen.size+' / 7';
+ $('judge').replaceChildren(...agents.filter(a=>chosen.has(a.id)).map(a=>new Option(a.name,a.id)));
+ const preferred=chosen.has(old)?old:chosen.has('grok')?'grok':agents.find(a=>chosen.has(a.id))?.id;
+ if(preferred)$('judge').value=preferred;
+ document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
+ $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · итог подготовит '+(agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель');
+ const enough=wallet?.admin||wallet?.coins>=wallet?.costPerTask;
+ $('start').disabled=running||chosen.size<2||(!connected&&!$('demo').checked)||(!enough&&!$('demo').checked);
+ document.querySelectorAll('.agent').forEach((label,i)=>{
+  const a=agents[i],ok=$('demo').checked||available.has(a.id),input=label.querySelector('input');
+  input.disabled=running||!ok;label.classList.toggle('unavailable',!ok);
+  label.querySelector('small').textContent=ok?a.sub:'Скоро';
+ });
+ document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
+}
+$('rounds').onchange=update;$('length').onchange=update;$('judge').onchange=update;
+
+async function api(path,{method='GET',body,token,signal}={}){
  const response=await fetch(API+path,{method,headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,signal});
  let data;try{data=await response.json();}catch{throw Error('Сервис временно недоступен. Попробуйте позже.');}
- if(!response.ok){const error=new Error(data.error?.message||'Ошибка сервиса');error.status=response.status;throw error;}return data;
+ if(!response.ok){const error=new Error(data.error?.message||'Ошибка сервиса');error.status=response.status;throw error;}
+ return data;
 }
-let telegramLogin;
 async function loginTelegram(){
  if(telegramLogin)return telegramLogin;
- telegramLogin=(async()=>{telegramContext=await getTelegramContext();if(!telegramContext)return;const identity=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});telegramIdentity=identity;publicSession=identity;
- if(identity.isAdmin){adminToken=identity.token;await showAdmin();}else{adminToken='';sessionStorage.removeItem('quorum-admin');$('settingsOpen').hidden=true;if($('settings').open)$('settings').close();}
- })();return telegramLogin;
+ telegramLogin=(async()=>{
+  telegramContext=await getTelegramContext();if(!telegramContext)return;
+  const identity=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});
+  telegramIdentity=identity;publicSession=identity;
+  if(identity.isAdmin){adminToken=identity.token;await showAdmin();}
+  else{adminToken='';sessionStorage.removeItem('quorum-admin');$('settingsOpen').hidden=true;if($('settings').open)$('settings').close();}
+ })();
+ return telegramLogin;
 }
-async function loadConfig(){try{await loginTelegram();const config=await api('/api/config');available=new Set(config.providers);connected=true;for(const id of chosen)if(!available.has(id))chosen.delete(id);for(const a of agents)document.querySelector(`.agent input[aria-label="${a.name}"]`).checked=chosen.has(a.id);$('status').textContent=available.size>=2?'Всё готово. Опишите задачу и начните обсуждение.':'Пока доступно меньше двух моделей. Можно попробовать демо.';}catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису. Обновите страницу или попробуйте демо.';}update();}
-async function showAdmin(){const config=await api('/api/admin',{token:adminToken});$('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=`${agents.find(a=>a.id===p.id)?.name||p.id}: ${p.configured?'подключён · '+p.model:'не подключён'}`;return row;}));$('adminUsage').textContent=`Запросов пользователей сегодня: ${config.usage.requestsToday} / ${config.usage.dailyLimit}. Лимит на пользователя: ${config.usage.perIpDailyLimit}.`;$('adminStatus').textContent='';}
+async function ensureSession(){
+ if(adminToken)return adminToken;
+ if(publicSession?.token&&publicSession.expires>Date.now()+180000)return publicSession.token;
+ if(telegramContext){publicSession=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});return publicSession.token;}
+ publicSession=await api('/api/session',{method:'POST',body:{}});return publicSession.token;
+}
+async function refreshWallet(){
+ const token=await ensureSession();wallet=await api('/api/wallet',{token});
+ $('walletChip').hidden=false;$('walletChip').textContent=wallet.admin?'Монеты: без лимита':'Монеты: '+wallet.coins;
+ $('walletInfo').textContent=wallet.admin?'Администратор: задания без лимита.':'Доступно '+wallet.coins+' монет. Задание — '+wallet.costPerTask+' монета.';
+ update();
+}
+async function loadConfig(){
+ try{
+  await loginTelegram();const config=await api('/api/config');
+  available=new Set(config.providers);connected=true;
+  for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
+  for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
+  await refreshWallet();
+  $('status').textContent=available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
+ }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
+}
+function showAdminAccounting(info){
+ const box=$('adminAccounting');box.replaceChildren();
+ const title=document.createElement('h3');title.textContent='Расходы на AI';box.append(title);
+ const totals=info?.totals;
+ if(!totals){box.append('Статистика пока недоступна.');return;}
+ const p=document.createElement('p');p.className='hint';
+ p.textContent='API-вызовов: '+totals.requests+' · токены входа/выхода: '+totals.inputTokens.toLocaleString('ru')+' / '+totals.outputTokens.toLocaleString('ru')+' · известные расходы: $'+totals.knownCostUsd.toFixed(5)+' · без тарифа: '+totals.unknownCostCalls;
+ box.append(p);
+ const table=document.createElement('div');table.className='admin-costs';
+ for(const [key,value]of Object.entries(info.byModel||{})){
+  const row=document.createElement('p');
+  row.textContent=key+' · '+value.requests+' выз. · '+value.inputTokens+'/'+value.outputTokens+' ток. · '+(value.unknownCostCalls?'тариф не задан':'$'+value.knownCostUsd.toFixed(5));table.append(row);
+ }
+ if(!table.children.length)table.textContent='Пока нет запросов.';box.append(table);
+ const details=document.createElement('details');details.className='accounting-details';
+ const summary=document.createElement('summary');summary.textContent='Последние обращения к моделям';details.append(summary);
+ const recent=document.createElement('div');recent.className='admin-costs';
+ for(const call of info.recent||[]){
+  const line=document.createElement('p');
+  line.textContent=call.at+' · '+call.provider+' / '+call.model+' · '+call.input+' вход / '+call.output+' выход'+(call.cached?' (кеш '+call.cached+')':'')+(call.reasoning?' · рассуждения '+call.reasoning:'')+' · '+(call.costUsd===null?'стоимость неизвестна':'~
+async function showAdmin(){
+ const config=await api('/api/admin',{token:adminToken});
+ $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
+ $('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;}));
+ $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит на посетителя: '+config.usage.perIpDailyLimit+'.';
+ showAdminAccounting(config.accounting);$('adminStatus').textContent='';
+}
 $('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
-$('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';}catch(e){adminToken='';$('adminStatus').textContent=e.message;}};
-$('adminLogout').onclick=()=>{api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});telegramIdentity=null;publicSession=null;adminToken='';sessionStorage.removeItem('quorum-admin');$('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('settings').close();history.replaceState(null,'',location.pathname);};
+$('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';
+ try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshWallet();}
+ catch(e){adminToken='';$('adminStatus').textContent=e.message;}
+};
+$('adminLogout').onclick=()=>{
+ api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});
+ telegramIdentity=null;publicSession=null;adminToken='';wallet=null;sessionStorage.removeItem('quorum-admin');
+ $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('demoControls').hidden=true;
+ $('settings').close();history.replaceState(null,'',location.pathname);refreshWallet().catch(()=>{});
+};
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
-if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');});
-$('demo').onchange=()=>{if(!$('demo').checked){for(const id of chosen)if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
+if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshWallet().catch(()=>{});});
+$('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
-$('task').oninput=()=>$('chars').textContent=`${$('task').value.length.toLocaleString('ru')} / 20 000`;
-$('example').onclick=()=>{$('task').value='Напишите пост для клиники «Авиценна» о профилактических осмотрах. Аудитория: взрослые 30–55 лет. Цель: мотивировать обсудить с врачом подходящий план профилактики. Тон: тёплый и уважительный, без запугивания, выдуманных услуг, цен и обещаний результата. Нужен готовый пост до 1500 знаков и мягкий призыв к действию.';$('task').oninput();};
-function emit(m){messages.push(m);if(messages.length===1)$('feed').replaceChildren();const card=document.createElement('article');card.className=`message${m.final?' final':''}${m.error?' error':''}`;const head=document.createElement('div');head.className='message-head';const name=document.createElement('span');name.textContent=m.name;const stage=document.createElement('small');stage.textContent=m.stage;head.append(name,stage);const p=document.createElement('p');p.textContent=m.text;card.append(head,p);$('feed').append(card);$('export').disabled=false;}
-async function request(a,chat,signal){if($('demo').checked){await new Promise((resolve,reject)=>{const t=setTimeout(resolve,400);signal.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Остановлено','AbortError'));},{once:true});});const prompt=chat[1].content;if(prompt.includes('Допустимые идентификаторы:'))return JSON.stringify({vote:agents.find(x=>chosen.has(x.id)).id,reason:'Демонстрационный голос'});if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';return `[ДЕМО — не ответ модели]\n${a.name}: здесь появится реальное предложение по вашей задаче. В первом раунде модели предлагают идеи независимо, затем критикуют и дорабатывают ответы. Итог формируется из обсуждения.\n\nЧтобы получить настоящий результат, отключите демо и запустите обсуждение.`;}
- const result=await api('/api/chat',{method:'POST',token:adminToken||publicSession?.token,body:{provider:a.id,messages:chat},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
- if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');return result.text;
+$('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
+$('example').onclick=()=>{$('task').value='Напишите пять разных постов для организатора свадеб. Аудитория: пары 25–35 лет, планирующие свадьбу. Формат: готовые публикации для VK, разные темы и разные вступления. Без клише и выдуманных фактов. После обсуждения выдайте только пять готовых постов.';$('task').oninput();};
+
+function renderProgress(){
+ if(!events.length){$('progress').hidden=true;return;}
+ $('progress').hidden=false;
+ const names=[...new Set(events.map(e=>e.stage))];
+ $('progress').replaceChildren(...names.map(name=>{
+  const row=document.createElement('div');row.className='progress-item';
+  const done=events.some(e=>e.stage===name&&e.status==='done');
+  const marker=document.createElement('span');marker.className='progress-mark';marker.textContent=done?'✓':'·';
+  const label=document.createElement('span');
+  label.textContent=name==='Независимая идея'?'Нейросети готовят независимые варианты':name==='Итоговый проект'?'Подготовка готового материала':name==='Проверка согласия'?'Финальная проверка':name==='Готово'?'Результат готов':name.replace(/^Раунд /,'Обсуждение · раунд ');
+  row.append(marker,label);if(done)row.classList.add('done');return row;
+ }));
 }
-$('start').onclick=async()=>{const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];controller=new AbortController();$('feed').replaceChildren();$('export').disabled=true;$('stop').hidden=false;document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo').forEach(e=>e.disabled=true);update();$('status').textContent=$('demo').checked?'ДЕМО: ответы имитируются, API не вызывается.':'Обсуждение идёт. Ответ каждого участника появится после получения.';try{if(!$('demo').checked&&!adminToken){if(!publicSession||publicSession.expires<=Date.now()+180000){if(telegramContext){publicSession=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData},signal:controller.signal});}else publicSession=await api('/api/session',{method:'POST',signal:controller.signal});}}await discuss({agents:agents.filter(a=>chosen.has(a.id)),judge:agents.find(a=>a.id===$('judge').value),mode,rounds:Number($('rounds').value),words:Number($('length').value),task,request,emit,signal:controller.signal});$('status').textContent=`${$('demo').checked?'ДЕМО завершено.':'Обсуждение завершено.'} ${messages.some(m=>m.error)?'Часть запросов завершилась ошибкой — смотрите сообщения.':''}`;}catch(e){$('status').textContent=e.name==='AbortError'?'Обсуждение остановлено. Уже полученные ответы доступны.':e.message;}finally{running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo').forEach(e=>e.disabled=false);update();}};
-$('stop').onclick=()=>controller?.abort();$('export').onclick=()=>{const md=`# Кворум${$('demo').checked?' — ДЕМО':''}\n\n## Задача\n${$('task').value}\n\n`+messages.map(m=>`## ${m.name} — ${m.stage}${m.error?' (ошибка)':''}\n\n${m.text}`).join('\n\n');const url=URL.createObjectURL(new Blob([md],{type:'text/markdown;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='quorum-discussion.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+function progress(event){events.push(event);renderProgress();}
+function renderMessage(m){
+ const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
+ const head=document.createElement('div');head.className='message-head';
+ const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
+ const stage=document.createElement('small');stage.textContent=m.final?'Можно копировать и использовать':m.stage;
+ head.append(name,stage);
+ const p=document.createElement('p');p.textContent=m.text;card.append(head,p);return card;
+}
+function renderMessages(){
+ const visible=$('showDiscussion').checked?messages:messages.filter(m=>m.final);
+ if(!visible.length){$('feed').replaceChildren();return;}
+ $('feed').replaceChildren(...visible.map(renderMessage));$('export').disabled=!messages.some(m=>m.final);
+}
+$('showDiscussion').onchange=renderMessages;
+function emit(m){messages.push(m);renderMessages();}
+async function request(a,chat,signal,stage={}){
+ if($('demo').checked){
+  await new Promise((resolve,reject)=>{const t=setTimeout(resolve,400);signal?.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Остановлено','AbortError'));},{once:true});});
+  const prompt=chat[1].content;
+  if(prompt.includes('Допустимые идентификаторы:'))return JSON.stringify({vote:agents.find(x=>chosen.has(x.id)).id,reason:'Демонстрационный голос'});
+  if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';
+  return '[ДЕМО — не ответ модели] '+a.name+': этот пример не вызывает API. Для настоящего результата отключите демо.';
+ }
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
+ return result.text;
+}
+$('start').onclick=async()=>{
+ const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
+ const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
+ running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
+ $('feed').replaceChildren();$('export').disabled=true;$('progress').hidden=true;
+ $('stop').hidden=false;document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=true);
+ update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
+ try{
+  if(!$('demo').checked){
+   const token=await ensureSession();
+   activeTask=await api('/api/task/start',{method:'POST',token,body:{participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode}});
+  }
+  const {profile,task:subtask}=resolveProfile(profileId,taskId);
+  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:Number($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
+  $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
+  if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
+ }catch(e){
+  $('status').textContent=e.name==='AbortError'?'Остановлено. Уже полученные результаты сохранены в текущей вкладке.':e.message;
+ }finally{
+  if(activeTask){
+   try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
+   activeTask=null;refreshWallet().catch(()=>{});
+  }
+  running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
+  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
+  update();
+ }
+};
+$('stop').onclick=()=>controller?.abort();
+$('export').onclick=()=>{
+ const result=messages.findLast(m=>m.final);if(!result)return;
+ const {profile,task:subtask}=resolveProfile(profileId,taskId);
+ const output='# Кворум — '+profile.name+(subtask?' / '+subtask[1]:'')+'\n\n## Задание\n'+$('task').value+'\n\n## Готовый результат\n'+result.text+
+ ($('showDiscussion').checked?'\n\n## Обсуждение\n'+messages.filter(m=>!m.final).map(m=>'### '+m.name+' — '+m.stage+'\n'+m.text).join('\n\n'):'');
+ const url=URL.createObjectURL(new Blob([output],{type:'text/markdown;charset=utf-8'}));
+ const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+update();
++call.costUsd.toFixed(6));
+  recent.append(line);
+ }
+ if(!recent.children.length)recent.textContent='Пока нет обращений.';
+ details.append(recent);box.append(details);
+}
+async function showAdmin(){
+ const config=await api('/api/admin',{token:adminToken});
+ $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
+ $('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;}));
+ $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит на посетителя: '+config.usage.perIpDailyLimit+'.';
+ showAdminAccounting(config.accounting);$('adminStatus').textContent='';
+}
+$('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
+$('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';
+ try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshWallet();}
+ catch(e){adminToken='';$('adminStatus').textContent=e.message;}
+};
+$('adminLogout').onclick=()=>{
+ api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});
+ telegramIdentity=null;publicSession=null;adminToken='';wallet=null;sessionStorage.removeItem('quorum-admin');
+ $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('demoControls').hidden=true;
+ $('settings').close();history.replaceState(null,'',location.pathname);refreshWallet().catch(()=>{});
+};
+if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
+if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshWallet().catch(()=>{});});
+$('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
+loadConfig();
+$('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
+$('example').onclick=()=>{$('task').value='Напишите пять разных постов для организатора свадеб. Аудитория: пары 25–35 лет, планирующие свадьбу. Формат: готовые публикации для VK, разные темы и разные вступления. Без клише и выдуманных фактов. После обсуждения выдайте только пять готовых постов.';$('task').oninput();};
+
+function renderProgress(){
+ if(!events.length){$('progress').hidden=true;return;}
+ $('progress').hidden=false;
+ const names=[...new Set(events.map(e=>e.stage))];
+ $('progress').replaceChildren(...names.map(name=>{
+  const row=document.createElement('div');row.className='progress-item';
+  const done=events.some(e=>e.stage===name&&e.status==='done');
+  const marker=document.createElement('span');marker.className='progress-mark';marker.textContent=done?'✓':'·';
+  const label=document.createElement('span');
+  label.textContent=name==='Независимая идея'?'Нейросети готовят независимые варианты':name==='Итоговый проект'?'Подготовка готового материала':name==='Проверка согласия'?'Финальная проверка':name==='Готово'?'Результат готов':name.replace(/^Раунд /,'Обсуждение · раунд ');
+  row.append(marker,label);if(done)row.classList.add('done');return row;
+ }));
+}
+function progress(event){events.push(event);renderProgress();}
+function renderMessage(m){
+ const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
+ const head=document.createElement('div');head.className='message-head';
+ const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
+ const stage=document.createElement('small');stage.textContent=m.final?'Можно копировать и использовать':m.stage;
+ head.append(name,stage);
+ const p=document.createElement('p');p.textContent=m.text;card.append(head,p);return card;
+}
+function renderMessages(){
+ const visible=$('showDiscussion').checked?messages:messages.filter(m=>m.final);
+ if(!visible.length){$('feed').replaceChildren();return;}
+ $('feed').replaceChildren(...visible.map(renderMessage));$('export').disabled=!messages.some(m=>m.final);
+}
+$('showDiscussion').onchange=renderMessages;
+function emit(m){messages.push(m);renderMessages();}
+async function request(a,chat,signal,stage={}){
+ if($('demo').checked){
+  await new Promise((resolve,reject)=>{const t=setTimeout(resolve,400);signal?.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Остановлено','AbortError'));},{once:true});});
+  const prompt=chat[1].content;
+  if(prompt.includes('Допустимые идентификаторы:'))return JSON.stringify({vote:agents.find(x=>chosen.has(x.id)).id,reason:'Демонстрационный голос'});
+  if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';
+  return '[ДЕМО — не ответ модели] '+a.name+': этот пример не вызывает API. Для настоящего результата отключите демо.';
+ }
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
+ return result.text;
+}
+$('start').onclick=async()=>{
+ const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
+ const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
+ running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
+ $('feed').replaceChildren();$('export').disabled=true;$('progress').hidden=true;
+ $('stop').hidden=false;document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=true);
+ update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
+ try{
+  if(!$('demo').checked){
+   const token=await ensureSession();
+   activeTask=await api('/api/task/start',{method:'POST',token,body:{participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode}});
+  }
+  const {profile,task:subtask}=resolveProfile(profileId,taskId);
+  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:Number($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
+  $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
+  if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
+ }catch(e){
+  $('status').textContent=e.name==='AbortError'?'Остановлено. Уже полученные результаты сохранены в текущей вкладке.':e.message;
+ }finally{
+  if(activeTask){
+   try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
+   activeTask=null;refreshWallet().catch(()=>{});
+  }
+  running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
+  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
+  update();
+ }
+};
+$('stop').onclick=()=>controller?.abort();
+$('export').onclick=()=>{
+ const result=messages.findLast(m=>m.final);if(!result)return;
+ const {profile,task:subtask}=resolveProfile(profileId,taskId);
+ const output='# Кворум — '+profile.name+(subtask?' / '+subtask[1]:'')+'\n\n## Задание\n'+$('task').value+'\n\n## Готовый результат\n'+result.text+
+ ($('showDiscussion').checked?'\n\n## Обсуждение\n'+messages.filter(m=>!m.final).map(m=>'### '+m.name+' — '+m.stage+'\n'+m.text).join('\n\n'):'');
+ const url=URL.createObjectURL(new Blob([output],{type:'text/markdown;charset=utf-8'}));
+ const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+};
+update();
