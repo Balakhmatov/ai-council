@@ -4,6 +4,7 @@ import {createSessionStore,createTelegramBrowserLogin,SESSION_LIFETIME} from './
 import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramApi} from './telegram.mjs';
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
+import {createHistoryStore} from './history.mjs';
 import {createFxUpdater} from './fx.mjs';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
@@ -13,6 +14,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const adminToken=env.PROXY_TOKEN||'';
  const emailAuth=createEmailAuth({env,now,fetchImpl:emailFetchImpl});
  const economy=createEconomy({env,now});
+ const history=createHistoryStore({file:env.HISTORY_FILE||'',now});
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
@@ -120,20 +122,46 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     return json(200,economy.access(visitorHash,isAdmin));
    }
+   if(path==='/api/history'&&req.method==='GET'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
+    const q=new URL(req.url,'http://localhost').searchParams;
+    return json(200,history.list(visitorHash,{offset:q.get('offset')||0,limit:q.get('limit')||20}));
+   }
+   if(path?.startsWith('/api/history/')&&req.method==='GET'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
+    const id=path.slice('/api/history/'.length);
+    if(!/^[0-9a-f]{48}$/.test(id))return fail(400,'Некорректный идентификатор');
+    const item=history.get(visitorHash,id);
+    return item?json(200,item):fail(404,'Задание не найдено');
+   }
+   if(path==='/api/admin/billing/grant'&&req.method==='POST'){
+    if(!isAdmin)return fail(403,'Доступ запрещён');
+    let body;try{body=await readBody(2000);}catch{return fail(400,'Некорректные параметры');}
+    try{return json(200,{access:economy.grant(body.accountRef,body.sku)});}
+    catch(e){return fail(400,e.message);}
+   }
    if(path==='/api/task/start'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректное задание');}
     await fx.refresh();
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
     if(!task)return fail(400,'Некорректные параметры задания');
-    if(task.insufficient)return fail(402,'Бесплатный лимит исчерпан. Дождитесь обновления лимита. Платные тарифы скоро появятся.');
+    if(task.upgradeRequired)return fail(403,'Больше трёх моделей доступны по подписке.');
+    if(task.insufficient)return fail(402,'Лимит заданий исчерпан. Дождитесь обновления бесплатного лимита или пополните пакет заданий.');
     return json(200,task);
    }
    if(path==='/api/task/finish'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    let info;try{info=await readBody(1000);}catch{return fail(400,'Некорректное задание');}
+    let info;try{info=await readBody(800000);}catch{return fail(400,'Некорректное задание');}
+    const entitlement=economy.activeTaskAccess(info.taskId,visitorHash);
+    if(!entitlement)return fail(404,'Задание не найдено');
+    let historySaved=false;
+    if(entitlement.historyEnabled&&entitlement.successful>0&&info.history){
+     try{historySaved=!!history.record(visitorHash,info.taskId,info.history);}
+     catch(e){return fail(400,e.message);}
+    }
     const closed=economy.finish(info.taskId,visitorHash);
-    return closed?json(200,closed):fail(404,'Задание не найдено');
+    return closed?json(200,{...closed,historySaved}):fail(404,'Задание не найдено');
    }
    if(path==='/api/admin/logs'&&req.method==='GET'){
     if(!isAdmin)return fail(403,'Доступ запрещён');
