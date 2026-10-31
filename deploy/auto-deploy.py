@@ -89,7 +89,7 @@ def main():
             print('Quorum deployed and healthy', flush=True)
         except Exception as error:
             print('Quorum deployment failed:', error, file=sys.stderr, flush=True)
-            FAILED.write_text(remote + '\\n', encoding='utf-8')
+            FAILED.write_text(remote + '\n', encoding='utf-8')
             os.chmod(FAILED, 0o600)
             if previous != remote:
                 try:
