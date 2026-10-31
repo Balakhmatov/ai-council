@@ -13,7 +13,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
- const routes={...providers,grok:[grokBase+'/chat/completions','XAI_API_KEY']};
+ const geminiBase=(env.GEMINI_BASE_URL||'https://generativelanguage.googleapis.com/v1beta/openai').replace(/\/$/,'');
+ if(!['https://generativelanguage.googleapis.com/v1beta/openai','https://ddtnew.com/v1'].includes(geminiBase))throw Error('Invalid Gemini base URL');
+ const routes={...providers,grok:[grokBase+'/chat/completions','XAI_API_KEY'],gemini:[geminiBase+'/chat/completions','GEMINI_API_KEY']};
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
  const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
@@ -175,3 +177,4 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  });
 }
 if(process.argv[1]===fileURLToPath(import.meta.url)){const port=Number(process.env.PORT||8787);createServer().listen(port,process.env.HOST||'127.0.0.1',()=>console.log(`Кворум: http://localhost:${port}`));}
+
