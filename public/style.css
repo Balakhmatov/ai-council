@@ -221,3 +221,12 @@ dialog .primary{width:100%;margin-top:19px}
  .account-group summary span{text-align:left}
  .account-call-head{align-items:flex-start;flex-direction:column;gap:4px}
 }
+
+/* iOS Safari / Telegram WebView: editable controls below 16px trigger focus zoom. */
+@media (max-width: 880px) {
+ textarea,
+ select,
+ input:not([type='checkbox']):not([type='radio']) {
+  font-size: 16px;
+ }
+}
