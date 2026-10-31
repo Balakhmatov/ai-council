@@ -79,14 +79,33 @@ function update(){
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
 }
 $('rounds').onchange=update;$('length').onchange=update;$('judge').onchange=update;
-$('mobileQuorumJump')?.addEventListener('click',()=>{
-  const el=document.querySelector('aside');
-  const btn=$('mobileQuorumJump');
-  if(!el||!btn)return;
-  const open=el.classList.toggle('is-open');
+
+$('agentsToggle')?.addEventListener('click',()=>{
+  const body=$('participantsBody');
+  const btn=$('agentsToggle');
+  if(!body||!btn)return;
+  if(window.matchMedia('(min-width:881px)').matches)return;
+  const open=body.classList.toggle('is-open');
   btn.setAttribute('aria-expanded',String(open));
-  btn.textContent=open?'Скрыть участников':'Участники';
 });
+window.matchMedia('(max-width:880px)').addEventListener('change',()=>{
+  const body=$('participantsBody');
+  const btn=$('agentsToggle');
+  if(!body||!btn)return;
+  if(window.matchMedia('(min-width:881px)').matches){
+    body.classList.add('is-open');
+    btn.setAttribute('aria-expanded','true');
+  }else{
+    body.classList.remove('is-open');
+    btn.setAttribute('aria-expanded','false');
+  }
+});
+if(window.matchMedia('(min-width:881px)').matches){
+  $('participantsBody')?.classList.add('is-open');
+  $('agentsToggle')?.setAttribute('aria-expanded','true');
+}
+
+
 
 async function api(path,{method='GET',body,token,signal}={}){
  const response=await fetch(API+path,{method,credentials:'include',headers:{...(body?{'Content-Type':'application/json'}:{}),...(token?{Authorization:'Bearer '+token}:{})},body:body?JSON.stringify(body):undefined,signal});
