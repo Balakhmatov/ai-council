@@ -66,7 +66,7 @@ test('DDTokens honors cached input and configurable approximate RUB conversion',
  const economy=createEconomy({env:{XAI_BASE_URL:'https://ddtnew.com/v1',DDTOKENS_RUB_PER_CNY:'10'}});
  economy.record('grok','grok-4.7',{prompt_tokens:10000,completion_tokens:1000,prompt_tokens_details:{cached_tokens:8000}});
  const entry=economy.summary().recent[0];
- assert.equal(entry.estimatedCostRub,(2000*.6+8000*.15+1000*1.8)*10/1e6);
+ assert.ok(Math.abs(entry.estimatedCostRub-(2000*.6+8000*.15+1000*1.8)*10/1e6)<1e-10);
 });
 test('official Grok price used for direct xAI; unknown token use not falsely priced',()=>{
  const direct=createEconomy({env:{XAI_BASE_URL:'https://api.x.ai/v1'}});
