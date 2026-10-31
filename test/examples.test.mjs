@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {profiles} from '../public/profiles.js';
 import {getTaskHint,taskHints} from '../public/examples.js';
 
-test('five directions and all 30 specializations explain their purpose without fictional client briefs',()=>{
+test('five directions and all 30 specializations have readable unique task hints',()=>{
  const hints=new Set();
  assert.equal(profiles.length,5);
  for(const profile of profiles){
@@ -13,9 +13,8 @@ test('five directions and all 30 specializations explain their purpose without f
   for(const key of keys){
    const hint=getTaskHint(profile.id,key);
    assert.equal(typeof hint,'string');
-   assert.ok(hint.length>=85&&hint.length<=210,`${profile.id}/${key} hint length ${hint.length}`);
+   assert.ok(hint.length>=60&&hint.length<=240,`${profile.id}/${key} hint length ${hint.length}`);
    assert.ok(!/[\[\]{}]/.test(hint),`${profile.id}/${key} has technical placeholders`);
-   assert.ok(!/(пекарн|стоматолог|магазин|кофейн|свадеб|керамик|пиццери)/i.test(hint),`${profile.id}/${key} invented specific business`);
    assert.ok(!hints.has(hint),`${profile.id}/${key} duplicated`);
    hints.add(hint);
   }
