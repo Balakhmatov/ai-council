@@ -58,6 +58,9 @@ h2,.section-title h2{margin:0;font-size:14px;font-weight:800;letter-spacing:-.2p
 .task-option.active{background:#f2ebfc;border:1px solid #ac8edc;color:#7147bc;font-weight:700}
 .task-option:hover:not(:disabled){background:#faf6ff;border-color:#b69dd6}
 .task-option.active:hover:not(:disabled){background:#f2ebfc;border-color:#9270cb}
+.task-option-any{background:transparent;border-style:dashed;border-color:#d9cedc;color:#8a7c8c;font-weight:500}
+.task-option-any.active{background:#f7f3fb;border-style:solid;border-color:#c4b0db;color:#6d5a7c;font-weight:600}
+.task-option-any:hover:not(:disabled){background:#faf7fc;border-color:#cbbdd8}
 textarea{display:block;width:100%;max-width:100%;min-width:0;min-height:206px;resize:vertical;margin-top:15px;padding:18px;border:1px solid #e9dfe6;border-radius:14px;background:#fffcfc;color:var(--ink);font-size:14px;line-height:1.77;overflow-wrap:anywhere;box-shadow:inset 0 1px 3px #513c4604}
 textarea:focus{background:#fff;border-color:#b595e7}
 textarea::placeholder{color:#a397a2}
@@ -70,7 +73,7 @@ textarea::placeholder{color:#a397a2}
 .advanced[open] .advanced-chevron{transform:rotate(180deg)}
 #modes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:13px}
 .mode{min-width:0;display:block;text-align:left;background:#fff;border-color:#e7dfea;padding:12px;border-radius:11px;overflow-wrap:anywhere;font-size:12px}
-.mode.active{border-color:#aa8ee4;background:#f5efff;color:#6a43b2}
+.mode.active{border-color:#8f6ad6;background:#f3ebff;color:#5c36a8;box-shadow:0 0 0 1px #8f6ad633,0 4px 12px #7950d314}
 .mode small{display:block;font-size:10px;line-height:1.5;font-weight:400;color:#97899a;margin-top:5px}
 .controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
 label{font-size:12px;color:#7b6d7b}
@@ -169,13 +172,11 @@ dialog .primary{width:100%;margin-top:19px}
  .controls{grid-template-columns:minmax(0,1fr)}
  .intro{padding:22px 16px}
 }
-/* Keep focused form controls from triggering iOS automatic page zoom. */
 @media(max-width:880px),(any-pointer:coarse){
  textarea,select,input:not([type=checkbox]):not([type=radio]){font-size:16px}
 }
 @media(prefers-reduced-motion:reduce){button{transition:none}}
 
-/* Owner-only cost dashboard */
 #adminAccounting{min-width:0;max-width:100%;overflow-wrap:anywhere}
 #adminAccounting h3{font-size:17px;margin:4px 0 13px}
 #adminAccounting h4{font-size:13px;margin:25px 0 10px}
@@ -226,8 +227,6 @@ dialog .primary{width:100%;margin-top:19px}
  .account-call-head{align-items:flex-start;flex-direction:column;gap:4px}
 }
 
-/* Mobile input focus: use at least 16 CSS px on touch devices even when
-   Telegram WebView reports a desktop-sized layout viewport. */
 @media (max-width: 880px), (pointer: coarse) {
  textarea,
  select,
@@ -243,7 +242,6 @@ dialog .primary{width:100%;margin-top:19px}
  }
 }
 
-/* Persistent per-request audit log */
 .account-group-requests{display:flex;flex-direction:column;gap:9px;border-top:1px solid #eee5ed;padding-top:12px;margin-top:12px}
 .account-group-requests > strong{font-size:12px;color:#53425a}
 .account-call-cumulative{display:block;color:#6843a5;font-size:12px;font-weight:700}
@@ -252,5 +250,20 @@ dialog .primary{width:100%;margin-top:19px}
 .account-call{overflow-wrap:anywhere}
 .account-calls{min-width:0}
 
-
 .auth-dialog{width:min(440px,calc(100vw - 32px));max-height:calc(100dvh - 40px);overflow:auto;box-sizing:border-box}.auth-methods{display:grid;gap:12px}.auth-methods[hidden]{display:none}.auth-telegram{width:100%;min-height:44px}.auth-link{display:inline-block;text-decoration:none;text-align:center;box-sizing:border-box}.account-name{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.auth-dialog form{margin-top:12px}.auth-dialog #authBack{margin-bottom:8px}@media(max-width:600px){.header-actions{flex-wrap:wrap;gap:8px}.account-name{max-width:120px}.auth-dialog{padding:18px}}
+
+/* Mobile quorum summary + sticky CTA */
+.mobile-quorum{display:none}
+@media(max-width:880px){
+ .mobile-quorum{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px;padding:12px 14px;border:1px solid #eadff5;border-radius:14px;background:linear-gradient(180deg,#faf6ff,#f6f0fc)}
+ .mobile-quorum-label{font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:#8a5cc0}
+ .mobile-quorum-text{flex:1;min-width:0;font-size:12px;font-weight:700;color:#4e3a63;overflow-wrap:anywhere}
+ .mobile-quorum-link{margin-left:auto;font-size:12px;padding:4px 0}
+ .launch{position:sticky;bottom:calc(10px + var(--tg-safe-bottom,0px));z-index:20;margin-top:20px;padding:12px;border:1px solid #e8def3;border-radius:16px;background:rgba(255,253,251,.92);backdrop-filter:blur(10px);box-shadow:0 10px 28px #2b153f18}
+ .launch .primary{box-shadow:0 8px 18px #774fce30}
+}
+@media(max-width:580px){
+ .intro p{max-width:100%}
+ .prompt-caption{color:#7d7085}
+ textarea::placeholder{color:#8f8494}
+}
