@@ -85,9 +85,20 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,now=Dat
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.ips[visitorHash]||0)>=ipLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.ips[visitorHash]=(ledger.ips[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;ipActive.set(visitorHash,(ipActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    try{
-    const model=models[body.provider],key=keyFor(body.provider);let payload={model,messages:body.messages,max_tokens:1600};const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
+    const model=models[body.provider],key=keyFor(body.provider);
+    // The server clock, not the browser or the model's training cutoff, is authoritative.
+    const currentUtc=new Date(now()).toISOString();
+    const timeContext=`Текущие дата и время: ${currentUtc} (UTC). Это реальное время запроса, а не дата окончания обучения. Не принимай события прошлых лет за текущие. У тебя нет автоматического доступа к свежим новостям: отделяй проверенные факты от предположений и прямо указывай, если актуальность сведений не подтверждена.`;
+    const messages=body.messages[0].role==='system'
+      ?[{...body.messages[0],content:timeContext+'\\n\\n'+body.messages[0].content},...body.messages.slice(1)]
+      :[{role:'system',content:timeContext},...body.messages];
+    // GPT-6 reasoning tokens count towards the completion limit.
+    let payload=body.provider==='openai'&&model.startsWith('gpt-6')
+      ?{model,messages,max_completion_tokens:4096,reasoning_effort:'medium'}
+      :{model,messages,max_tokens:1600};
+    const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:1600,system:body.messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:body.messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:1600,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
