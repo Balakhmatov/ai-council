@@ -1,6 +1,6 @@
 import {modes,discuss} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
-import {getTaskExample} from './examples.js';
+import {getTaskHint} from './examples.js';
 import {getTelegramContext} from './telegram-bridge.js';
 
 const $=id=>document.getElementById(id);
@@ -23,7 +23,7 @@ function renderProfiles(){
  $('profiles').replaceChildren(...profiles.map(p=>{
   const b=document.createElement('button');b.type='button';b.className='profile-option';
   b.textContent=p.name;b.title=p.summary;b.classList.toggle('active',p.id===profileId);
-  b.setAttribute('aria-pressed',String(p.id===profileId));b.onclick=()=>{profileId=p.id;taskId='';renderProfiles();renderSubtasks();syncTaskExample();};
+  b.setAttribute('aria-pressed',String(p.id===profileId));b.onclick=()=>{profileId=p.id;taskId='';renderProfiles();renderSubtasks();syncTaskHint();};
   return b;
  }));
 }
@@ -32,14 +32,14 @@ function renderSubtasks(){
  const tasks=[['','Любая задача'],...profile.tasks.map(t=>[t[0],t[1]])];
  $('subtasks').replaceChildren(...tasks.map(([id,label])=>{
   const b=document.createElement('button');b.type='button';b.className='task-option';b.classList.toggle('active',id===taskId);
-  b.textContent=label;b.setAttribute('aria-pressed',String(id===taskId));b.onclick=()=>{taskId=id;renderSubtasks();syncTaskExample();};return b;
+  b.textContent=label;b.setAttribute('aria-pressed',String(id===taskId));b.onclick=()=>{taskId=id;renderSubtasks();syncTaskHint();};return b;
  }));
 }
-function syncTaskExample(){
- // The placeholder must never replace the user's draft.
- $('task').placeholder=getTaskExample(profileId,taskId);
+function syncTaskHint(){
+ // Explain what this section is for; do not replace any user-entered task.
+ $('task').placeholder=getTaskHint(profileId,taskId);
 }
-renderProfiles();renderSubtasks();syncTaskExample();
+renderProfiles();renderSubtasks();syncTaskHint();
 for(const a of agents){
  const label=document.createElement('label');label.className='agent';
  const avatar=document.createElement('span');avatar.className='avatar provider-avatar';
@@ -258,11 +258,6 @@ if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('qu
 $('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
 $('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
-$('example').onclick=()=>{
- if($('task').value.trim()&&!window.confirm('Заменить ваш текст выбранным примером задания?'))return;
- $('task').value=getTaskExample(profileId,taskId);
- $('task').oninput();
-};
 
 function renderProgress(){
  if(!events.length){$('progress').hidden=true;return;}
@@ -310,7 +305,7 @@ $('start').onclick=async()=>{
  const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
  running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
  $('feed').replaceChildren();$('export').disabled=true;$('progress').hidden=true;
- $('stop').hidden=false;document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=true);
+ $('stop').hidden=false;document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=true);
  update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
  try{
   if(!$('demo').checked){
