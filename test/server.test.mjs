@@ -15,7 +15,7 @@ async function setup(overrides={},options={}){
  return {calls,env,send,login:async(email='user@example.com')=>{await send('/api/email/request',{email});return send('/api/email/verify',{email,code:emailCode});},close:()=>new Promise(r=>s.close(r))};
 }
 const body={provider:'openai',model:'client-expensive-model',messages:[{role:'user',content:'hello'}]};
-test('public config omits secrets; admin requires real authentication',async()=>{const t=await setup();try{const c=await t.send('/api/config');assert.deepEqual(c.data,{providers:['openai'],authRequired:true,telegramUrl:null});assert.equal((await t.send('/api/admin')).status,401);const admin=await t.send('/api/admin',undefined,'admin-test-only');assert.equal(admin.status,200);assert.equal(admin.data.providers[0].model,'server-pinned-model');assert(!JSON.stringify(admin.data).includes('private-test-key'));assert.equal((await t.send('/api/chat',body)).status,401);assert.equal((await t.send('/api/session',{},undefined,{Origin:'https://evil.example'})).status,403);}finally{await t.close();}});
+test('public config omits secrets; admin requires real authentication',async()=>{const t=await setup();try{const c=await t.send('/api/config');assert.deepEqual(c.data.providers,['openai']);assert.equal(c.data.authRequired,true);assert.equal(c.data.catalog.subscription.tasks,500);assert.equal(c.data.catalog.pack100.priceRub,255);assert.equal(c.data.telegramUrl,null);assert.equal((await t.send('/api/admin')).status,401);const admin=await t.send('/api/admin',undefined,'admin-test-only');assert.equal(admin.status,200);assert.equal(admin.data.providers[0].model,'server-pinned-model');assert(!JSON.stringify(admin.data).includes('private-test-key'));assert.equal((await t.send('/api/chat',body)).status,401);assert.equal((await t.send('/api/session',{},undefined,{Origin:'https://evil.example'})).status,403);}finally{await t.close();}});
 test('authenticated account has shared pinned model and call limit across sessions',async()=>{
  const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
  try{
@@ -230,4 +230,54 @@ test('account sessions and tasks work across networks',async()=>{
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},token,{'X-Real-IP':'192.0.2.2'})).status,200);
   assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},token)).status,200);
  }finally{await t.close();}
+});
+
+test('subscription-only history is isolated, retained after expiry and requires authenticated owner',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-history-api-'));
+ let tick=Date.parse('2026-11-01T10:00:00Z');
+ const t=await setup({
+  ACCOUNTING_FILE:join(dir,'accounting.json'),HISTORY_FILE:join(dir,'history.json'),
+  ACCOUNT_MONTHLY_TASKS:'10',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test',GROK_API_KEY:'g',GROK_MODEL:'test',GEMINI_API_KEY:'ge',GEMINI_MODEL:'test'
+ },{now:()=>tick});
+ try{
+  const a=(await t.login('a@example.com')).data,b=(await t.login('b@example.com')).data;
+  const aAccess=(await t.send('/api/access',undefined,a.token)).data;
+  assert.equal(aAccess.maxModels,3);
+  assert.equal(aAccess.historyEnabled,false);
+  const tooMany=await t.send('/api/task/start',{participants:['openai','mistral','grok','gemini'],rounds:2,mode:'judge'},a.token);
+  assert.equal(tooMany.status,403);
+  const free=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},a.token)).data;
+  assert.equal(free.historyEnabled,false);
+  const freeEnd=await t.send('/api/task/finish',{taskId:free.taskId,history:{prompt:'free prompt',messages:[{name:'OpenAI',stage:'Раунд 1',text:'hidden'}]}},a.token);
+  assert.equal(freeEnd.data.historySaved,false);
+  assert.equal((await t.send('/api/history',undefined,a.token)).data.total,0);
+  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'subscription'},a.token)).status,403);
+  const grant=await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'subscription'},'admin-test-only');
+  assert.equal(grant.status,200);
+  assert.equal(grant.data.access.subscriptionRemaining,500);
+  const subStart=(await t.send('/api/task/start',{participants:['openai','mistral','grok','gemini'],rounds:2,mode:'judge'},a.token)).data;
+  assert.equal(subStart.historyEnabled,true);
+  const call=await t.send('/api/chat',{provider:'openai',taskId:subStart.taskId,messages:[{role:'user',content:'test'}]},a.token);
+  assert.equal(call.status,200);
+  const saved=await t.send('/api/task/finish',{taskId:subStart.taskId,history:{prompt:'Paid saved prompt',profile:'SMM',specialization:'Посты',messages:[{name:'OpenAI',stage:'Раунд 1',text:'Draft'},{name:'Итог',stage:'Готово',text:'Answer',final:true}]}},a.token);
+  assert.equal(saved.status,200);assert.equal(saved.data.historySaved,true);
+  const owned=(await t.send('/api/history',undefined,a.token)).data;
+  assert.equal(owned.total,1);assert.equal(owned.items[0].title,'Paid saved prompt');
+  assert.equal((await t.send('/api/history/'+subStart.taskId,undefined,b.token)).status,404);
+  assert.equal((await t.send('/api/history',undefined,b.token)).data.total,0);
+  assert.equal((await t.send('/api/history',undefined)).status,401);
+  tick+=31*86400000;
+  const afterExpiry=(await t.login('a@example.com')).data;
+  const expiredToken=afterExpiry.token;
+  assert.equal((await t.send('/api/access',undefined,expiredToken)).data.historyEnabled,false);
+  assert.equal((await t.send('/api/history',undefined,expiredToken)).data.total,1);
+  assert.equal((await t.send('/api/history/'+subStart.taskId,undefined,expiredToken)).data.messages[1].text,'Answer');
+  const noSub=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},expiredToken)).data;
+  assert.equal(noSub.historyEnabled,false);
+  const ended=await t.send('/api/task/finish',{taskId:noSub.taskId,history:{prompt:'new free',messages:[{name:'x',stage:'y',text:'free'}]}},expiredToken);
+  assert.equal(ended.data.historySaved,false);
+  assert.equal((await t.send('/api/history',undefined,expiredToken)).data.total,1);
+  const pack=await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'pack100'},'admin-test-only');
+  assert.equal(pack.data.access.purchasedTasks,100);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });

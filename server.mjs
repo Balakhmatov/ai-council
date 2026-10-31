@@ -4,6 +4,7 @@ import {createSessionStore,createTelegramBrowserLogin,SESSION_LIFETIME} from './
 import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramApi} from './telegram.mjs';
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
+import {createHistoryStore} from './history.mjs';
 import {createFxUpdater} from './fx.mjs';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
@@ -13,6 +14,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const adminToken=env.PROXY_TOKEN||'';
  const emailAuth=createEmailAuth({env,now,fetchImpl:emailFetchImpl});
  const economy=createEconomy({env,now});
+ const history=createHistoryStore({file:env.HISTORY_FILE||'',now});
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
@@ -30,7 +32,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const issuance=new Map(),accountActive=new Map();let active=0,authFailures=new Map();
  let botUsername='';
  const botName=async()=>{if(!/^[A-Za-z0-9_]{5,32}$/.test(botUsername)){const me=await telegramApi(env.TELEGRAM_BOT_TOKEN,'getMe',{},fetchImpl);if(!/^[A-Za-z0-9_]{5,32}$/.test(me?.username))throw Error('Telegram bot unavailable');botUsername=me.username;}return botUsername;};
- const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||300),accountLimit=Number(env.ACCOUNT_DAILY_CALL_LIMIT||60);
+ const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||3000),accountLimit=Number(env.ACCOUNT_DAILY_CALL_LIMIT||60),paidAccountLimit=Number(env.PAID_DAILY_CALL_LIMIT||700);
  let ledger={day:'',total:0,accounts:{}};
  if(env.QUOTA_FILE){try{ledger=JSON.parse(readFileSync(env.QUOTA_FILE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw Error('Quota state unreadable');}}
  ledger.accounts=ledger.accounts||{};delete ledger.ips;
@@ -103,7 +105,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     try{return json(200,issueSession({telegramUser:user}));}catch(error){return fail(error.status||503,error.message);}
    }
    if(path==='/api/logout'&&req.method==='POST'){try{sessions.delete(bearer);sessionCookie('',now());return json(200,{ok:true});}catch{return fail(503,'Не удалось завершить выход. Попробуйте ещё раз.');}}
-   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
+   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,catalog:economy.catalog(),telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get('admin');if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
     if(!isAdmin){authFailures.set('admin',{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
@@ -111,7 +113,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     await fx.refresh();
     resetDay();
     return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),
-      usage:{requestsToday:ledger.total,dailyLimit,perAccountDailyLimit:accountLimit},accounting:economy.summary(models)});
+      usage:{requestsToday:ledger.total,dailyLimit,perAccountDailyLimit:accountLimit,paidAccountDailyLimit:paidAccountLimit},accounting:economy.summary(models)});
 
    }
    if(path==='/api/session')return fail(401,'Войдите через Telegram или email.');
@@ -120,20 +122,46 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     return json(200,economy.access(visitorHash,isAdmin));
    }
+   if(path==='/api/history'&&req.method==='GET'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
+    const q=new URL(req.url,'http://localhost').searchParams;
+    return json(200,history.list(visitorHash,{offset:q.get('offset')||0,limit:q.get('limit')||20}));
+   }
+   if(path?.startsWith('/api/history/')&&req.method==='GET'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
+    const id=path.slice('/api/history/'.length);
+    if(!/^[0-9a-f]{48}$/.test(id))return fail(400,'Некорректный идентификатор');
+    const item=history.get(visitorHash,id);
+    return item?json(200,item):fail(404,'Задание не найдено');
+   }
+   if(path==='/api/admin/billing/grant'&&req.method==='POST'){
+    if(!isAdmin)return fail(403,'Доступ запрещён');
+    let body;try{body=await readBody(2000);}catch{return fail(400,'Некорректные параметры');}
+    try{return json(200,{access:economy.grant(body.accountRef,body.sku)});}
+    catch(e){return fail(400,e.message);}
+   }
    if(path==='/api/task/start'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректное задание');}
     await fx.refresh();
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
     if(!task)return fail(400,'Некорректные параметры задания');
-    if(task.insufficient)return fail(402,'Бесплатный лимит исчерпан. Дождитесь обновления лимита. Платные тарифы скоро появятся.');
+    if(task.upgradeRequired)return fail(403,'Больше трёх моделей доступны по подписке.');
+    if(task.insufficient)return fail(402,'Лимит заданий исчерпан. Дождитесь обновления бесплатного лимита или пополните пакет заданий.');
     return json(200,task);
    }
    if(path==='/api/task/finish'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    let info;try{info=await readBody(1000);}catch{return fail(400,'Некорректное задание');}
+    let info;try{info=await readBody(800000);}catch{return fail(400,'Некорректное задание');}
+    const entitlement=economy.activeTaskAccess(info.taskId,visitorHash);
+    if(!entitlement)return fail(404,'Задание не найдено');
+    let historySaved=false;
+    if(entitlement.historyEnabled&&entitlement.successful>0&&info.history){
+     try{historySaved=!!history.record(visitorHash,info.taskId,info.history);}
+     catch(e){return fail(400,e.message);}
+    }
     const closed=economy.finish(info.taskId,visitorHash);
-    return closed?json(200,closed):fail(404,'Задание не найдено');
+    return closed?json(200,{...closed,historySaved}):fail(404,'Задание не найдено');
    }
    if(path==='/api/admin/logs'&&req.method==='GET'){
     if(!isAdmin)return fail(403,'Доступ запрещён');
@@ -159,7 +187,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
    if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
-   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=accountLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
+   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    const callStarted=now();let upstreamLogged=false;
    const log=(model,status,usage=null,httpStatus=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:body.step,status,usage,httpStatus,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};

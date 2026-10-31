@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=persistentauth18/);
+ assert.match(html,/app\.js\?v=plans35/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -31,13 +31,13 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
 test('iOS fields use 16px text to prevent WebView focus zoom without disabling user zoom',()=>{
  const css=readFileSync(new URL('../public/style.css',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- const fix=css.slice(css.indexOf('/* Mobile input focus:'));
+ const fix=css.slice(css.indexOf('@media (max-width: 880px), (pointer: coarse)'));
  assert.match(fix,/@media\s*\(max-width:\s*880px\),\s*\(pointer:\s*coarse\)/);
  assert.match(fix,/textarea,\s*select,\s*input:not\(\[type='checkbox'\]\):not\(\[type='radio'\]\)/);
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=persistentauth18/);
+ assert.match(html,/style\.css\?v=plans35/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
 });
 

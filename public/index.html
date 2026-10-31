@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=uiux34">
-<link rel="stylesheet" href="./uiux32.css?v=3">
+<link rel="stylesheet" href="./style.css?v=plans35">
+<link rel="stylesheet" href="./uiux32.css?v=4">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -41,6 +41,12 @@
 <div id="progress" class="progress" hidden aria-live="polite"></div>
 <div class="discussion-title"><h2>Результат</h2><button class="quiet" id="export" disabled type="button">Скачать .md</button></div>
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
+<section id="historySection" class="history-section" hidden>
+ <div class="section-title spaced"><h2>История заданий</h2><span id="historyCount" class="step-note"></span></div>
+ <p class="hint">Каждое обсуждение сохранено отдельно. Откройте любое, чтобы посмотреть задание и ответы.</p>
+ <div id="historyList" class="history-list"></div>
+ <button id="historyMore" class="history-more" type="button" hidden>Показать ещё</button>
+</section>
 </section>
 <aside id="participantsAside">
 <div class="section-title participants-head">
@@ -53,11 +59,24 @@
   <label class="judge-label">Кто подготовит итог<select id="judge"></select></label>
   <p id="budget" class="hint"></p>
 </div>
-<div class="access-panel"><div class="access-title">Бесплатные задания</div><p id="accessInfo">Проверяем доступ…</p><p class="hint">После входа через Telegram или email — 10 бесплатных заданий в месяц. Одно задание — полное обсуждение. Платные тарифы скоро появятся.</p></div>
+<div class="access-panel"><div class="access-title">Бесплатные задания</div><p id="accessInfo">Проверяем доступ…</p><p class="hint">Без подписки — до 3 моделей и без сохранения новых заданий. С подпиской — все доступные модели и бессрочная история.</p></div>
+<section id="pricingPanel" class="pricing-panel">
+ <h3>Тарифы</h3>
+ <div id="pricingOffers"></div>
+ <p class="hint">Оплата пока не подключена. Цены зафиксированы, покупка станет доступна после подключения платежей.</p>
+</section>
+<details class="account-code" id="accountCodeDetails" hidden>
+ <summary>Код аккаунта для активации тарифа</summary>
+ <code id="accountCode"></code><button class="quiet" type="button" id="copyAccountCode">Скопировать</button>
+</details>
 <div id="demoControls" hidden><label class="demo"><input id="demo" type="checkbox"> Демо без API (для тестирования)</label></div>
 </aside></div>
 <footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span></footer>
 </main>
+<dialog id="historyDialog" class="history-dialog">
+ <div class="section-title"><h2>Сохранённое обсуждение</h2><button id="historyClose" class="quiet" type="button" aria-label="Закрыть">Закрыть ✕</button></div>
+ <div id="historyBody" class="history-detail"></div>
+</dialog>
 <dialog id="emailDialog" class="auth-dialog"><form method="dialog"><div class="section-title"><h2>Войти в Кворум</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="authMethods" class="auth-methods"><p class="hint">Выберите способ входа. На этом устройстве вход сохранится.</p><button id="emailOpen" class="primary" type="button">Войти через email</button><button id="telegramOpen" class="quiet auth-telegram" type="button">Войти через Telegram</button></div>
 <button id="authBack" class="quiet" type="button" hidden>← Другой способ входа</button>
@@ -68,6 +87,21 @@
 <p id="emailStatus" role="status" aria-live="polite"></p></dialog>
 <dialog id="settings"><form method="dialog"><div class="section-title"><h2 class="admin-brand"><img src="./assets/quorum-icon-192-v2.png" width="32" height="32" alt="">Администрирование</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
-<div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
+<div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><section class="admin-grants">
+ <h3>Начислить подписку или пакет вручную</h3>
+ <p class="hint">Только для владельца. Оплата пока не подключена.</p>
+ <form id="adminGrantForm">
+  <label>Код аккаунта <input id="adminGrantAccount" type="text" placeholder="account:..." required></label>
+  <label>Тариф <select id="adminGrantSku">
+   <option value="subscription">Подписка · 500 заданий / 30 дней</option>
+   <option value="pack10">10 заданий</option>
+   <option value="pack50">50 заданий</option>
+   <option value="pack100">100 заданий</option>
+  </select></label>
+  <button class="primary" type="submit">Начислить</button>
+ </form>
+ <p id="adminGrantStatus" class="hint"></p>
+</section>
+<div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=uiux34"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=plans35"></script></body></html>
