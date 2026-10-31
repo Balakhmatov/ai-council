@@ -139,17 +139,19 @@ function renderAuditCall(call){
  const counts=node('div',null,'account-call-tokens');
  counts.append(node('span','Вход '+num(call.input)),node('span','Кеш '+num(call.cached)),
   node('span','Выход '+num(call.output)),node('span','Размышления '+num(call.reasoning)));
+ if(call.cacheWrite5m||call.cacheWrite1h)counts.append(node('span','Запись кеша: 5 мин '+num(call.cacheWrite5m)+' / 1 ч '+num(call.cacheWrite1h)));
  item.append(head,meta,counts);
  if(call.costBreakdownRub){
   const b=call.costBreakdownRub;
-  item.append(node('small','Цена: вход '+rub(b.input)+' + кеш '+rub(b.cached)+' + выход '+rub(b.output)+' = '+rub(call.costRub)));
+  item.append(node('small','Цена: вход '+rub(b.input)+' + кеш '+rub(b.cached)+' + выход '+rub(b.output)+(b.cacheWrite5m?' + запись 5 мин '+rub(b.cacheWrite5m):'')+(b.cacheWrite1h?' + запись 1 ч '+rub(b.cacheWrite1h):'')+' = '+rub(call.costRub)));
  }
  if(call.discussionAccumulatedRub!=null){
   item.append(node('strong','Накоплено в обсуждении: '+rub(call.discussionAccumulatedRub),'account-call-cumulative'));
  }else if(call.modelAccumulatedRub!=null){
   item.append(node('small','Накоплено по модели: '+rub(call.modelAccumulatedRub)));
  }
- if(call.rateUsed)item.append(node('small','Курс при запросе: '+rub(call.rateUsed)+' / '+call.rateCurrency+(call.historicalRateEstimated?' (пересчитано)':'')));
+ if(call.rateCurrency==='RUB')item.append(node('small','Рублёвый тариф DDTokens · оценка по журналу списаний'));
+ else if(call.rateUsed)item.append(node('small','Курс при запросе: '+rub(call.rateUsed)+' / '+call.rateCurrency+(call.historicalRateEstimated?' (пересчитано)':'')));
  else if(call.historicalRateEstimated)item.append(node('small','Историческая оценка по текущему курсу'));
  else if(call.costRub==null)item.append(node('small','Стоимость неизвестна: отсутствуют токены или курс'));
  return item;
@@ -192,7 +194,8 @@ function renderAccounting(info){
   row.append(node('strong',(agents.find(a=>a.id===p.provider)?.name||p.provider)+' · '+p.model));
   const values=node('div',null,'account-price-values');
   values.append(node('span','Вход: '+rub(p.input)),
-   node('span','Кеш: '+rub(p.cached)),node('span','Выход: '+rub(p.output)));
+   node('span','Кеш: '+rub(p.cached,'тариф неизвестен')),node('span','Выход: '+rub(p.output)));
+  if(p.cacheWrite5m!=null)values.append(node('span','Запись кеша 5 мин: '+rub(p.cacheWrite5m)),node('span','Запись кеша 1 ч: '+rub(p.cacheWrite1h)));
   row.append(values,node('small',p.source||''));prices.append(row);
  }
  box.append(prices);
@@ -241,7 +244,7 @@ function renderAccounting(info){
  box.append(groupList);
  const logTitle=node('div',null,'account-log-title');logTitle.append(node('h4','Все API-вызовы · цена каждого'));
  const filter=node('select',null,'account-filter');
- for(const [value,label]of [['','Все модели'],['openai','Luna'],['mistral','Mistral'],['grok','Grok']])filter.append(new Option(label,value));
+ for(const [value,label]of [['','Все модели'],['openai','Luna'],['mistral','Mistral'],['grok','Grok'],['claude','Claude'],['gemini','Gemini']])filter.append(new Option(label,value));
  logTitle.append(filter);box.append(logTitle);
  const logCount=node('p','Загружаем журнал…','hint');
  box.append(logCount);
@@ -272,7 +275,7 @@ function renderAccounting(info){
  exportButton.type='button';exportButton.onclick=async()=>{
   exportButton.disabled=true;exportButton.textContent='Готовим полный CSV…';
   try{
-   const keys=['at','provider','model','step','status','httpStatus','input','cached','output','reasoning','costRub','discussionAccumulatedRub','modelAccumulatedRub','durationMs','taskId','rateUsed','rateCurrency','rateDate','costSource'];
+   const keys=['at','provider','model','step','status','httpStatus','input','cached','cacheWrite5m','cacheWrite1h','output','reasoning','costRub','discussionAccumulatedRub','modelAccumulatedRub','durationMs','taskId','rateUsed','rateCurrency','rateDate','costSource'];
    const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
    const rows=[keys.join(';')];
    let next=0;
@@ -393,3 +396,4 @@ $('export').onclick=()=>{
  const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
 update();
+

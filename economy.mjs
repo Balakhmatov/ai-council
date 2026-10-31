@@ -7,6 +7,12 @@ const direct=Object.freeze({
  'grok/grok-4.7':{input:2,cached:0.50,output:6,currency:'USD',source:'xAI direct'}
 });
 const grokHeavyCny=Object.freeze({input:0.60,cached:0.15,output:1.80});
+// Effective RUB rates reconciled against the owner's DDTokens receipts.
+// Dynamic group prices are estimates, not USD converted at the CBR rate.
+const ddtokensRates=Object.freeze({
+ 'gemini/gemini-4-argon-high':Object.freeze({input:15.192,cached:null,output:75.96,source:'DDTokens Gemini(Antigravity)4 ×0.6 · receipts 2026-10-31'}),
+ 'claude/claude-sonnet-5-5':Object.freeze({input:25.32,cached:1.266,output:126.6,cacheWrite5m:31.65,cacheWrite1h:50.64,source:'DDTokens Claude(Fool) ×1 · receipts 2026-10-31'}),
+});
 function safeInt(value,fallback,max=100000){
  const n=Number(value);return Number.isSafeInteger(n)&&n>=0&&n<=max?n:fallback;
 }
@@ -18,6 +24,7 @@ function addMetrics(target,entry){
  target.inputTokens=(target.inputTokens||0)+entry.input;
  target.outputTokens=(target.outputTokens||0)+entry.output;
  target.cachedTokens=(target.cachedTokens||0)+entry.cached;
+ target.cacheWriteTokens=(target.cacheWriteTokens||0)+(entry.cacheWrite5m||0)+(entry.cacheWrite1h||0);
  target.reasoningTokens=(target.reasoningTokens||0)+entry.reasoning;
  if(entry.costRub!=null)target.costRub=(target.costRub||0)+entry.costRub;
  else target.unknownCostCalls=(target.unknownCostCalls||0)+1;
@@ -62,6 +69,9 @@ export function createEconomy({env,now=Date.now}){
  }
  function price(provider,model){
   const fx=exchangeRates();
+  const proxyBase=String(env[provider.toUpperCase()+'_BASE_URL']||'').replace(/\/$/,'');
+  const proxyRate=proxyBase==='https://ddtnew.com/v1'?ddtokensRates[provider+'/'+model]:null;
+  if(proxyRate)return {...proxyRate,currency:'RUB',estimated:true,rate:1,rateCurrency:'RUB',rateDate:'2026-10-31'};
   if(ddtokensProxy&&provider==='grok'&&model==='grok-4.7'){
    return {currency:'RUB',input:fx?grokHeavyCny.input*fx.cnyRub:null,
     cached:fx?grokHeavyCny.cached*fx.cnyRub:null,output:fx?grokHeavyCny.output*fx.cnyRub:null,
@@ -76,7 +86,7 @@ export function createEconomy({env,now=Date.now}){
    rateDate:fx?.rateDate??null};
  }
  function prices(models={}){
-  return ['openai','mistral','grok'].map(provider=>{
+  return ['openai','mistral','grok',...['claude','gemini'].filter(p=>models[p])].map(provider=>{
    const model=models[provider]||({openai:'gpt-6-luna',mistral:'mistral-large-2512',grok:'grok-4.7'}[provider]);
    return {provider,model,...(price(provider,model)||{currency:'RUB',input:null,cached:null,output:null,source:'Тариф не задан',estimated:true})};
   });
@@ -117,25 +127,34 @@ export function createEconomy({env,now=Date.now}){
  function logCall({taskId=null,provider,model,stage='intermediate',step='',status='ok',httpStatus=null,durationMs=null,usage=null}){
   const hasUsage=!!usage&&typeof usage==='object'&&(
    Number.isFinite(Number(usage.prompt_tokens??usage.input_tokens))||Number.isFinite(Number(usage.completion_tokens??usage.output_tokens)));
-  const input=safeInt(usage?.prompt_tokens??usage?.input_tokens,0,100000000);
+  const rawInput=safeInt(usage?.prompt_tokens??usage?.input_tokens,0,100000000);
   const output=safeInt(usage?.completion_tokens??usage?.output_tokens,0,100000000);
-  const cached=Math.min(input,safeInt(usage?.prompt_tokens_details?.cached_tokens??usage?.cache_read_input_tokens,0,100000000));
+  // Anthropic input_tokens excludes cache reads and writes; OpenAI prompt_tokens includes reads.
+  const anthropic=provider==='claude'&&usage?.prompt_tokens==null;
+  const cached=anthropic?safeInt(usage?.cache_read_input_tokens,0,100000000):Math.min(rawInput,safeInt(usage?.prompt_tokens_details?.cached_tokens,0,100000000));
+  const creation=anthropic?safeInt(usage?.cache_creation_input_tokens,0,100000000):0;
+  const cacheWrite1h=anthropic?safeInt(usage?.cache_creation?.ephemeral_1h_input_tokens,0,100000000):0;
+  const cacheWrite5m=anthropic?safeInt(usage?.cache_creation?.ephemeral_5m_input_tokens,Math.max(0,creation-cacheWrite1h),100000000):0;
+  const input=anthropic?rawInput+cached+cacheWrite5m+cacheWrite1h:rawInput;
   const reasoning=safeInt(usage?.completion_tokens_details?.reasoning_tokens,0,100000000);
   const p=price(provider,model);
-  const breakdown=hasUsage&&p&&p.rate!=null?{
-   input:(input-cached)*p.input/1000000,
-   cached:cached*p.cached/1000000,
-   output:output*p.output/1000000
+  const knownRates=p&&[[input-cached-cacheWrite5m-cacheWrite1h,p.input],[cached,p.cached],[output,p.output],[cacheWrite5m,p.cacheWrite5m],[cacheWrite1h,p.cacheWrite1h]].every(([tokens,value])=>!tokens||Number.isFinite(value));
+  const breakdown=hasUsage&&p&&p.rate!=null&&knownRates?{
+   input:(input-cached-cacheWrite5m-cacheWrite1h)*p.input/1000000,
+   cached:cached?(cached*p.cached/1000000):0,
+   output:output*p.output/1000000,
+   ...(cacheWrite5m?{cacheWrite5m:cacheWrite5m*p.cacheWrite5m/1000000}:{}),
+   ...(cacheWrite1h?{cacheWrite1h:cacheWrite1h*p.cacheWrite1h/1000000}:{})
   }:null;
-  const amount=breakdown?breakdown.input+breakdown.cached+breakdown.output:null;
+  const amount=breakdown?Object.values(breakdown).reduce((sum,value)=>sum+value,0):null;
   const entry={
    id:crypto.randomBytes(8).toString('hex'),taskId:typeof taskId==='string'&&/^[a-f0-9]{48}$/.test(taskId)?taskId:null,
    at:new Date(now()).toISOString(),provider,model,stage:typeof stage==='string'?stage.slice(0,32):'',
    step:typeof step==='string'?step.slice(0,48):'',status:status==='ok'?'ok':'error',
    httpStatus:Number.isInteger(httpStatus)?httpStatus:null,durationMs:safeInt(durationMs,0,3600000),
-   input,output,cached,reasoning,usageReported:hasUsage,
+   input,output,cached,cacheWrite5m,cacheWrite1h,reasoning,usageReported:hasUsage,
    costRub:amount,costBreakdownRub:breakdown,currency:'RUB',rateUsed:p?.rate??null,rateCurrency:p?.rateCurrency??null,
-   rateDate:p?.rateDate??null,unitPriceRub:p?{input:p.input,cached:p.cached,output:p.output}:null,
+   rateDate:p?.rateDate??null,unitPriceRub:p?{input:p.input,cached:p.cached,output:p.output,cacheWrite5m:p.cacheWrite5m??null,cacheWrite1h:p.cacheWrite1h??null}:null,
    costSource:amount!=null?p.source:'unknown'
   };
   const key=provider+'/'+model;
@@ -201,3 +220,4 @@ export function createEconomy({env,now=Date.now}){
  }
  return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates};
 }
+
