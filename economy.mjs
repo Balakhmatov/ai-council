@@ -11,7 +11,7 @@ function safeInt(value,fallback,max=100000){
  const n=Number(value);return Number.isSafeInteger(n)&&n>=0&&n<=max?n:fallback;
 }
 function rate(value){const n=Number(value);return value!==''&&value!=null&&Number.isFinite(n)&&n>=1&&n<=1000?n:null;}
-function emptyMetrics(){return {requests:0,errors:0,inputTokens:0,outputTokens:0,cachedTokens:0,reasoningTokens:0,knownCostUsd:0,estimatedCostRub:0,estimatedRubCalls:0,unknownCostCalls:0};}
+function emptyMetrics(){return {requests:0,errors:0,inputTokens:0,outputTokens:0,cachedTokens:0,reasoningTokens:0,costRub:0,unknownCostCalls:0};}
 function addMetrics(target,entry){
  target.requests=(target.requests||0)+1;
  if(entry.status!=='ok')target.errors=(target.errors||0)+1;
@@ -19,8 +19,7 @@ function addMetrics(target,entry){
  target.outputTokens=(target.outputTokens||0)+entry.output;
  target.cachedTokens=(target.cachedTokens||0)+entry.cached;
  target.reasoningTokens=(target.reasoningTokens||0)+entry.reasoning;
- if(entry.costUsd!=null)target.knownCostUsd=(target.knownCostUsd||0)+entry.costUsd;
- else if(entry.estimatedCostRub!=null){target.estimatedCostRub=(target.estimatedCostRub||0)+entry.estimatedCostRub;target.estimatedRubCalls=(target.estimatedRubCalls||0)+1;}
+ if(entry.costRub!=null)target.costRub=(target.costRub||0)+entry.costRub;
  else target.unknownCostCalls=(target.unknownCostCalls||0)+1;
 }
 export function createEconomy({env,now=Date.now}){
@@ -28,14 +27,14 @@ export function createEconomy({env,now=Date.now}){
  const freeTasks=safeInt(env.FREE_START_TASKS,3);
  const ddtokensProxy=(env.XAI_BASE_URL||'').replace(/\/$/,'')==='https://ddtnew.com/v1';
  const ddtokensRubPerCny=rate(env.DDTOKENS_RUB_PER_CNY)||11.1;
- let state={allowances:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],settings:{usdRubRate:rate(env.USD_RUB_RATE)}};
+ let state={allowances:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],fx:null};
  if(file){try{
   const stored=JSON.parse(readFileSync(file,'utf8'));
   if(stored&&typeof stored==='object'&&stored.totals&&stored.byModel&&Array.isArray(stored.recent)&&(stored.allowances||stored.wallets)){
    state={...state,...stored};
    if(!state.allowances){state.allowances=Object.fromEntries(Object.entries(state.wallets||{}).map(([id,w])=>[id,{remainingFreeTasks:w.balance,createdAt:w.createdAt}]));delete state.wallets;}
    if(!Array.isArray(state.discussions))state.discussions=[];
-   if(!state.settings)state.settings={usdRubRate:rate(env.USD_RUB_RATE)};
+   if(!state.fx)state.fx=null;
   }
  }catch(e){if(e.code!=='ENOENT')throw Error('Accounting state unreadable');}}
  const tasks=new Map();
@@ -49,24 +48,31 @@ export function createEconomy({env,now=Date.now}){
  function access(identity,isAdmin=false){
   return {remainingFreeTasks:isAdmin?null:allowance(identity).remainingFreeTasks,freeStartingTasks:freeTasks,admin:isAdmin,paidPlansAvailable:false};
  }
+ function exchangeRates(){return state.fx||null;}
+ function updateExchangeRates(rates){
+  if(!rates||!Number.isFinite(rates.usdRub)||!Number.isFinite(rates.cnyRub))throw Error('Некорректный курс');
+  state.fx=rates;save();return rates;
+ }
  function price(provider,model){
+  const fx=exchangeRates();
   if(ddtokensProxy&&provider==='grok'&&model==='grok-4.7'){
-   return {currency:'RUB',input:grokHeavyCny.input*ddtokensRubPerCny,
-    cached:grokHeavyCny.cached*ddtokensRubPerCny,output:grokHeavyCny.output*ddtokensRubPerCny,
-    source:'DDTokens Grok heavy ×0.3',estimated:true};
+   return {currency:'RUB',input:fx?grokHeavyCny.input*fx.cnyRub:null,
+    cached:fx?grokHeavyCny.cached*fx.cnyRub:null,output:fx?grokHeavyCny.output*fx.cnyRub:null,
+    source:'DDTokens Grok heavy ×0.3 · CBR CNY',estimated:true,rate:fx?.cnyRub??null,rateCurrency:'CNY',
+    rateDate:fx?.rateDate??null};
   }
   const p=direct[provider+'/'+model];
-  return p?{...p,estimated:true}:null;
+  if(!p)return null;
+  return {currency:'RUB',input:fx?p.input*fx.usdRub:null,
+   cached:fx?p.cached*fx.usdRub:null,output:fx?p.output*fx.usdRub:null,
+   source:p.source+' · CBR USD',estimated:true,rate:fx?.usdRub??null,rateCurrency:'USD',
+   rateDate:fx?.rateDate??null};
  }
  function prices(models={}){
   return ['openai','mistral','grok'].map(provider=>{
    const model=models[provider]||({openai:'gpt-6-luna',mistral:'mistral-large-2512',grok:'grok-4.7'}[provider]);
-   return {provider,model,...(price(provider,model)||{currency:null,input:null,cached:null,output:null,source:'Тариф не задан',estimated:true})};
+   return {provider,model,...(price(provider,model)||{currency:'RUB',input:null,cached:null,output:null,source:'Тариф не задан',estimated:true})};
   });
- }
- function setUsdRubRate(value){
-  const r=rate(value);if(!r)throw Error('Укажите курс от 1 до 1000 ₽ за доллар');
-  state.settings.usdRubRate=r;save();return r;
  }
  function start(identity,isAdmin,params,available){
   const models=params?.participants,rounds=Number(params?.rounds),mode=params?.mode;
@@ -109,15 +115,15 @@ export function createEconomy({env,now=Date.now}){
   const cached=Math.min(input,safeInt(usage?.prompt_tokens_details?.cached_tokens??usage?.cache_read_input_tokens,0,100000000));
   const reasoning=safeInt(usage?.completion_tokens_details?.reasoning_tokens,0,100000000);
   const p=price(provider,model);
-  const amount=hasUsage&&p?(Math.max(0,input-cached)*p.input+cached*p.cached+output*p.output)/1000000:null;
+  const amount=hasUsage&&p&&p.rate!=null?(Math.max(0,input-cached)*p.input+cached*p.cached+output*p.output)/1000000:null;
   const entry={
    id:crypto.randomBytes(8).toString('hex'),taskId:typeof taskId==='string'&&/^[a-f0-9]{48}$/.test(taskId)?taskId:null,
    at:new Date(now()).toISOString(),provider,model,stage:typeof stage==='string'?stage.slice(0,32):'',
    step:typeof step==='string'?step.slice(0,48):'',status:status==='ok'?'ok':'error',
    httpStatus:Number.isInteger(httpStatus)?httpStatus:null,durationMs:safeInt(durationMs,0,3600000),
    input,output,cached,reasoning,usageReported:hasUsage,
-   costUsd:p?.currency==='USD'?amount:null,estimatedCostRub:p?.currency==='RUB'?amount:null,
-   currency:p?.currency||null,unitPrice:p?{input:p.input,cached:p.cached,output:p.output,currency:p.currency}:null,
+   costRub:amount,currency:'RUB',rateUsed:p?.rate??null,rateCurrency:p?.rateCurrency??null,
+   rateDate:p?.rateDate??null,unitPriceRub:p?{input:p.input,cached:p.cached,output:p.output}:null,
    costSource:amount!=null?p.source:'unknown'
   };
   addMetrics(state.totals,entry);
@@ -133,11 +139,26 @@ export function createEconomy({env,now=Date.now}){
  }
  function record(provider,model,usage,context={}){return logCall({provider,model,usage,...context});}
  function summary(models={}){
-  const usdRubRate=rate(state.settings?.usdRubRate);
-  return {totals:state.totals,byModel:state.byModel,recent:state.recent.slice(-180).reverse(),
-   discussions:state.discussions.slice(-60).reverse().map(x=>({...x,status:x.status==='running'&&now()-Date.parse(x.startedAt)>7200000?'interrupted':x.status})),
+  const fx=exchangeRates();
+  const legacyTotals=state.totals||{};
+  const convert=(metrics)=>{
+   const usd=Number(metrics.knownCostUsd||0);
+   const rub=Number(metrics.estimatedCostRub||0);
+   return {...metrics,costRub:Number(metrics.costRub||0)+rub+(fx?.usdRub?usd*fx.usdRub:0),
+    legacyUnconvertedUsd:fx?.usdRub?0:usd,
+    unknownCostCalls:Number(metrics.unknownCostCalls||0)};
+  };
+  return {totals:convert(legacyTotals),byModel:Object.fromEntries(Object.entries(state.byModel).map(([k,v])=>[k,convert(v)])),
+   recent:state.recent.slice(-200).reverse().map(x=>({
+    ...x,costRub:x.costRub??(x.estimatedCostRub??(x.costUsd!=null&&fx?x.costUsd*fx.usdRub:null)),
+    historicalRateEstimated:x.costRub==null&&(x.costUsd!=null||x.estimatedCostRub!=null)
+   })),
+   discussions:state.discussions.slice(-80).reverse().map(x=>({...convert(x),
+    status:x.status==='running'&&now()-Date.parse(x.startedAt)>7200000?'interrupted':x.status,
+    byModel:Object.fromEntries(Object.entries(x.byModel||{}).map(([k,v])=>[k,convert(v)]))})),
    freeAccounts:Object.keys(state.allowances).length,
-   prices:prices(models),usdRubRate,ddtokensGrokPricing:ddtokensProxy?{rubPerCny:ddtokensRubPerCny,group:'Grok(heavy) ×0.3',estimated:true}:null};
+   prices:prices(models),fx:fx?{...fx,stale:now()-Date.parse(fx.fetchedAt)>48*3600000}:null,
+   legacyCurrencyNotice:Number(legacyTotals.knownCostUsd||0)>0};
  }
- return {access,start,checkCall,success,finish,record,logCall,summary,prices,setUsdRubRate};
+ return {access,start,checkCall,success,finish,record,logCall,summary,prices,exchangeRates,updateExchangeRates};
 }
