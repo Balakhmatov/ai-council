@@ -52,7 +52,8 @@ def stamp_revision(revision):
     STAMP.parent.mkdir(parents=True, exist_ok=True)
     temporary = STAMP.with_suffix('.tmp')
     temporary.write_text(revision + '\n', encoding='utf-8')
-    os.chmod(temporary, 0o600)
+    # This public commit identifier must be readable by the unprivileged API.
+    os.chmod(temporary, 0o644)
     os.replace(temporary, STAMP)
 
 
@@ -84,6 +85,8 @@ def main():
         remote = git('rev-parse', 'FETCH_HEAD')
         installed = STAMP.read_text(encoding='utf-8').strip() if STAMP.exists() else ''
         if previous == remote and installed == previous:
+            # Repair markers created by the previous root-only permissions.
+            os.chmod(STAMP, 0o644)
             return
         if FAILED.exists() and FAILED.read_text(encoding='utf-8').strip() == remote:
             print('Skipping previously failed Quorum revision', remote[:10], flush=True)
