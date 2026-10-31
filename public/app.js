@@ -205,7 +205,7 @@ async function ensureSession(){
 function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц, до 3 моделей, без истории.';
- $('historySection').hidden=true;
+ $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
 }
 async function refreshAccess(){
@@ -250,10 +250,12 @@ function renderPricing(){
 async function refreshHistory(reset=false){
  if(!access)return;
  if(historyBusy&&!reset)return;
+ const accountRef=access.accountRef;
  historyBusy=true;
  try{
   const offset=reset?0:historyOffset;
   const data=await api('/api/history?limit=20&offset='+offset,{token:await ensureSession()});
+  if(!access||access.accountRef!==accountRef)return;
   if(reset){historyOffset=0;$('historyList').replaceChildren();}
   historyTotal=data.total;
   for(const item of data.items){
