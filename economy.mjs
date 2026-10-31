@@ -28,12 +28,14 @@ export function createEconomy({env,now=Date.now}){
   if(!isAdmin){wallet(identity).balance-=taskPrice;save();}
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+1+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,successful:0,createdAt:now(),isAdmin});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin});
   return {taskId:id,maxCalls:limit,coins:isAdmin?null:wallet(identity).balance};
  }
- function checkCall(id,identity,provider){
+ function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
   if(!task||task.identity!==identity||!task.allowed.has(provider)||task.calls>=task.maxCalls||now()-task.createdAt>7200000)return false;
+  if(stage==='final'&&task.finalCalls>=1)return false;
+  if(stage==='final')task.finalCalls++;
   task.calls++;return true;
  }
  function success(id){const task=tasks.get(id);if(task)task.successful++;}
