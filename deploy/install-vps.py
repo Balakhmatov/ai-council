@@ -19,7 +19,8 @@ const source=fs.existsSync(target)?target:'/root/ai-council/.env.private';const 
 // Migrate the existing server-pinned OpenAI model without touching credentials or custom newer models.
 if(!config.OPENAI_MODEL||/^gpt-(?:4|5)(?:[.-]|$)/.test(config.OPENAI_MODEL))config.OPENAI_MODEL='gpt-6-luna';
 if(!config.MISTRAL_MODEL||config.MISTRAL_MODEL==='mistral-large-4'||config.MISTRAL_MODEL==='mistral-large-latest'||config.MISTRAL_MODEL==='mistral-small-latest')config.MISTRAL_MODEL='mistral-large-2512';
-config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/quorum/accounting.json';config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
+config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/quorum/accounting.json';
+config.FREE_START_TASKS=config.FREE_START_TASKS||'3';delete config.FREE_START_COINS;delete config.TASK_COIN_COST;config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';
 config.TELEGRAM_WEBHOOK_SECRET=config.TELEGRAM_WEBHOOK_SECRET||crypto.randomBytes(32).toString('hex');
 config.ALLOWED_ORIGINS=[...new Set((config.ALLOWED_ORIGINS||'').split(',').concat(['https://cityai.site','https://stage.cityai.site','https://balakhmatov.github.io']))].filter(Boolean).join(',');
@@ -55,9 +56,16 @@ except:
  if changed:nginx.write_text(before)
  raise
 shutil.copy2(src/'deploy/quorum-api.service','/etc/systemd/system/quorum-api.service')
+shutil.copy2(src/'deploy/quorum-deploy.service','/etc/systemd/system/quorum-deploy.service')
+shutil.copy2(src/'deploy/quorum-deploy.timer','/etc/systemd/system/quorum-deploy.timer')
 subprocess.run(['systemctl','daemon-reload'],check=True)
+subprocess.run(['systemctl','enable','--now','quorum-deploy.timer'],check=True)
 subprocess.run(['systemctl','enable','quorum-api.service'],check=True)
 subprocess.run(['systemctl','restart','quorum-api.service'],check=True)
 subprocess.run(['systemctl','reload','nginx'],check=True)
 subprocess.run(['systemctl','is-active','quorum-api.service'],check=True)
-print('Quorum installed at https://cityai.site/quorum/; private credentials not displayed.')
+# Mark the installed revision so the timer will not needlessly restart the service.
+revision=subprocess.run(['git','rev-parse','HEAD'],cwd=src,capture_output=True,text=True,check=True).stdout.strip()
+stamp=Path('/var/lib/quorum/deployed-revision')
+stamp.write_text(revision+'\n');os.chmod(stamp,0o600)
+print('Quorum installed at https://cityai.site/quorum/; auto-deploy timer enabled; private credentials not displayed.')

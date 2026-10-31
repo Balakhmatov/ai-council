@@ -1,0 +1,11 @@
+[Unit]
+Description=Check GitHub main and update Quorum only
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/root/ai-council
+ExecStart=/usr/bin/python3 /root/ai-council/deploy/auto-deploy.py
+TimeoutStartSec=240

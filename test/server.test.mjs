@@ -39,16 +39,16 @@ test('Luna uses Chat Completions reasoning-compatible parameters',async()=>{
  }finally{await t.close();}
 });
 
-test('public users require a charged task before provider calls; failed task is refunded',async()=>{
- const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-2512',FREE_START_COINS:'2'});
+test('public users require a tracked task before provider calls; failed task is refunded',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-2512',FREE_START_TASKS:'2'});
  try{
   const session=(await t.send('/api/session',{})).data;
   assert.equal((await t.send('/api/chat',body,session.token)).status,403);
-  assert.equal((await t.send('/api/wallet',undefined,session.token)).data.coins,2);
+  assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,2);
   const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'consensus'},session.token)).data;
-  assert.equal(task.coins,1);
+  assert.equal(task.remainingFreeTasks,1);
   assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},session.token)).data.refunded,true);
-  assert.equal((await t.send('/api/wallet',undefined,session.token)).data.coins,2);
+  assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,2);
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},session.token)).status,403);
  }finally{await t.close();}
 });
