@@ -46,3 +46,35 @@ test('official direct API rates yield detailed tokens and unknown proxy costs st
  assert.equal(info.totals.requests,3);
  assert.equal(info.byModel['grok/proxy-model'].unknownCostCalls,1);
 });
+
+test('DDTokens Grok heavy uses screenshot-calibrated RUB rates, not official USD prices',()=>{
+ const economy=createEconomy({env:{XAI_BASE_URL:'https://ddtnew.com/v1'}});
+ economy.record('grok','grok-4.7',{prompt_tokens:7835,completion_tokens:828});
+ const info=economy.summary();
+ const entry=info.recent[0];
+ const estimated=(7835*0.6+828*1.8)*11.1/1e6;
+ assert.equal(entry.costUsd,null);
+ assert.ok(Math.abs(entry.estimatedCostRub-estimated)<1e-10);
+ assert.ok(Math.abs(entry.estimatedCostRub-0.0692)<0.001);
+ assert.equal(info.totals.knownCostUsd,0);
+ assert.equal(info.totals.unknownCostCalls,0);
+ assert.equal(info.totals.estimatedRubCalls,1);
+ assert.equal(info.byModel['grok/grok-4.7'].estimatedRubCalls,1);
+ assert.equal(info.ddtokensGrokPricing.group,'Grok(heavy) ×0.3');
+});
+test('DDTokens honors cached input and configurable approximate RUB conversion',()=>{
+ const economy=createEconomy({env:{XAI_BASE_URL:'https://ddtnew.com/v1',DDTOKENS_RUB_PER_CNY:'10'}});
+ economy.record('grok','grok-4.7',{prompt_tokens:10000,completion_tokens:1000,prompt_tokens_details:{cached_tokens:8000}});
+ const entry=economy.summary().recent[0];
+ assert.equal(entry.estimatedCostRub,(2000*.6+8000*.15+1000*1.8)*10/1e6);
+});
+test('official Grok price used for direct xAI; unknown token use not falsely priced',()=>{
+ const direct=createEconomy({env:{XAI_BASE_URL:'https://api.x.ai/v1'}});
+ direct.record('grok','grok-4.7',{prompt_tokens:10000,completion_tokens:1000});
+ assert.equal(direct.summary().recent[0].costUsd,(10000*2+1000*6)/1e6);
+ assert.equal(direct.summary().totals.estimatedCostRub,0);
+ const proxy=createEconomy({env:{XAI_BASE_URL:'https://ddtnew.com/v1'}});
+ proxy.record('grok','grok-4.7',undefined);
+ assert.equal(proxy.summary().recent[0].estimatedCostRub,null);
+ assert.equal(proxy.summary().totals.unknownCostCalls,1);
+});
