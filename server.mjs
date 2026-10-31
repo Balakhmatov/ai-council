@@ -32,7 +32,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const issuance=new Map(),accountActive=new Map();let active=0,authFailures=new Map();
  let botUsername='';
  const botName=async()=>{if(!/^[A-Za-z0-9_]{5,32}$/.test(botUsername)){const me=await telegramApi(env.TELEGRAM_BOT_TOKEN,'getMe',{},fetchImpl);if(!/^[A-Za-z0-9_]{5,32}$/.test(me?.username))throw Error('Telegram bot unavailable');botUsername=me.username;}return botUsername;};
- const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||300),accountLimit=Number(env.ACCOUNT_DAILY_CALL_LIMIT||60);
+ const dailyLimit=Number(env.PUBLIC_DAILY_LIMIT||3000),accountLimit=Number(env.ACCOUNT_DAILY_CALL_LIMIT||60),paidAccountLimit=Number(env.PAID_DAILY_CALL_LIMIT||700);
  let ledger={day:'',total:0,accounts:{}};
  if(env.QUOTA_FILE){try{ledger=JSON.parse(readFileSync(env.QUOTA_FILE,'utf8'));}catch(e){if(e.code!=='ENOENT')throw Error('Quota state unreadable');}}
  ledger.accounts=ledger.accounts||{};delete ledger.ips;
@@ -113,7 +113,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     await fx.refresh();
     resetDay();
     return json(200,{providers:Object.keys(routes).map(id=>({id,configured:!!models[id],model:models[id]||null})),
-      usage:{requestsToday:ledger.total,dailyLimit,perAccountDailyLimit:accountLimit},accounting:economy.summary(models)});
+      usage:{requestsToday:ledger.total,dailyLimit,perAccountDailyLimit:accountLimit,paidAccountDailyLimit:paidAccountLimit},accounting:economy.summary(models)});
 
    }
    if(path==='/api/session')return fail(401,'Войдите через Telegram или email.');
@@ -187,7 +187,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
    if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
-   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=accountLimit)return fail(429,'Лимит обсуждений на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
+   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    const callStarted=now();let upstreamLogged=false;
    const log=(model,status,usage=null,httpStatus=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:body.step,status,usage,httpStatus,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};
