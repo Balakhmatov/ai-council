@@ -93,7 +93,7 @@ export function createEconomy({env,now=Date.now}){
    freeStartingTasks:limitFor(identity),
    period:'month',resetTimezone:'Europe/Moscow',
    maxModels:isAdmin||sub?7:3,
-   historyEnabled:isAdmin||!!sub,
+   historyEnabled:!!identity&&(isAdmin||!!sub),
    authenticated:true,admin:isAdmin,
    paidPlansAvailable:false,
    catalog:BILLING_CATALOG
@@ -161,13 +161,13 @@ export function createEconomy({env,now=Date.now}){
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+1+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,historyEnabled:isAdmin||!!sub});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
   if(state.discussions.length>300)state.discussions.splice(0,state.discussions.length-300);
   save();
-  return {taskId:id,maxCalls:limit,remainingFreeTasks:isAdmin?null:access(identity).remainingFreeTasks,historyEnabled:isAdmin||!!sub};
+  return {taskId:id,maxCalls:limit,remainingFreeTasks:isAdmin?null:access(identity).remainingFreeTasks,historyEnabled:!!identity&&(isAdmin||!!sub)};
  }
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
