@@ -14,7 +14,7 @@ const agents=[
 ];
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null,telegramLogin=null;
-let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,wallet=null;
+let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null;
 const chosen=new Set(['openai','grok','mistral']);
 
@@ -57,7 +57,7 @@ function update(){
  if(preferred)$('judge').value=preferred;
  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
  $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · итог подготовит '+(agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель');
- const enough=wallet?.admin||wallet?.coins>=wallet?.costPerTask;
+ const enough=access?.admin||access?.remainingFreeTasks>0;
  $('start').disabled=running||chosen.size<2||(!connected&&!$('demo').checked)||(!enough&&!$('demo').checked);
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=$('demo').checked||available.has(a.id),input=label.querySelector('input');
@@ -91,10 +91,10 @@ async function ensureSession(){
  if(telegramContext){publicSession=await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}});return publicSession.token;}
  publicSession=await api('/api/session',{method:'POST',body:{}});return publicSession.token;
 }
-async function refreshWallet(){
- const token=await ensureSession();wallet=await api('/api/wallet',{token});
- $('walletChip').hidden=false;$('walletChip').textContent=wallet.admin?'Монеты: без лимита':'Монеты: '+wallet.coins;
- $('walletInfo').textContent=wallet.admin?'Администратор: задания без лимита.':'Доступно '+wallet.coins+' монет. Задание — '+wallet.costPerTask+' монета.';
+async function refreshAccess(){
+ const token=await ensureSession();access=await api('/api/access',{token});
+ $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Бесплатно: '+access.remainingFreeTasks;
+ $('accessInfo').textContent=access.admin?'Администратор: задания без лимита.':'Осталось бесплатных заданий: '+access.remainingFreeTasks+'.';
  update();
 }
 async function loadConfig(){
@@ -103,7 +103,7 @@ async function loadConfig(){
   available=new Set(config.providers);connected=true;
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
-  await refreshWallet();
+  await refreshAccess();
   $('status').textContent=available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
@@ -136,17 +136,17 @@ async function showAdmin(){
 }
 $('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
 $('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';
- try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshWallet();}
+ try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshAccess();}
  catch(e){adminToken='';$('adminStatus').textContent=e.message;}
 };
 $('adminLogout').onclick=()=>{
  api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});
- telegramIdentity=null;publicSession=null;adminToken='';wallet=null;sessionStorage.removeItem('quorum-admin');
+ telegramIdentity=null;publicSession=null;adminToken='';access=null;sessionStorage.removeItem('quorum-admin');
  $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('demoControls').hidden=true;
- $('settings').close();history.replaceState(null,'',location.pathname);refreshWallet().catch(()=>{});
+ $('settings').close();history.replaceState(null,'',location.pathname);refreshAccess().catch(()=>{});
 };
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
-if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshWallet().catch(()=>{});});
+if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshAccess().catch(()=>{});});
 $('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
 $('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
@@ -214,7 +214,7 @@ $('start').onclick=async()=>{
  }finally{
   if(activeTask){
    try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
-   activeTask=null;refreshWallet().catch(()=>{});
+   activeTask=null;refreshAccess().catch(()=>{});
   }
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
   document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
@@ -246,17 +246,17 @@ async function showAdmin(){
 }
 $('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
 $('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';
- try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshWallet();}
+ try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshAccess();}
  catch(e){adminToken='';$('adminStatus').textContent=e.message;}
 };
 $('adminLogout').onclick=()=>{
  api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});
- telegramIdentity=null;publicSession=null;adminToken='';wallet=null;sessionStorage.removeItem('quorum-admin');
+ telegramIdentity=null;publicSession=null;adminToken='';access=null;sessionStorage.removeItem('quorum-admin');
  $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('demoControls').hidden=true;
- $('settings').close();history.replaceState(null,'',location.pathname);refreshWallet().catch(()=>{});
+ $('settings').close();history.replaceState(null,'',location.pathname);refreshAccess().catch(()=>{});
 };
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
-if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshWallet().catch(()=>{});});
+if(adminToken)showAdmin().catch(()=>{adminToken='';sessionStorage.removeItem('quorum-admin');refreshAccess().catch(()=>{});});
 $('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
 $('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
@@ -324,7 +324,7 @@ $('start').onclick=async()=>{
  }finally{
   if(activeTask){
    try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{taskId:activeTask.taskId}});}catch{}
-   activeTask=null;refreshWallet().catch(()=>{});
+   activeTask=null;refreshAccess().catch(()=>{});
   }
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
   document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
