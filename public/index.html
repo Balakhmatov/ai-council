@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=password38">
-<link rel="stylesheet" href="./uiux32.css?v=password38">
+<link rel="stylesheet" href="./style.css?v=copy-stop41">
+<link rel="stylesheet" href="./uiux32.css?v=copy-stop41">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -36,10 +36,10 @@
 <label>Объём промежуточных ответов<select id="length"><option>250</option><option selected>500</option><option>900</option></select></label></div>
 </details>
 <div class="launch" id="launchBar"><label class="discussion-choice"><input id="showDiscussion" type="checkbox"> Показывать обсуждение моделей</label>
-<button class="primary" id="start" type="button">Получить результат</button><button id="stop" hidden type="button">Остановить</button></div>
+<button class="primary" id="start" type="button">Получить результат</button><div id="stopAction" class="stop-action" hidden><button id="stop" type="button">Остановить задачу</button><small>При остановке квота не возвращается.</small></div></div>
 <p id="status" role="status">Выберите направление и поставьте задачу.</p>
 <div id="progress" class="progress" hidden aria-live="polite"></div>
-<div class="discussion-title"><h2>Результат</h2><button class="quiet" id="export" disabled type="button">Скачать .md</button></div>
+<div class="discussion-title"><h2>Результат</h2><div class="result-actions"><button class="copy-action copy-all" id="copyAll" disabled type="button" title="Скопировать задачу, все раунды и итог" aria-label="Скопировать всю задачу">Скопировать всё</button><button class="quiet" id="export" disabled type="button">Скачать .md</button></div></div>
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 <section id="historySection" class="history-section" hidden>
  <div class="section-title spaced"><h2>История задач</h2><span id="historyCount" class="step-note"></span></div>
@@ -92,7 +92,7 @@
  <p class="hint pricing-payment-note">Оплата пока не подключена. Тарифы доступны для ознакомления.</p>
 </dialog>
 <dialog id="historyDialog" class="history-dialog">
- <div class="section-title"><h2>Сохранённое обсуждение</h2><button id="historyClose" class="quiet" type="button" aria-label="Закрыть">Закрыть ✕</button></div>
+ <div class="section-title"><h2>Сохранённое обсуждение</h2><div class="result-actions"><button id="historyCopyAll" class="copy-action copy-all" type="button" aria-label="Скопировать сохранённую задачу полностью">Скопировать всё</button><button id="historyClose" class="quiet" type="button" aria-label="Закрыть">Закрыть ✕</button></div></div>
  <div id="historyBody" class="history-detail"></div>
 </dialog>
 <dialog id="emailDialog" class="auth-dialog"><form method="dialog"><div class="section-title"><h2>Войти в Кворум</h2><button aria-label="Закрыть">✕</button></div></form>
@@ -144,4 +144,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=role-refresh40"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=copy-stop41"></script></body></html>
