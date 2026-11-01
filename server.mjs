@@ -33,8 +33,12 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  // Owner privileges are granted only for a server-configured identity that
  // successfully authenticated through Telegram or a verified email account.
  const adminTelegramIds=telegramAdminIds(env);
- const adminEmails=new Set(String(env.QUORUM_ADMIN_EMAILS||'')
-  .split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@[^\s@]+\.[^\s@]+$/.test(x)));
+ // Use the existing verified owner address even if the VPS env file was
+ // created before QUORUM_ADMIN_EMAILS was introduced. Only a real, authenticated
+ // email session can match this; a client-supplied header cannot grant ownership.
+ const adminEmails=new Set([...String(env.QUORUM_ADMIN_EMAILS||'').split(/[\s,;]+/),
+   'ilya.balakhmatov@gmail.com']
+  .map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@[^\s@]+\.[^\s@]+$/.test(x)));
  const isOwnerAccount=value=>!!(value&&(
   (value.telegramUser&&adminTelegramIds.has(String(value.telegramUser.id)))||
   (value.emailUser&&adminEmails.has(String(value.emailUser.email||'').trim().toLowerCase()))
