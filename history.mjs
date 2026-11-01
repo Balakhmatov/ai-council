@@ -46,7 +46,7 @@ export function createHistoryStore({file='',now=Date.now}={}){
    const value=String(source.value||''),at=value.toLocaleLowerCase('ru-RU').indexOf(needle);
    if(at<0)continue;
    const start=Math.max(0,at-58),end=Math.min(value.length,at+needle.length+100);
-   return {excerpt:(start?'…':'')+value.slice(start,end).replace(/\\s+/g,' ').trim()+(end<value.length?'…':''),matchLabel:source.label};
+   return {excerpt:(start?'…':'')+value.slice(start,end).replace(/\s+/g,' ').trim()+(end<value.length?'…':''),matchLabel:source.label};
   }
   return {excerpt:'',matchLabel:''};
  }
