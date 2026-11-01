@@ -315,3 +315,14 @@ textarea::placeholder{color:#7d7286!important}
  .pricing-dialog .pricing-offers{grid-template-columns:minmax(0,1fr)}
  .pricing-dialog .pricing-offer-pack:last-child{grid-column:auto}
 }
+
+/* First-time email verification → persistent password, or direct password login. */
+.auth-password-form{display:flex;flex-direction:column;gap:12px}
+.auth-password-form label{display:block;margin-top:9px;font-size:12px;font-weight:650}
+.auth-password-form input{display:block;width:100%;box-sizing:border-box;margin-top:7px;font-size:16px;min-height:46px}
+.auth-password-form .primary{margin-top:9px}
+.auth-password-form .auth-text-action{border:none;background:transparent;text-align:center;color:#7653af;font-size:12px;font-weight:650;margin:0;min-height:39px}
+.auth-password-form .auth-text-action:hover:not(:disabled){background:transparent;text-decoration:underline}
+#emailRecovery .hint,#emailPasswordSetup .hint{font-size:12px;line-height:1.6;margin:12px 0}
+#emailRecovery form{margin-top:14px}
+#emailRecovery input{font-size:16px;min-height:46px}
