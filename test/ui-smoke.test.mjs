@@ -182,7 +182,7 @@ test('round and named response length selectors appear under task input, separat
  assert.match(app,/wordsForPreset\(\$\('length'\)\.value\)/);
  assert.match(app,/limitIntermediate\(result.text/);
  assert.match(app,/maxWords:wordsForPreset/);
- assert.match(app,/renderMarkdown\(m.text\)/);
+ assert.match(app,/renderMarkdown\(text\)/);
  assert.match(app,/Первый раунд/);
 });
 test('history viewer is fullscreen and searchable on all stored tasks, using server-side API',()=>{
