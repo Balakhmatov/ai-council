@@ -430,3 +430,47 @@ test('obsolete owner email in old VPS environment is not an administrator',async
   assert.equal((await t.send('/api/access',undefined,correct.token)).data.maxModels,7);
  }finally{await t.close();}
 });
+
+test('explicit stop via API does not refund a free task without any successful model answer',async()=>{
+ const t=await setup({ACCOUNT_MONTHLY_TASKS:'2',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
+ try{
+  const session=(await t.login('stopper@example.com')).data;
+  const original=(await t.send('/api/access',undefined,session.token)).data;
+  assert.equal(original.remainingFreeTasks,2);
+  const start=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},session.token)).data;
+  assert.equal(start.remainingFreeTasks,1);
+  const done=await t.send('/api/task/finish',{taskId:start.taskId,cancelled:true},session.token);
+  assert.equal(done.status,200);
+  assert.equal(done.data.cancelled,true);
+  assert.equal(done.data.refunded,false);
+  assert.equal(done.data.remainingFreeTasks,1);
+  assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,1);
+  assert.equal((await t.send('/api/task/finish',{taskId:start.taskId,cancelled:true},session.token)).status,404);
+  const log=(await t.send('/api/admin',undefined,'admin-test-only')).data;
+  assert.equal(log.accounting.discussions.find(x=>x.taskId===start.taskId).status,'cancelled');
+ }finally{await t.close();}
+});
+test('stop with partial successful result remains charged; a non-stopped empty task still refunds',async()=>{
+ const t=await setup({ACCOUNT_MONTHLY_TASKS:'3',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
+ try{
+  const user=(await t.login('interrupted@example.com')).data;
+  const args={participants:['openai','mistral'],rounds:2,mode:'judge'};
+  const started=(await t.send('/api/task/start',args,user.token)).data;
+  assert.equal((await t.send('/api/chat',{...body,taskId:started.taskId},user.token)).status,200);
+  const stopped=(await t.send('/api/task/finish',{taskId:started.taskId,cancelled:true},user.token)).data;
+  assert.equal(stopped.cancelled,true);assert.equal(stopped.refunded,false);
+  const next=(await t.send('/api/task/start',args,user.token)).data;
+  const failed=(await t.send('/api/task/finish',{taskId:next.taskId},user.token)).data;
+  assert.equal(failed.refunded,true);
+  assert.equal((await t.send('/api/access',undefined,user.token)).data.remainingFreeTasks,2);
+ }finally{await t.close();}
+});
+test('transcript export formatter module is served publicly as JavaScript',async()=>{
+ const t=await setup();
+ try{
+  const result=await t.asset('/transcript.js');
+  assert.equal(result.status,200);
+  assert.match(result.type,/javascript/);
+  assert.match(result.body,/export function formatTranscript/);
+ }finally{await t.close();}
+});
