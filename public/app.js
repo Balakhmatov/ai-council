@@ -517,7 +517,7 @@ function renderAuditCall(call){
  const meta=node('div',null,'account-call-line');
  meta.append(
   node('span',new Date(call.at).toLocaleString('ru-RU')),
-  node('span',call.status==='error'?'Ошибка '+(call.httpStatus||''):call.step||call.stage||'Ответ'),
+  node('span',call.status==='error'?'Ошибка '+(call.httpStatus||'')+(call.errorType?' · '+call.errorType:''):call.step||call.stage||'Ответ'),
   node('span',call.durationMs!=null?(call.durationMs/1000).toFixed(1)+' сек':'—')
  );
  const counts=node('div',null,'account-call-tokens');
@@ -525,6 +525,7 @@ function renderAuditCall(call){
   node('span','Выход '+num(call.output)),node('span','Размышления '+num(call.reasoning)));
  if(call.cacheWrite5m||call.cacheWrite1h)counts.append(node('span','Запись кеша: 5 мин '+num(call.cacheWrite5m)+' / 1 ч '+num(call.cacheWrite1h)));
  item.append(head,meta,counts);
+ if(call.status==='error'&&call.errorDetail)item.append(node('small','Причина: '+call.errorDetail));
  if(call.costBreakdownRub){
   const b=call.costBreakdownRub;
   item.append(node('small','Цена: вход '+rub(b.input)+' + кеш '+rub(b.cached)+' + выход '+rub(b.output)+(b.cacheWrite5m?' + запись 5 мин '+rub(b.cacheWrite5m):'')+(b.cacheWrite1h?' + запись 1 ч '+rub(b.cacheWrite1h):'')+' = '+rub(call.costRub)));
@@ -659,7 +660,7 @@ function renderAccounting(info){
  exportButton.type='button';exportButton.onclick=async()=>{
   exportButton.disabled=true;exportButton.textContent='Готовим полный CSV…';
   try{
-   const keys=['at','provider','model','step','status','httpStatus','input','cached','cacheWrite5m','cacheWrite1h','output','reasoning','costRub','discussionAccumulatedRub','modelAccumulatedRub','durationMs','taskId','rateUsed','rateCurrency','rateDate','costSource'];
+   const keys=['at','provider','model','step','status','httpStatus','input','cached','cacheWrite5m','cacheWrite1h','output','reasoning','costRub','discussionAccumulatedRub','modelAccumulatedRub','durationMs','errorType','errorDetail','taskId','rateUsed','rateCurrency','rateDate','costSource'];
    const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
    const rows=[keys.join(';')];
    let next=0;
