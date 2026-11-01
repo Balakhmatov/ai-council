@@ -58,3 +58,12 @@ retaining the newer GitHub request audit. Use deploy/reconcile-vps.py once to
 back up the reviewed local snapshot and fast-forward the checkout to main.
 It refuses changed/unreviewed files and then invokes the existing deploy service.
 Further releases use the normal main/timer path; the dirty-check guard remains.
+
+## DDTokens catalog rates shared 2026-11-01
+
+| Model | Input RUB/1M | Output RUB/1M | Cached |
+|---|---:|---:|---|
+| qwen3.7-plus | 15.192 | 60.768 | Unknown |
+| deepseek-v4.1-flash | 5.6717 | 17.015 | Unknown |
+
+These are catalog-derived dynamic group rates, subject to tier changes and provider billing rules. No cache discount assumed. Applies only when corresponding BASE_URL uses ddtnew.com. Historical entries with unknown cost are deliberately not rewritten.
