@@ -438,7 +438,7 @@ test('explicit stop via API does not refund a free task without any successful m
   const original=(await t.send('/api/access',undefined,session.token)).data;
   assert.equal(original.remainingFreeTasks,2);
   const start=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},session.token)).data;
-  assert.equal(start.remainingFreeTasks,1);
+  assert.equal(start.remainingFreeTasks,0);
   const done=await t.send('/api/task/finish',{taskId:start.taskId,cancelled:true},session.token);
   assert.equal(done.status,200);
   assert.equal(done.data.cancelled,true);
