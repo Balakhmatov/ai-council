@@ -357,8 +357,7 @@ async function refreshHistory(reset=false){
  historyBusy=true;
  try{
   const offset=reset?0:historyOffset;
-  const query=$('historySearch').value.trim();
-  const data=await api('/api/history?limit=20&offset='+offset+'&search='+encodeURIComponent(query),{token:await ensureSession()});
+  const data=await api('/api/history?limit=20&offset='+offset,{token:await ensureSession()});
   if(requestedVersion!==historyVersion||!access||access.accountRef!==accountRef)return;
   historyTotal=data.total;
   for(const item of data.items){
@@ -370,17 +369,77 @@ async function refreshHistory(reset=false){
   historyOffset=data.nextOffset??data.total;
   $('historyCount').textContent=data.total+' '+taskCount(data.total)+' найдено';
   $('historyMore').hidden=data.nextOffset==null;
-  $('historySection').hidden=!access.historyEnabled&&data.total===0&&!query;
+  $('historySection').hidden=!access.historyEnabled&&data.total===0;
   if(!data.total){
    const empty=document.createElement('p');empty.className='hint';
-   empty.textContent=query?'Ничего не найдено. Попробуйте другой запрос.':'Первое обсуждение появится здесь после завершения задачи.';
+   empty.textContent='Первое обсуждение появится здесь после завершения задачи.';
    $('historyList').append(empty);
   }
  }finally{if(requestedVersion===historyVersion)historyBusy=false;}
 }
+function highlightFound(text,term){
+ const frag=document.createDocumentFragment(),value=String(text||''),index=value.toLocaleLowerCase('ru-RU').indexOf(term.toLocaleLowerCase('ru-RU'));
+ if(index<0){frag.append(document.createTextNode(value));return frag;}
+ frag.append(document.createTextNode(value.slice(0,index)));
+ const match=document.createElement('mark');match.textContent=value.slice(index,index+term.length);frag.append(match);
+ frag.append(document.createTextNode(value.slice(index+term.length)));return frag;
+}
+function closeHistorySuggestions(){
+ const panel=$('historySuggest');panel.hidden=true;panel.replaceChildren();
+ $('historySearch').setAttribute('aria-expanded','false');
+}
+async function suggestHistory(){
+ const term=$('historySearch').value.trim(),seq=++historyVersion;
+ if(term.length<3){closeHistorySuggestions();return;}
+ const panel=$('historySuggest');panel.replaceChildren();panel.hidden=false;
+ $('historySearch').setAttribute('aria-expanded','true');
+ const waiting=document.createElement('p');waiting.className='history-suggest-state';waiting.textContent='Ищем в истории…';panel.append(waiting);
+ try{
+  const data=await api('/api/history?limit=7&offset=0&search='+encodeURIComponent(term),{token:await ensureSession()});
+  if(seq!==historyVersion||$('historySearch').value.trim()!==term)return;
+  panel.replaceChildren();
+  if(!data.items.length){
+   const empty=document.createElement('p');empty.className='history-suggest-state';empty.textContent='Совпадений нет';panel.append(empty);return;
+  }
+  for(const item of data.items){
+   const button=document.createElement('button');button.type='button';button.className='history-suggestion';button.setAttribute('role','option');
+   const heading=document.createElement('strong');heading.append(highlightFound(item.title,term));
+   const snippet=document.createElement('small');snippet.className='history-suggest-snippet';snippet.append(highlightFound(item.excerpt||item.title,term));
+   const meta=document.createElement('span');meta.className='history-suggest-meta';meta.textContent=item.matchLabel||'Найдено в задаче';
+   button.append(heading,snippet,meta);
+   button.onclick=()=>{closeHistorySuggestions();openHistory(item.taskId);};
+   panel.append(button);
+  }
+  if(data.total>data.items.length){
+   const foot=document.createElement('p');foot.className='history-suggest-state';
+   foot.textContent='Показаны первые '+data.items.length+' из '+data.total+' совпадений. Уточните запрос.';
+   panel.append(foot);
+  }
+ }catch(e){
+  if(seq!==historyVersion)return;
+  panel.replaceChildren();const info=document.createElement('p');info.className='history-suggest-state';
+  info.textContent='Поиск временно недоступен. Попробуйте ещё раз.';panel.append(info);
+ }
+}
 $('historySearch').addEventListener('input',()=>{
  clearTimeout(historySearchTimer);
- historySearchTimer=setTimeout(()=>refreshHistory(true).catch(e=>{$('status').textContent=e.message;}),260);
+ const term=$('historySearch').value.trim();
+ if(term.length<3){++historyVersion;closeHistorySuggestions();return;}
+ historySearchTimer=setTimeout(()=>suggestHistory(),190);
+});
+$('historySearch').addEventListener('keydown',e=>{
+ if(e.key==='Escape'){closeHistorySuggestions();return;}
+ if(e.key==='ArrowDown'){
+  const first=$('historySuggest').querySelector('button.history-suggestion');
+  if(first){e.preventDefault();first.focus();}
+ }
+ if(e.key==='Enter'){
+  const first=$('historySuggest').querySelector('button.history-suggestion');
+  if(first){e.preventDefault();first.click();}
+ }
+});
+document.addEventListener('pointerdown',e=>{
+ if(!e.target.closest('.history-search-box'))closeHistorySuggestions();
 });
 async function openHistory(taskId){
  try{
