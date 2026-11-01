@@ -34,7 +34,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  // successfully authenticated through Telegram or a verified email account.
  const adminTelegramIds=telegramAdminIds(env);
  const adminEmails=new Set(String(env.QUORUM_ADMIN_EMAILS||'')
-  .split(/[\\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^\\S+@[^\\s@]+\\.[^\\s@]+$/.test(x)));
+  .split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@[^\s@]+\.[^\s@]+$/.test(x)));
  const isOwnerAccount=value=>!!(value&&(
   (value.telegramUser&&adminTelegramIds.has(String(value.telegramUser.id)))||
   (value.emailUser&&adminEmails.has(String(value.emailUser.email||'').trim().toLowerCase()))
