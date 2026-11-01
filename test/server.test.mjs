@@ -609,10 +609,10 @@ test('unavailable source verification never exposes private proxy routing to the
  }finally{await t.close();}
 });
 
-test('Qwen 3.7 Plus and DeepSeek V4.1 Flash share the private DDT API key and route safely',async()=>{
+test('Qwen 3.8 Flash and DeepSeek use separate DDT keys and routes safely',async()=>{
  const t=await setup({
-  NEW_API_KEY:'ddt-shared-secret',
-  QWEN_MODEL:'qwen3.7-plus',DEEPSEEK_MODEL:'deepseek-v4.1-flash',
+  NEW_API_KEY:'ddt-deepseek-secret',QWEN_CHINESE_API_KEY:'ddt-chinese-secret',
+  QWEN_MODEL:'qwen3.8-flash',DEEPSEEK_MODEL:'deepseek-v4.1-flash',
   QWEN_BASE_URL:'https://ddtnew.com/v1',DEEPSEEK_BASE_URL:'https://ddtnew.com/v1',
   ACCOUNT_DAILY_CALL_LIMIT:'10'
  });
@@ -632,11 +632,11 @@ test('Qwen 3.7 Plus and DeepSeek V4.1 Flash share the private DDT API key and ro
   }
   assert.equal(t.calls.length,2);
   assert.ok(t.calls.every(c=>c.url==='https://ddtnew.com/v1/chat/completions'));
-  assert.ok(t.calls.every(c=>c.options.headers.Authorization==='Bearer ddt-shared-secret'));
-  assert.deepEqual(t.calls.map(c=>JSON.parse(c.options.body).model),['qwen3.7-plus','deepseek-v4.1-flash']);
+  assert.deepEqual(t.calls.map(c=>c.options.headers.Authorization),['Bearer ddt-chinese-secret','Bearer ddt-deepseek-secret']);
+  assert.deepEqual(t.calls.map(c=>JSON.parse(c.options.body).model),['qwen3.8-flash','deepseek-v4.1-flash']);
   assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},user.token)).status,200);
   const prices=(await t.send('/api/admin',undefined,'admin-test-only')).data;
-  assert.ok(JSON.stringify(prices).includes('qwen3.7-plus'));
+  assert.ok(JSON.stringify(prices).includes('qwen3.8-flash'));
   assert.ok(JSON.stringify(prices).includes('deepseek-v4.1-flash'));
  }finally{await t.close();}
 });
@@ -656,4 +656,9 @@ test('shared DDT key is never forwarded to an official provider endpoint, nor en
 test('reject unapproved URLs for new providers rather than leaking shared keys',()=>{
  assert.throws(()=>createServer({env:{QWEN_BASE_URL:'https://evil.invalid/v1'}}),/Invalid qwen base URL/);
  assert.throws(()=>createServer({env:{DEEPSEEK_BASE_URL:'https://evil.invalid/v1'}}),/Invalid deepseek base URL/);
+});
+
+test('Qwen Chinese-group key is mandatory; NEW_API_KEY alone does not enable Qwen',async()=>{
+ const t=await setup({NEW_API_KEY:'deepseek-only',QWEN_MODEL:'qwen3.8-flash',DEEPSEEK_MODEL:'deepseek-v4.1-flash',QWEN_BASE_URL:'https://ddtnew.com/v1',DEEPSEEK_BASE_URL:'https://ddtnew.com/v1'});
+ try{assert.deepEqual((await t.send('/api/config')).data.providers,['openai','deepseek']);}finally{await t.close();}
 });
