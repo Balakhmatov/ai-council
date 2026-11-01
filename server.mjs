@@ -155,7 +155,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(path==='/api/history'&&req.method==='GET'){
     if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
     const q=new URL(req.url,'http://localhost').searchParams;
-    return json(200,history.list(visitorHash,{offset:q.get('offset')||0,limit:q.get('limit')||20}));
+    return json(200,history.list(visitorHash,{offset:q.get('offset')||0,limit:q.get('limit')||20,search:q.get('search')||''}));
    }
    if(path?.startsWith('/api/history/')&&req.method==='GET'){
     if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
@@ -232,12 +232,16 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
     const longFinal=body.stage==='final';
+    const maxWords=[120,250,500].includes(body.maxWords)?body.maxWords:120;
+    // Keep actual API output budgets aligned with the selected short/medium/detailed mode.
+    const intermediateTokens={120:900,250:1500,500:2300}[maxWords];
+    const reasoningTokens=body.maxWords==null?4096:{120:1800,250:2700,500:4000}[maxWords];
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
-      ?{model,messages,max_completion_tokens:longFinal?10000:4096,reasoning_effort:'medium'}
-      :{model,messages,max_tokens:longFinal?7000:1800};
+      ?{model,messages,max_completion_tokens:longFinal?10000:reasoningTokens,reasoning_effort:'medium'}
+      :{model,messages,max_tokens:longFinal?7000:intermediateTokens};
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:1800,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){log(model,'error',null,upstream.status);await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
@@ -252,7 +256,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const providerAsset=['openai','grok','mistral','qwen','deepseek','gemini','claude'].find(id=>path==='/assets/models/'+id+'.svg');
   const special=providerAsset?'assets/models/'+providerAsset+'.svg':asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
-  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js','/model-priority.js':'model-priority.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js','/model-priority.js':'model-priority.js','/markdown-render.js':'markdown-render.js','/response-length.js':'response-length.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':file.endsWith('.ico')?'image/x-icon':file.endsWith('.webmanifest')?'application/manifest+json':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':file.endsWith('.html')||file.endsWith('.js')?'no-store':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }

@@ -292,7 +292,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=copy-stop41/);
+  assert.match(html.body,/uiux32\.css\?v=history-layout43/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -485,6 +485,44 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=moderator42/);
+  assert.match(html.body,/app\.js\?v=history-layout43/);
+ }finally{await t.close();}
+});
+
+test('full-history search is server-side, scoped to authenticated account and supports later pages',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-history-search-'));
+ const t=await setup({HISTORY_FILE:join(dir,'history.json'),MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
+ try{
+  const user=(await t.login('searcher@example.com')).data;
+  const access=(await t.send('/api/access',undefined,user.token)).data;
+  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:access.accountRef,sku:'subscription'},'admin-test-only')).status,200);
+  const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},user.token)).data;
+  assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},user.token)).status,200);
+  const end=await t.send('/api/task/finish',{taskId:task.taskId,history:{
+   prompt:'Маркетинговый аудит',profile:'Маркетинг',specialization:'Конкуренты',
+   messages:[{name:'Claude',stage:'Первый раунд',text:'Особенный текст о возвращении клиентов'}]
+  }},user.token);
+  assert.equal(end.status,200);
+  assert.equal(end.data.historySaved,true);
+  const search=(await t.send('/api/history?limit=20&offset=0&search='+encodeURIComponent('ВОЗВРАЩЕНИИ'),undefined,user.token)).data;
+  assert.equal(search.total,1);
+  assert.equal(search.items[0].title,'Маркетинговый аудит');
+  const others=(await t.login('other@example.com')).data;
+  assert.equal((await t.send('/api/history?search=возвращении',undefined,others.token)).data.total,0);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
+test('selected intermediate length reduces the actual model token budget, not final tokens',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-test',ACCOUNT_DAILY_CALL_LIMIT:'8'});
+ try{
+  const user=(await t.login('length@example.com')).data;
+  const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},user.token)).data;
+  const call=async(stage,maxWords)=>t.send('/api/chat',{provider:'mistral',messages:[{role:'user',content:'test'}],taskId:task.taskId,stage,maxWords},user.token);
+  assert.equal((await call('intermediate',120)).status,200);
+  assert.equal((await call('intermediate',500)).status,200);
+  assert.equal((await call('final',120)).status,200);
+  const opts=t.calls.filter(c=>c.url.includes('mistral')).map(c=>JSON.parse(c.options.body));
+  assert.equal(opts[0].max_tokens,900);
+  assert.equal(opts[1].max_tokens,2300);
+  assert.equal(opts[2].max_tokens,7000);
  }finally{await t.close();}
 });

@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=copy-stop41">
-<link rel="stylesheet" href="./uiux32.css?v=copy-stop41">
+<link rel="stylesheet" href="./style.css?v=history-layout43">
+<link rel="stylesheet" href="./uiux32.css?v=history-layout43">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -29,11 +29,13 @@
 <div class="section-title spaced"><h2>02 / Опишите задачу</h2><span class="tag">ТЕКСТ И ИДЕИ</span></div>
 <textarea id="task" maxlength="20000" placeholder="Выберите направление, чтобы узнать, какие задачи здесь можно решить."></textarea>
 <div class="prompt-footer"><span class="prompt-caption">Опишите свою задачу — нейросети подготовят решение.</span><span id="chars">0 / 20 000</span></div>
+<div class="response-controls" aria-label="Настройки обсуждения">
+ <label>Раунды обсуждения<select id="rounds"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
+ <label>Длина промежуточных ответов<select id="length"><option value="short" selected>Коротко</option><option value="medium">Средне</option><option value="detailed">Подробно</option></select></label>
+</div>
 <details class="advanced"><summary>Как нейросети будут работать над задачей <span class="advanced-chevron">⌄</span></summary>
 <p class="hint">Выберите способ совместной работы. Если не уверены, оставьте первый.</p>
 <div id="modes"></div>
-<div class="controls"><label>Раундов обсуждения<select id="rounds"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
-<label>Объём промежуточных ответов<select id="length"><option>250</option><option selected>500</option><option>900</option></select></label></div>
 </details>
 <div class="launch" id="launchBar"><label class="discussion-choice"><input id="showDiscussion" type="checkbox"> Показывать обсуждение моделей</label>
 <button class="primary" id="start" type="button">Получить результат</button><div id="stopAction" class="stop-action" hidden><button id="stop" type="button">Остановить задачу</button><small>При остановке квота не возвращается.</small></div></div>
@@ -43,6 +45,7 @@
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 <section id="historySection" class="history-section" hidden>
  <div class="section-title spaced"><h2>История задач</h2><span id="historyCount" class="step-note"></span></div>
+<label class="history-search"><span class="sr-only">Поиск по всей истории задач</span><input id="historySearch" type="search" placeholder="Найти задачу, ответ, тему…" autocomplete="off" maxlength="160" aria-label="Поиск по всей истории задач"></label>
  <p class="hint">Каждое обсуждение сохранено отдельно. Откройте любое, чтобы посмотреть задачу и ответы.</p>
  <div id="historyList" class="history-list"></div>
  <button id="historyMore" class="history-more" type="button" hidden>Показать ещё</button>
@@ -91,7 +94,7 @@
  <p class="pricing-footnote">Без подписки — максимум 3 модели. После её окончания сохранённая история остаётся доступной, новые задачи не сохраняются.</p>
  <p class="hint pricing-payment-note">Оплата пока не подключена. Тарифы доступны для ознакомления.</p>
 </dialog>
-<dialog id="historyDialog" class="history-dialog">
+<dialog id="historyDialog" class="history-dialog history-fullscreen">
  <div class="section-title"><h2>Сохранённое обсуждение</h2><div class="result-actions"><button id="historyCopyAll" class="copy-action copy-all" type="button" aria-label="Скопировать сохранённую задачу полностью">Скопировать всё</button><button id="historyClose" class="quiet" type="button" aria-label="Закрыть">Закрыть ✕</button></div></div>
  <div id="historyBody" class="history-detail"></div>
 </dialog>
@@ -144,4 +147,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=moderator42"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=history-layout43"></script></body></html>

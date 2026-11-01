@@ -4,6 +4,8 @@ import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
 import {loadRememberedSession,rememberSession,forgetSession} from './auth-state.js';
 import {formatTranscript} from './transcript.js';
+import {renderMarkdown} from './markdown-render.js';
+import {wordsForPreset,limitIntermediate} from './response-length.js';
 import {MODEL_PRIORITY,defaultParticipants,chooseModerator} from './model-priority.js';
 
 const $=id=>document.getElementById(id);
@@ -21,7 +23,7 @@ const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':n
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
-let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false;
+let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let moderatorChosenByUser=false;
 
@@ -348,33 +350,37 @@ function renderPricing(){
 async function refreshHistory(reset=false){
  if(!access)return;
  if(historyBusy&&!reset)return;
+ const requestedVersion=reset?++historyVersion:historyVersion;
  const accountRef=access.accountRef;
+ if(reset){historyOffset=0;$('historyList').replaceChildren();$('historyMore').hidden=true;}
  historyBusy=true;
  try{
   const offset=reset?0:historyOffset;
-  const data=await api('/api/history?limit=20&offset='+offset,{token:await ensureSession()});
-  if(!access||access.accountRef!==accountRef)return;
-  if(reset){historyOffset=0;$('historyList').replaceChildren();}
+  const query=$('historySearch').value.trim();
+  const data=await api('/api/history?limit=20&offset='+offset+'&search='+encodeURIComponent(query),{token:await ensureSession()});
+  if(requestedVersion!==historyVersion||!access||access.accountRef!==accountRef)return;
   historyTotal=data.total;
   for(const item of data.items){
    const btn=document.createElement('button');btn.type='button';btn.className='history-cluster';
    const title=document.createElement('strong');title.textContent=item.title;
    const info=document.createElement('small');info.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задача')+(item.specialization?' / '+item.specialization:'');
-   btn.append(title,info);
-   btn.onclick=()=>openHistory(item.taskId);
-   $('historyList').append(btn);
+   btn.append(title,info);btn.onclick=()=>openHistory(item.taskId);$('historyList').append(btn);
   }
   historyOffset=data.nextOffset??data.total;
-  $('historyCount').textContent=data.total+' сохранённых';
+  $('historyCount').textContent=data.total+' '+taskCount(data.total)+' найдено';
   $('historyMore').hidden=data.nextOffset==null;
-  $('historySection').hidden=!access.historyEnabled&&data.total===0;
-  if(!data.total&&access.historyEnabled&&!$('historyList').children.length){
+  $('historySection').hidden=!access.historyEnabled&&data.total===0&&!query;
+  if(!data.total){
    const empty=document.createElement('p');empty.className='hint';
-   empty.textContent='Первое обсуждение появится здесь после завершения задачи.';
+   empty.textContent=query?'Ничего не найдено. Попробуйте другой запрос.':'Первое обсуждение появится здесь после завершения задачи.';
    $('historyList').append(empty);
   }
- }finally{historyBusy=false;}
+ }finally{if(requestedVersion===historyVersion)historyBusy=false;}
 }
+$('historySearch').addEventListener('input',()=>{
+ clearTimeout(historySearchTimer);
+ historySearchTimer=setTimeout(()=>refreshHistory(true).catch(e=>{$('status').textContent=e.message;}),260);
+});
 async function openHistory(taskId){
  try{
   const item=await api('/api/history/'+encodeURIComponent(taskId),{token:await ensureSession()});
@@ -383,7 +389,7 @@ async function openHistory(taskId){
   const prompt=document.createElement('section');prompt.className='history-prompt';
   const heading=document.createElement('h3');heading.textContent=item.title;
   const meta=document.createElement('p');meta.className='hint';meta.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задача');
-  const text=document.createElement('p');text.textContent=item.prompt;
+  const text=document.createElement('div');text.className='history-prompt-text';text.append(renderMarkdown(item.prompt));
   prompt.append(heading,meta,text);box.append(prompt);
   for(const m of item.messages)box.append(renderMessage(m));
   $('historyDialog').showModal();
@@ -652,7 +658,7 @@ function renderProgress(){
   const done=events.some(e=>e.stage===name&&e.status==='done');
   const marker=document.createElement('span');marker.className='progress-mark';marker.textContent=done?'✓':'·';
   const label=document.createElement('span');
-  label.textContent=name==='Независимая идея'?'Нейросети готовят независимые варианты':name==='Итоговый проект'?'Подготовка готового материала':name==='Проверка согласия'?'Финальная проверка':name==='Готово'?'Результат готов':name.replace(/^Раунд /,'Обсуждение · раунд ');
+  label.textContent=name==='Первый раунд'||name==='Независимая идея'?'Первый раунд · независимые варианты':name==='Итоговый проект'?'Подготовка готового материала':name==='Проверка согласия'?'Финальная проверка':name==='Готово'?'Результат готов':name.replace(/^Раунд /,'Обсуждение · раунд ');
   row.append(marker,label);if(done)row.classList.add('done');return row;
  }));
 }
@@ -702,15 +708,15 @@ function renderMessage(m){
  const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
  const head=document.createElement('div');head.className='message-head';
  const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
- const stage=document.createElement('small');stage.textContent=m.final?'Итоговый ответ':m.stage;
+ const stage=document.createElement('small');stage.textContent=m.final?'Итоговый ответ':m.stage==='Независимая идея'?'Первый раунд':m.stage;
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
  copy.title='Скопировать ответ';copy.setAttribute('aria-label','Скопировать '+(m.final?'итоговый результат':'ответ '+m.name+' · '+m.stage));
  copyIcon(copy);
  copy.onclick=()=>copyText(m.text,copy);
  head.append(name,stage,copy);
- const p=document.createElement('p');p.className='message-text';p.textContent=m.text;
- card.append(head,p);return card;
+ const body=renderMarkdown(m.text);body.classList.add('message-text');
+ card.append(head,body);return card;
 }
 function syncResultActions(){
  $('copyAll').disabled=messages.length===0;
@@ -737,9 +743,9 @@ async function request(a,chat,signal,stage={}){
   if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';
   return '[ДЕМО — не ответ модели] '+a.name+': этот пример не вызывает API. Для настоящего результата отключите демо.';
  }
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
- return result.text;
+ return stage.stage==='final'?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{
  if(!access&&!$('demo').checked){$('loginOpen').click();return;}
@@ -767,7 +773,7 @@ $('start').onclick=async()=>{
    access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   }
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
-  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:Number($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
+  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
