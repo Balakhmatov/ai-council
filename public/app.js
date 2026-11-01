@@ -245,19 +245,29 @@ $('pricingOpen').onclick=()=>{if(!$('pricingDialog').open)$('pricingDialog').sho
 $('pricingClose').onclick=()=>$('pricingDialog').close();
 function renderPricing(){
  const offers=priceCatalog||access?.catalog;
- if(!offers)return;
+ if(!offers)return; // Keep the four static price cards readable offline.
  const target=$('pricingOffers');target.replaceChildren();
- for(const key of ['subscription','pack10','pack50','pack100']){
-  const o=offers[key];if(!o)continue;
-  const item=document.createElement('div');item.className='pricing-offer';
-  const label=document.createElement('span');label.textContent=o.label;
-  const price=document.createElement('strong');price.textContent=o.priceRub.toLocaleString('ru-RU')+' ₽';
-  const badge=document.createElement('small');
-  badge.textContent=key==='subscription'?
-   o.tasks+' заданий · до 7 моделей · история навсегда · −'+o.discount+'%':
-   o.discount?'−'+o.discount+'% · '+(o.priceRub/o.tasks).toLocaleString('ru-RU')+' ₽/задание':
-   (o.priceRub/o.tasks).toLocaleString('ru-RU')+' ₽/задание';
-  item.append(label,price,badge);target.append(item);
+ const sub=offers.subscription;
+ if(sub){
+  const card=node('article',null,'pricing-offer pricing-offer-sub');
+  const top=node('div',null,'pricing-offer-top');
+  top.append(node('span',sub.label,'pricing-plan-title'),node('span','−'+sub.discount+'%','pricing-save'));
+  const price=node('div',null,'pricing-value');
+  price.append(document.createTextNode(sub.priceRub.toLocaleString('ru-RU')+' ₽ '),node('small','/ 30 дней'));
+  const perks=node('div',null,'pricing-perks');
+  perks.append(node('span',sub.tasks+' заданий'),node('span','До 7 моделей'),node('span','История без ограничений'));
+  card.append(top,price,perks);target.append(card);
+ }
+ const heading=node('div',null,'pricing-pack-heading');
+ heading.append(node('span','Дополнительные задания'),node('small','Без подписки'));
+ target.append(heading);
+ for(const key of ['pack10','pack50','pack100']){
+  const offer=offers[key];if(!offer)continue;
+  const card=node('article',null,'pricing-offer pricing-offer-pack');
+  card.append(node('span',offer.tasks+' заданий','pricing-pack-title'),
+    node('strong',offer.priceRub.toLocaleString('ru-RU')+' ₽','pricing-value'),
+    node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ / задание','pricing-unit'));
+  target.append(card);
  }
 }
 async function refreshHistory(reset=false){
