@@ -128,18 +128,17 @@ test('old rolling records are copied into first audit file on upgrade',()=>{
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
 
-test('monthly quota resets on Moscow month boundary and old refunds do not add credits',()=>{
+test('free 10 tokens are granted once and never renewed at month boundary',()=>{
  let time=Date.parse('2026-10-30T20:59:00Z');
  const econ=createEconomy({env:{},now:()=>time}),identity='account:email-user';
  const params={participants:['openai','mistral'],rounds:2,mode:'judge'};
- for(let i=0;i<4;i++){const task=econ.start(identity,false,params,params.participants);econ.success(task.taskId);econ.finish(task.taskId,identity);}
- const pending=econ.start(identity,false,params,params.participants);
- assert(econ.start(identity,false,params,params.participants).insufficient);
- time=Date.parse('2026-10-30T21:00:00Z');assert.equal(econ.access(identity).remainingFreeTasks,0);
- time=Date.parse('2026-10-31T21:00:00Z');econ.finish(pending.taskId,identity);
- assert.equal(econ.access(identity).remainingFreeTasks,10);assert.equal(econ.access(identity).period,'month');
+ for(let i=0;i<5;i++){const task=econ.start(identity,false,params,params.participants);econ.success(task.taskId);econ.finish(task.taskId,identity);}
+ assert.equal(econ.access(identity).remainingFreeTasks,0);
+ time=Date.parse('2026-11-30T21:00:00Z');
+ assert.equal(econ.access(identity).remainingFreeTasks,0);
+ assert.equal(econ.access(identity).period,'lifetime');
+ assert.equal(econ.start(identity,false,params,params.participants).insufficient,true);
 });
-
 test('stopping a task before any model responds never refunds free task allocation',()=>{
  const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'3'}});
  const started=task(econ);assert.equal(econ.access('visitor').remainingFreeTasks,0);
