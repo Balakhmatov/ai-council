@@ -494,14 +494,19 @@ test('full-history search is server-side, scoped to authenticated account and su
  const t=await setup({HISTORY_FILE:join(dir,'history.json'),MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
  try{
   const user=(await t.login('searcher@example.com')).data;
+  const access=(await t.send('/api/access',undefined,user.token)).data;
+  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:access.accountRef,sku:'subscription'},'admin-test-only')).status,200);
   const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},user.token)).data;
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},user.token)).status,200);
   const end=await t.send('/api/task/finish',{taskId:task.taskId,history:{
    prompt:'Маркетинговый аудит',profile:'Маркетинг',specialization:'Конкуренты',
    messages:[{name:'Claude',stage:'Первый раунд',text:'Особенный текст о возвращении клиентов'}]
   }},user.token);
-  // History is saved only for subscription accounts; use a manual grant first in other cases.
   assert.equal(end.status,200);
+  assert.equal(end.data.historySaved,true);
+  const search=(await t.send('/api/history?limit=20&offset=0&search='+encodeURIComponent('ВОЗВРАЩЕНИИ'),undefined,user.token)).data;
+  assert.equal(search.total,1);
+  assert.equal(search.items[0].title,'Маркетинговый аудит');
   const others=(await t.login('other@example.com')).data;
   assert.equal((await t.send('/api/history?search=возвращении',undefined,others.token)).data.total,0);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
