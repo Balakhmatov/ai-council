@@ -1,4 +1,4 @@
-import {test} from 'node:test';import assert from 'node:assert/strict';import {discuss,parseBallot} from '../public/engine.js';
+import {test} from 'node:test';import assert from 'node:assert/strict';import {discuss,parseBallot,parseBallotDetail} from '../public/engine.js';
 const agents=[{id:'a',name:'A'},{id:'b',name:'B'}];
 const base={agents,judge:agents[0],rounds:2,words:150,task:'Задача'};
 test('first round is independent; later rounds share a complete snapshot',async()=>{const calls=[];await discuss({...base,mode:'judge',emit:()=>{},request:async(a,m)=>{calls.push(m[1].content);return `answer-${a.id}`;}});assert(!calls[0].includes('answer-b'));assert(!calls[1].includes('answer-a'));assert(calls[2].includes('answer-a')&&calls[2].includes('answer-b'));});
@@ -58,4 +58,38 @@ test('untrusted model claims remain in user data and are never elevated into sys
    return 'Рынок вырос на 78% по оценке модели';
   }});
  assert.ok(inputs.length>2);
+});
+
+test('JSON ballots remain machine-readable while the user sees plain-language votes',async()=>{
+ const out=[];
+ await discuss({...base,mode:'consensus',emit:m=>out.push(m),request:async(a,m)=>{
+  return m[1].content.includes('"agree" или')
+   ?'```json\n'+JSON.stringify({vote:a.id==='a'?'agree':'disagree',reason:'Проверить исходные данные'})+'\n```'
+   :'Деловая рекомендация';
+ }});
+ const votes=out.filter(x=>x.stage==='Проверка согласия');
+ assert.equal(votes.length,2);
+ assert.match(votes[0].text,/Согласна с итогом/);
+ assert.match(votes[1].text,/Не согласна с итогом/);
+ assert.match(votes[0].text,/Проверить исходные данные/);
+ assert.doesNotMatch(votes[0].text,/"vote"/);
+ assert.equal(out.at(-1).stage,'Консенсус не достигнут');
+ assert.equal(parseBallotDetail('Текст до {"vote":"agree","reason":"Причина"} текст после',['agree']).reason,'Причина');
+});
+test('malformed or truncated ballot is never displayed as broken JSON or counted as agreement',async()=>{
+ const out=[];
+ await discuss({...base,mode:'consensus',emit:m=>out.push(m),request:async(a,m)=>{
+  if(m[1].content.includes('"agree" или'))return a.id==='a'?'{"vote":"agree",':'{"vote":"agree"}';
+  return 'Рекомендация';
+ }});
+ const invalid=out.find(x=>x.stage==='Проверка согласия'&&x.name==='A');
+ assert.match(invalid.text,/не смогла дать корректную оценку/);
+ assert.doesNotMatch(invalid.text,/"vote"/);
+ assert.equal(out.at(-1).stage,'Консенсус не достигнут');
+});
+test('research/business Mistral receives stricter unsupported statistics instructions',async()=>{
+ const logs=[];
+ await discuss({...base,agents:[{id:'mistral',name:'Mistral'},agents[1]],judge:agents[1],
+  mode:'judge',emit:()=>{},request:async(a,m)=>{logs.push({id:a.id,system:m[0].content});return 'OK';}});
+ assert.match(logs.find(x=>x.id==='mistral').system,/НЕ называй цифру фактом/);
 });

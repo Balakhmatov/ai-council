@@ -1,4 +1,4 @@
-import {modes,discuss} from './engine.js';
+import {modes,discuss,parseBallotDetail} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -74,6 +74,11 @@ for(const [id,[title,description]] of Object.entries(modes)){
  b.append(name,small);b.onclick=()=>{mode=id;update();};$('modes').append(b);
 }
 function update(){
+ const premium=!!(access?.admin||access?.subscriptionActive);
+ const detailed=$('length').querySelector('option[value="detailed"]');
+ detailed.disabled=!premium;
+ $('lengthNote').textContent=premium?'Финальный результат не ограничивается длиной обсуждения.':'«Подробно» доступно по подписке.';
+ if(!premium&&$('length').value==='detailed')$('length').value='medium';
  const old=$('judge').value;
  if(moderatorChosenByUser&&!chosen.has(old))moderatorChosenByUser=false;
  $('count').textContent=chosen.size+' / '+(access?.maxModels??3);
@@ -357,8 +362,7 @@ async function refreshHistory(reset=false){
  historyBusy=true;
  try{
   const offset=reset?0:historyOffset;
-  const query=$('historySearch').value.trim();
-  const data=await api('/api/history?limit=20&offset='+offset+'&search='+encodeURIComponent(query),{token:await ensureSession()});
+  const data=await api('/api/history?limit=20&offset='+offset,{token:await ensureSession()});
   if(requestedVersion!==historyVersion||!access||access.accountRef!==accountRef)return;
   historyTotal=data.total;
   for(const item of data.items){
@@ -370,17 +374,77 @@ async function refreshHistory(reset=false){
   historyOffset=data.nextOffset??data.total;
   $('historyCount').textContent=data.total+' '+taskCount(data.total)+' найдено';
   $('historyMore').hidden=data.nextOffset==null;
-  $('historySection').hidden=!access.historyEnabled&&data.total===0&&!query;
+  $('historySection').hidden=!access.historyEnabled&&data.total===0;
   if(!data.total){
    const empty=document.createElement('p');empty.className='hint';
-   empty.textContent=query?'Ничего не найдено. Попробуйте другой запрос.':'Первое обсуждение появится здесь после завершения задачи.';
+   empty.textContent='Первое обсуждение появится здесь после завершения задачи.';
    $('historyList').append(empty);
   }
  }finally{if(requestedVersion===historyVersion)historyBusy=false;}
 }
+function highlightFound(text,term){
+ const frag=document.createDocumentFragment(),value=String(text||''),index=value.toLocaleLowerCase('ru-RU').indexOf(term.toLocaleLowerCase('ru-RU'));
+ if(index<0){frag.append(document.createTextNode(value));return frag;}
+ frag.append(document.createTextNode(value.slice(0,index)));
+ const match=document.createElement('mark');match.textContent=value.slice(index,index+term.length);frag.append(match);
+ frag.append(document.createTextNode(value.slice(index+term.length)));return frag;
+}
+function closeHistorySuggestions(){
+ const panel=$('historySuggest');panel.hidden=true;panel.replaceChildren();
+ $('historySearch').setAttribute('aria-expanded','false');
+}
+async function suggestHistory(){
+ const term=$('historySearch').value.trim(),seq=++historyVersion;
+ if(term.length<3){closeHistorySuggestions();return;}
+ const panel=$('historySuggest');panel.replaceChildren();panel.hidden=false;
+ $('historySearch').setAttribute('aria-expanded','true');
+ const waiting=document.createElement('p');waiting.className='history-suggest-state';waiting.textContent='Ищем в истории…';panel.append(waiting);
+ try{
+  const data=await api('/api/history?limit=7&offset=0&search='+encodeURIComponent(term),{token:await ensureSession()});
+  if(seq!==historyVersion||$('historySearch').value.trim()!==term)return;
+  panel.replaceChildren();
+  if(!data.items.length){
+   const empty=document.createElement('p');empty.className='history-suggest-state';empty.textContent='Совпадений нет';panel.append(empty);return;
+  }
+  for(const item of data.items){
+   const button=document.createElement('button');button.type='button';button.className='history-suggestion';button.setAttribute('role','option');
+   const heading=document.createElement('strong');heading.append(highlightFound(item.title,term));
+   const snippet=document.createElement('small');snippet.className='history-suggest-snippet';snippet.append(highlightFound(item.excerpt||item.title,term));
+   const meta=document.createElement('span');meta.className='history-suggest-meta';meta.textContent=item.matchLabel||'Найдено в задаче';
+   button.append(heading,snippet,meta);
+   button.onclick=()=>{closeHistorySuggestions();openHistory(item.taskId);};
+   panel.append(button);
+  }
+  if(data.total>data.items.length){
+   const foot=document.createElement('p');foot.className='history-suggest-state';
+   foot.textContent='Показаны первые '+data.items.length+' из '+data.total+' совпадений. Уточните запрос.';
+   panel.append(foot);
+  }
+ }catch(e){
+  if(seq!==historyVersion)return;
+  panel.replaceChildren();const info=document.createElement('p');info.className='history-suggest-state';
+  info.textContent='Поиск временно недоступен. Попробуйте ещё раз.';panel.append(info);
+ }
+}
 $('historySearch').addEventListener('input',()=>{
  clearTimeout(historySearchTimer);
- historySearchTimer=setTimeout(()=>refreshHistory(true).catch(e=>{$('status').textContent=e.message;}),260);
+ const term=$('historySearch').value.trim();
+ if(term.length<3){++historyVersion;closeHistorySuggestions();return;}
+ historySearchTimer=setTimeout(()=>suggestHistory(),190);
+});
+$('historySearch').addEventListener('keydown',e=>{
+ if(e.key==='Escape'){closeHistorySuggestions();return;}
+ if(e.key==='ArrowDown'){
+  const first=$('historySuggest').querySelector('button.history-suggestion');
+  if(first){e.preventDefault();first.focus();}
+ }
+ if(e.key==='Enter'){
+  const first=$('historySuggest').querySelector('button.history-suggestion');
+  if(first){e.preventDefault();first.click();}
+ }
+});
+document.addEventListener('pointerdown',e=>{
+ if(!e.target.closest('.history-search-box'))closeHistorySuggestions();
 });
 async function openHistory(taskId){
  try{
@@ -710,7 +774,7 @@ function showResearch(research){
  sources.replaceChildren();widget.replaceChildren();panel.hidden=false;
  if(research.status!=='grounded'){
   $('researchState').textContent='Нет подтверждённых источников';
-  sources.append(node('p',research.reason||'Поиск источников недоступен. Числовые показатели моделей требуют проверки.','research-warning'));
+  sources.append(node('p','Не удалось проверить открытые источники. Числовые показатели моделей нельзя считать подтверждёнными.','research-warning'));
   return;
  }
  $('researchState').textContent='Найдены ссылки на '+(research.facts?.length||0)+' фрагментов';
@@ -731,21 +795,38 @@ function showResearch(research){
 }
 async function verifyTaskSources(task,signal){
  if($('demo').checked)return {status:'unavailable',reason:'В демонстрации веб-поиск не выполняется',sources:[],facts:[]};
- return api('/api/research',{method:'POST',token:await ensureSession(),
+ const result=await api('/api/research',{method:'POST',token:await ensureSession(),
   body:{taskId:activeTask?.taskId,prompt:task.slice(0,1500)},signal:AbortSignal.any([signal,AbortSignal.timeout(90000)])});
+ return result.status==='grounded'?result:{...result,reason:'Проверка открытых источников сейчас недоступна'};
+}
+function readableStoredMessage(m){
+ if(!['Проверка согласия','Голосование'].includes(m.stage))return m.text;
+ if(!String(m.text||'').trim().startsWith('{')&&!String(m.text||'').trim().startsWith('```'))return m.text;
+ const choices=m.stage==='Проверка согласия'?['agree','disagree']:agents.map(a=>a.id);
+ const ballot=parseBallotDetail(m.text,choices);
+ if(!ballot)return 'Модель не смогла дать корректную оценку.';
+ const label=m.stage==='Проверка согласия'
+  ?(ballot.vote==='agree'?'Согласна с итогом':'Не согласна с итогом')
+  :'Выбрала: '+(agents.find(a=>a.id===ballot.vote)?.name||ballot.vote);
+ return '**'+label+'**'+(ballot.reason?'\\n\\n'+ballot.reason:'');
 }
 function renderMessage(m){
- const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
+ const type=agents.find(a=>a.name===m.name)?.id||(m.final?'final':'service');
+ const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'');
  const head=document.createElement('div');head.className='message-head';
+ const identity=document.createElement('span');identity.className='model-identity';
+ const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
  const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
- const stage=document.createElement('small');stage.textContent=m.final?'Итоговый ответ':m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ identity.append(dot,name);
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ':m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
  copy.title='Скопировать ответ';copy.setAttribute('aria-label','Скопировать '+(m.final?'итоговый результат':'ответ '+m.name+' · '+m.stage));
  copyIcon(copy);
- copy.onclick=()=>copyText(m.text,copy);
- head.append(name,stage,copy);
- const body=renderMarkdown(m.text);body.classList.add('message-text');
+ copy.onclick=()=>copyText(text,copy);
+ head.append(identity,stage,copy);
+ const body=renderMarkdown(text);body.classList.add('message-text');
  card.append(head,body);return card;
 }
 function syncResultActions(){
@@ -775,7 +856,9 @@ async function request(a,chat,signal,stage={}){
  }
  const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
- return stage.stage==='final'?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
+ // JSON ballots are a control protocol, not a prose response. Never truncate them.
+ return stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
+  ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{
  if(!access&&!$('demo').checked){$('loginOpen').click();return;}

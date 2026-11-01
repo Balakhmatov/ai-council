@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=fact-research44/);
+ assert.match(html,/app\.js\?v=quorum-fix45/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -125,7 +125,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=fact-research44/);
+ assert.match(html,/app\.js\?v=quorum-fix45/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -169,7 +169,7 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=fact-research44/);
+ assert.match(html,/app\.js\?v=quorum-fix45/);
 });
 
 test('round and named response length selectors appear under task input, separate from modes',()=>{
@@ -182,7 +182,7 @@ test('round and named response length selectors appear under task input, separat
  assert.match(app,/wordsForPreset\(\$\('length'\)\.value\)/);
  assert.match(app,/limitIntermediate\(result.text/);
  assert.match(app,/maxWords:wordsForPreset/);
- assert.match(app,/renderMarkdown\(m.text\)/);
+ assert.match(app,/renderMarkdown\(text\)/);
  assert.match(app,/Первый раунд/);
 });
 test('history viewer is fullscreen and searchable on all stored tasks, using server-side API',()=>{
@@ -191,7 +191,7 @@ test('history viewer is fullscreen and searchable on all stored tasks, using ser
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  assert.match(html,/id="historySearch"/);
  assert.match(html,/history-fullscreen/);
- assert.match(app,/search='\+encodeURIComponent\(query\)/);
+ assert.match(app,/search='\+encodeURIComponent\(term\)/);
  assert.match(app,/\$\('historySearch'\)\.addEventListener\('input'/);
  assert.match(css,/dialog\.history-dialog\.history-fullscreen\[open\]/);
  assert.match(css,/max-height:100dvh/);
@@ -205,8 +205,8 @@ test('research UI is selective, source-based and never silently claims every mod
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/app\.js\?v=fact-research44/);
- assert.match(html,/uiux32\.css\?v=fact-research44/);
+ assert.match(html,/app\.js\?v=quorum-fix45/);
+ assert.match(html,/uiux32\.css\?v=quorum-fix45/);
  assert.match(app,/needsSources\(task\)/);
  assert.match(app,/api\/research/);
  assert.match(app,/onResearch:showResearch/);
@@ -214,4 +214,34 @@ test('research UI is selective, source-based and never silently claims every mod
  assert.match(app,/iframe/);
  assert.match(css,/\.research-panel/);
  assert.match(css,/\.research-source/);
+});
+
+test('history typeahead floats beneath input, debounces after 3 chars and shows source-line context',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ assert.match(html,/id="historySuggest"/);
+ assert.match(html,/role="combobox"/);
+ assert.match(app,/if\(term\.length<3\)/);
+ assert.match(app,/setTimeout\(\(\)=>suggestHistory\(\),190\)/);
+ assert.match(app,/history-suggest-snippet/);
+ assert.match(app,/item\.excerpt/);
+ assert.match(css,/\.history-suggest\{position:absolute/);
+ assert.doesNotMatch(app,/\$\(\'historySearch\'\)\.addEventListener\(\'input\',\(\)=>\{[\s\S]*?setTimeout\(\(\)=>refreshHistory\(true\)/);
+});
+test('voting responses are readable, model cards are distinct, premium details are gated',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const engine=readFileSync(new URL('../public/engine.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ assert.match(html,/до 300 слов/);
+ assert.match(html,/до 600 слов/);
+ assert.match(html,/до 1 000 слов/);
+ assert.match(html,/id="lengthNote"/);
+ assert.match(app,/detailed\.disabled=!premium/);
+ assert.match(app,/stage\.step\)/);
+ assert.match(app,/readableStoredMessage/);
+ assert.match(engine,/readableBallot\(ballot,stage,agents\)/);
+ assert.match(css,/\.message-head \.stage-pill/);
+ assert.match(css,/provider-mistral/);
 });

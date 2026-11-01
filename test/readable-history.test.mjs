@@ -9,12 +9,12 @@ import {renderMarkdown} from '../public/markdown-render.js';
 
 test('compact defaults are actual word caps and final text is never modified by limiter',()=>{
  assert.deepEqual(Object.keys(LENGTH_PRESETS),['short','medium','detailed']);
- assert.equal(wordsForPreset('short'),120);
- assert.equal(wordsForPreset('medium'),250);
- assert.equal(wordsForPreset('detailed'),500);
- assert.equal(wordsForPreset('500'),120);
- const long=Array.from({length:610},(_,i)=>'слово'+i).join(' ');
- for(const limit of [120,250,500]){
+ assert.equal(wordsForPreset('short'),300);
+ assert.equal(wordsForPreset('medium'),600);
+ assert.equal(wordsForPreset('detailed'),1000);
+ assert.equal(wordsForPreset('500'),300);
+ const long=Array.from({length:1200},(_,i)=>'слово'+i).join(' ');
+ for(const limit of [300,600,1000]){
   const clipped=limitIntermediate(long,limit);
   assert.match(clipped,/Ответ сокращён/);
   assert.ok(clipped.includes('слово'+(limit-1)));
@@ -65,4 +65,20 @@ test('Markdown renders headings, emphasis, bullet lists and GFM tables as safe D
   assert.match(dom.textContent,/Метрика/);
   assert.match(dom.textContent,/<script>/);
  }finally{globalThis.document=original;}
+});
+
+test('search excerpts highlight mentions inside full historic model answers',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-suggest-'));
+ try{
+  const store=createHistoryStore({file:join(dir,'suggest.json')});
+  const user='account:'+'d'.repeat(32);
+  store.record(user,'1'.repeat(48),{prompt:'Сформировать маркетинговый план',messages:[
+   {name:'Claude',stage:'Раунд 2',text:'Компания работает в Великом Новгороде, но официальной статистики нет.'}]});
+  const found=store.list(user,{search:'НОВГОРОД',limit:7});
+  assert.equal(found.total,1);
+  assert.equal(found.items[0].matchLabel,'Claude · Раунд 2');
+  assert.match(found.items[0].excerpt,/Новгороде/);
+  assert.ok(found.items[0].excerpt.length<180);
+  assert.equal(store.list(user,{search:'Зеленоград'}).total,0);
+ }finally{rmSync(dir,{recursive:true,force:true});}
 });

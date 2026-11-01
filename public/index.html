@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <link rel="stylesheet" href="./style.css?v=history-layout43">
-<link rel="stylesheet" href="./uiux32.css?v=fact-research44">
+<link rel="stylesheet" href="./uiux32.css?v=quorum-fix45">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -31,7 +31,7 @@
 <div class="prompt-footer"><span class="prompt-caption">Опишите свою задачу — нейросети подготовят решение.</span><span id="chars">0 / 20 000</span></div>
 <div class="response-controls" aria-label="Настройки обсуждения">
  <label>Раунды обсуждения<select id="rounds"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
- <label>Длина промежуточных ответов<select id="length"><option value="short" selected>Коротко</option><option value="medium">Средне</option><option value="detailed">Подробно</option></select></label>
+ <label>Длина промежуточных ответов<select id="length"><option value="short" selected>Коротко · до 300 слов</option><option value="medium">Средне · до 600 слов</option><option value="detailed">Подробно · до 1 000 слов</option></select><small id="lengthNote" class="length-note">«Подробно» доступно по подписке.</small></label>
 </div>
 <label class="research-choice"><input id="factCheck" type="checkbox" checked><span><strong>Проверять факты по открытым источникам</strong><small>Автоматически для анализа компаний, рынков и конкурентов. Для творческих задач поиск не запускается.</small></span></label>
 <details class="advanced"><summary>Как нейросети будут работать над задачей <span class="advanced-chevron">⌄</span></summary>
@@ -51,7 +51,10 @@
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 <section id="historySection" class="history-section" hidden>
  <div class="section-title spaced"><h2>История задач</h2><span id="historyCount" class="step-note"></span></div>
-<label class="history-search"><span class="sr-only">Поиск по всей истории задач</span><input id="historySearch" type="search" placeholder="Найти задачу, ответ, тему…" autocomplete="off" maxlength="160" aria-label="Поиск по всей истории задач"></label>
+<div class="history-search-box">
+ <label class="history-search"><span class="sr-only">Поиск по всей истории задач</span><input id="historySearch" type="search" placeholder="Найти задачу или фразу…" autocomplete="off" maxlength="160" aria-label="Поиск по всей истории задач" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="historySuggest"></label>
+ <div id="historySuggest" class="history-suggest" role="listbox" aria-label="Найденные задачи" hidden></div>
+</div>
  <p class="hint">Каждое обсуждение сохранено отдельно. Откройте любое, чтобы посмотреть задачу и ответы.</p>
  <div id="historyList" class="history-list"></div>
  <button id="historyMore" class="history-more" type="button" hidden>Показать ещё</button>
@@ -153,4 +156,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=fact-research44"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=quorum-fix45"></script></body></html>

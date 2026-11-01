@@ -38,6 +38,18 @@ export function createHistoryStore({file='',now=Date.now}={}){
   account[taskId]=item;state.accounts[identity]=account;save();
   return {taskId:item.taskId,createdAt:item.createdAt,title:item.title,profile,specialization};
  }
+ function excerpt(item,needle){
+  const sources=[{value:item.prompt,label:'В запросе'},{value:item.profile,label:'Направление'},
+   {value:item.specialization,label:'Тип задачи'},
+   ...item.messages.map(m=>({value:m.text,label:(m.final?'Итог':m.name+' · '+m.stage)}))];
+  for(const source of sources){
+   const value=String(source.value||''),at=value.toLocaleLowerCase('ru-RU').indexOf(needle);
+   if(at<0)continue;
+   const start=Math.max(0,at-58),end=Math.min(value.length,at+needle.length+100);
+   return {excerpt:(start?'…':'')+value.slice(start,end).replace(/\\s+/g,' ').trim()+(end<value.length?'…':''),matchLabel:source.label};
+  }
+  return {excerpt:'',matchLabel:''};
+ }
  function list(identity,{offset=0,limit=20,search=''}={}){
   const needle=String(search||'').trim().toLocaleLowerCase('ru-RU').slice(0,160);
   const all=Object.values(state.accounts[identity]||{})
@@ -46,8 +58,10 @@ export function createHistoryStore({file='',now=Date.now}={}){
    .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   const start=Math.max(0,Math.min(1000000,Number(offset)||0));
   const take=Math.max(1,Math.min(50,Number(limit)||20));
-  return {total:all.length,items:all.slice(start,start+take).map(({taskId,createdAt,title,profile,specialization})=>({taskId,createdAt,title,profile,specialization})),
-   nextOffset:start+take<all.length?start+take:null};
+  return {total:all.length,items:all.slice(start,start+take).map(item=>({
+   taskId:item.taskId,createdAt:item.createdAt,title:item.title,profile:item.profile,
+   specialization:item.specialization,...(needle?excerpt(item,needle):{})
+  })),nextOffset:start+take<all.length?start+take:null};
  }
  function get(identity,taskId){return state.accounts[identity]?.[taskId]||null;}
  return {record,list,get};

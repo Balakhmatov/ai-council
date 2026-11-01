@@ -193,12 +193,12 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(researchDone.size>3000)return fail(429,'Слишком много проверок. Повторите позже.');
     const work=(async()=>{
      if(!env.FACT_GROUNDING_API_KEY&&(env.GEMINI_BASE_URL||'https://generativelanguage.googleapis.com/v1beta/openai')!=='https://generativelanguage.googleapis.com/v1beta/openai')
-      return {status:'unavailable',reason:'Поиск недоступен для прокси-модели Gemini',sources:[],facts:[]};
+      return {status:'unavailable',reason:'Проверка открытых источников сейчас недоступна',sources:[],facts:[]};
      return groundTask({task:info.prompt,key:env.FACT_GROUNDING_API_KEY||env.GEMINI_API_KEY,
       model:env.FACT_GROUNDING_MODEL||'gemini-2.5-flash',fetchImpl});
     })();
     researchDone.set(info.taskId,{promise:work,expires:now()+3600000});
-    try{return json(200,await work);}catch{return json(200,{status:'unavailable',reason:'Проверка источников недоступна',sources:[],facts:[]});}
+    try{return json(200,await work);}catch{return json(200,{status:'unavailable',reason:'Проверка открытых источников сейчас недоступна',sources:[],facts:[]});}
    }
    if(path==='/api/task/finish'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
@@ -236,6 +236,8 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
+   if(!isAdmin&&body.stage!=='final'&&Number(body.maxWords)===1000&&!economy.activeTaskAccess(body.taskId,visitorHash)?.detailedEnabled)
+    return fail(403,'Подробное обсуждение доступно по подписке.');
    if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активной задаче либо лимит исчерпан');
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
@@ -252,10 +254,11 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
     const longFinal=body.stage==='final';
-    const maxWords=[120,250,500].includes(body.maxWords)?body.maxWords:120;
-    // Keep actual API output budgets aligned with the selected short/medium/detailed mode.
-    const intermediateTokens={120:900,250:1500,500:2300}[maxWords];
-    const reasoningTokens=body.maxWords==null?4096:{120:1800,250:2700,500:4000}[maxWords];
+    const maxWords=[120,250,500,300,600,1000].includes(body.maxWords)?body.maxWords:300;
+    const ballotStage=['Голосование','Проверка согласия'].includes(body.step);
+    // Voting is machine-readable: keep it short and never apply discussion word caps.
+    const intermediateTokens=ballotStage?700:{120:900,250:1500,500:2300,300:1650,600:2900,1000:4600}[maxWords];
+    const reasoningTokens=ballotStage?2200:body.maxWords==null?4096:{120:1800,250:2700,500:4000,300:2900,600:4700,1000:7000}[maxWords];
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
       ?{model,messages,max_completion_tokens:longFinal?10000:reasoningTokens,reasoning_effort:'medium'}
       :{model,messages,max_tokens:longFinal?7000:intermediateTokens};
@@ -263,7 +266,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
     if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
-    if(!upstream.ok){log(model,'error',null,upstream.status);await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
+    if(!upstream.ok){log(model,'error',null,upstream.status);await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider[0].toUpperCase()+body.provider.slice(1)} сейчас недоступна. Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
     if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502);return fail(502,'Модель вернула пустой ответ');}
     log(model,'ok',data.usage,200);
