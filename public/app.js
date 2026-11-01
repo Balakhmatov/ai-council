@@ -267,14 +267,18 @@ async function refreshAccess(){
  }
  renderAccess();refreshHistory(true).catch(()=>{});
 }
+function taskCount(value){
+ const n=Math.abs(Number(value)||0),lastTwo=n%100,last=n%10;
+ return lastTwo>=11&&lastTwo<=14?'задач':last===1?'задача':last>=2&&last<=4?'задачи':'задач';
+}
 function renderAccess(){
  if(!access)return;
  $('accessChip').hidden=false;
- $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' задач':'Осталось '+access.remainingFreeTasks+' задач';
+ $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining):'Доступно: '+access.remainingFreeTasks+' '+taskCount(access.remainingFreeTasks);
  const plan=access.subscriptionActive;
  $('accessInfo').textContent=access.admin?'Администратор: задачи без ограничений.':
-  plan?'Подписка: '+access.subscriptionRemaining+' из 500 задач, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задачи: '+access.purchasedTasks+'.':
-  'Бесплатно: '+access.freeRemaining+' из '+access.freeStartingTasks+' задач за месяц. Купленные задачи: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задачи не сохраняются.';
+  plan?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining)+' из 500 задач, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задачи: '+access.purchasedTasks+'.':
+  'Бесплатно: '+access.freeRemaining+' '+taskCount(access.freeRemaining)+' из '+access.freeStartingTasks+' '+taskCount(access.freeStartingTasks)+' за месяц. Купленные задачи: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задачи не сохраняются.';
  $('accountCodeDetails').hidden=!access.accountRef;
  $('accountCode').textContent=access.accountRef||'';
  renderPricing();
@@ -298,7 +302,7 @@ function renderPricing(){
   const price=node('div',null,'pricing-value');
   price.append(document.createTextNode(sub.priceRub.toLocaleString('ru-RU')+' ₽ '),node('small','/ 30 дней'));
   const perks=node('div',null,'pricing-perks');
-  perks.append(node('span',sub.tasks+' задач'),node('span','До 7 моделей'),node('span','История без ограничений'));
+  perks.append(node('span',sub.tasks+' '+taskCount(sub.tasks)),node('span','До 7 моделей'),node('span','История без ограничений'));
   card.append(top,price,perks);target.append(card);
  }
  const heading=node('div',null,'pricing-pack-heading');
@@ -307,7 +311,7 @@ function renderPricing(){
  for(const key of ['pack10','pack50','pack100']){
   const offer=offers[key];if(!offer)continue;
   const card=node('article',null,'pricing-offer pricing-offer-pack');
-  card.append(node('span',offer.tasks+' задач','pricing-pack-title'),
+  card.append(node('span',offer.tasks+' '+taskCount(offer.tasks),'pricing-pack-title'),
     node('strong',offer.priceRub.toLocaleString('ru-RU')+' ₽','pricing-value'),
     node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ за задачу','pricing-unit'));
   target.append(card);
@@ -561,7 +565,7 @@ $('adminGrantForm').onsubmit=async event=>{
   const ref=$('adminGrantAccount').value.trim();
   const sku=$('adminGrantSku').value;
   const result=await api('/api/admin/billing/grant',{method:'POST',token:adminToken,body:{accountRef:ref,sku}});
-  $('adminGrantStatus').textContent='Начислено: '+result.access.plan+' · доступно '+result.access.remainingFreeTasks+' задач.';
+  $('adminGrantStatus').textContent='Начислено: '+result.access.plan+' · доступно: '+result.access.remainingFreeTasks+' '+taskCount(result.access.remainingFreeTasks)+'.';
   if(access?.accountRef===ref)await refreshAccess();
  }catch(e){$('adminGrantStatus').textContent='Не удалось начислить: '+e.message;}
  finally{submit.disabled=false;}
