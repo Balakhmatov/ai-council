@@ -246,7 +246,7 @@ async function ensureSession(){
 }
 function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
- $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц, до 3 моделей, без истории.';
+ $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных задач в месяц, до 3 моделей, без истории.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('accountCodeDetails').hidden=true;
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
@@ -254,7 +254,7 @@ function showSignedOut(){
 async function refreshAccess(){
  const token=await ensureSession();if(!token&&!publicSession){showSignedOut();return;}
  try{access=await api('/api/access',{token});}catch(error){
-  if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток заданий. '+error.message;update();throw error;}
+  if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток задач. '+error.message;update();throw error;}
   clearIdentity();showSignedOut();return;
  }
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
@@ -270,11 +270,11 @@ async function refreshAccess(){
 function renderAccess(){
  if(!access)return;
  $('accessChip').hidden=false;
- $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' заданий':'Осталось '+access.remainingFreeTasks+' заданий';
+ $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' задач':'Осталось '+access.remainingFreeTasks+' задач';
  const plan=access.subscriptionActive;
- $('accessInfo').textContent=access.admin?'Администратор: задания без ограничений.':
-  plan?'Подписка: '+access.subscriptionRemaining+' из 500 заданий, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задания: '+access.purchasedTasks+'.':
-  'Бесплатно: '+access.freeRemaining+' из '+access.freeStartingTasks+' заданий за месяц. Купленные задания: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задания не сохраняются.';
+ $('accessInfo').textContent=access.admin?'Администратор: задачи без ограничений.':
+  plan?'Подписка: '+access.subscriptionRemaining+' из 500 задач, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задачи: '+access.purchasedTasks+'.':
+  'Бесплатно: '+access.freeRemaining+' из '+access.freeStartingTasks+' задач за месяц. Купленные задачи: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задачи не сохраняются.';
  $('accountCodeDetails').hidden=!access.accountRef;
  $('accountCode').textContent=access.accountRef||'';
  renderPricing();
@@ -298,18 +298,18 @@ function renderPricing(){
   const price=node('div',null,'pricing-value');
   price.append(document.createTextNode(sub.priceRub.toLocaleString('ru-RU')+' ₽ '),node('small','/ 30 дней'));
   const perks=node('div',null,'pricing-perks');
-  perks.append(node('span',sub.tasks+' заданий'),node('span','До 7 моделей'),node('span','История без ограничений'));
+  perks.append(node('span',sub.tasks+' задач'),node('span','До 7 моделей'),node('span','История без ограничений'));
   card.append(top,price,perks);target.append(card);
  }
  const heading=node('div',null,'pricing-pack-heading');
- heading.append(node('span','Дополнительные задания'),node('small','Без подписки'));
+ heading.append(node('span','Дополнительные задачи'),node('small','Без подписки'));
  target.append(heading);
  for(const key of ['pack10','pack50','pack100']){
   const offer=offers[key];if(!offer)continue;
   const card=node('article',null,'pricing-offer pricing-offer-pack');
-  card.append(node('span',offer.tasks+' заданий','pricing-pack-title'),
+  card.append(node('span',offer.tasks+' задач','pricing-pack-title'),
     node('strong',offer.priceRub.toLocaleString('ru-RU')+' ₽','pricing-value'),
-    node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ / задание','pricing-unit'));
+    node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ за задачу','pricing-unit'));
   target.append(card);
  }
 }
@@ -327,7 +327,7 @@ async function refreshHistory(reset=false){
   for(const item of data.items){
    const btn=document.createElement('button');btn.type='button';btn.className='history-cluster';
    const title=document.createElement('strong');title.textContent=item.title;
-   const info=document.createElement('small');info.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задание')+(item.specialization?' / '+item.specialization:'');
+   const info=document.createElement('small');info.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задача')+(item.specialization?' / '+item.specialization:'');
    btn.append(title,info);
    btn.onclick=()=>openHistory(item.taskId);
    $('historyList').append(btn);
@@ -338,7 +338,7 @@ async function refreshHistory(reset=false){
   $('historySection').hidden=!access.historyEnabled&&data.total===0;
   if(!data.total&&access.historyEnabled&&!$('historyList').children.length){
    const empty=document.createElement('p');empty.className='hint';
-   empty.textContent='Первое обсуждение появится здесь после завершения задания.';
+   empty.textContent='Первое обсуждение появится здесь после завершения задачи.';
    $('historyList').append(empty);
   }
  }finally{historyBusy=false;}
@@ -349,7 +349,7 @@ async function openHistory(taskId){
   const box=$('historyBody');box.replaceChildren();
   const prompt=document.createElement('section');prompt.className='history-prompt';
   const heading=document.createElement('h3');heading.textContent=item.title;
-  const meta=document.createElement('p');meta.className='hint';meta.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задание');
+  const meta=document.createElement('p');meta.className='hint';meta.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задача');
   const text=document.createElement('p');text.textContent=item.prompt;
   prompt.append(heading,meta,text);box.append(prompt);
   for(const m of item.messages)box.append(renderMessage(m));
@@ -369,7 +369,7 @@ async function loadConfig(){
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
   await refreshAccess();if(access?.admin)await showAdmin();
-  $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks===0?'Бесплатные задания закончились.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
+  $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks===0?'Бесплатные задачи закончились.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
 let latestAccounting=null;
@@ -561,7 +561,7 @@ $('adminGrantForm').onsubmit=async event=>{
   const ref=$('adminGrantAccount').value.trim();
   const sku=$('adminGrantSku').value;
   const result=await api('/api/admin/billing/grant',{method:'POST',token:adminToken,body:{accountRef:ref,sku}});
-  $('adminGrantStatus').textContent='Начислено: '+result.access.plan+' · доступно '+result.access.remainingFreeTasks+' заданий.';
+  $('adminGrantStatus').textContent='Начислено: '+result.access.plan+' · доступно '+result.access.remainingFreeTasks+' задач.';
   if(access?.accountRef===ref)await refreshAccess();
  }catch(e){$('adminGrantStatus').textContent='Не удалось начислить: '+e.message;}
  finally{submit.disabled=false;}
@@ -669,7 +669,7 @@ $('start').onclick=async()=>{
    };
    try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
     taskId:activeTask.taskId,...(activeTask.historyEnabled?{history:historyPayload}:{})
-   }});}catch(e){$('status').textContent+=' Не удалось сохранить задание: '+e.message;}
+   }});}catch(e){$('status').textContent+=' Не удалось сохранить задачу: '+e.message;}
    activeTask=null;
   }
   if(!$('demo').checked)await refreshAccess().catch(()=>{});
@@ -682,7 +682,7 @@ $('stop').onclick=()=>controller?.abort();
 $('export').onclick=()=>{
  const result=messages.findLast(m=>m.final);if(!result)return;
  const {profile,task:subtask}=resolveProfile(profileId,taskId);
- const output='# Кворум — '+profile.name+(subtask?' / '+subtask[1]:'')+'\n\n## Задание\n'+$('task').value+'\n\n## Готовый результат\n'+result.text+
+ const output='# Кворум — '+profile.name+(subtask?' / '+subtask[1]:'')+'\n\n## Задача\n'+$('task').value+'\n\n## Готовый результат\n'+result.text+
  ($('showDiscussion').checked?'\n\n## Обсуждение\n'+messages.filter(m=>!m.final).map(m=>'### '+m.name+' — '+m.stage+'\n'+m.text).join('\n\n'):'');
  const url=URL.createObjectURL(new Blob([output],{type:'text/markdown;charset=utf-8'}));
  const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
