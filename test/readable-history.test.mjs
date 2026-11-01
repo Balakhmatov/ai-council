@@ -73,12 +73,13 @@ test('search excerpts highlight mentions inside full historic model answers',()=
   const store=createHistoryStore({file:join(dir,'suggest.json')});
   const user='account:'+'d'.repeat(32);
   store.record(user,'1'.repeat(48),{prompt:'Сформировать маркетинговый план',messages:[
-   {name:'Claude',stage:'Раунд 2',text:'Компания работает в Великом Новгороде, но официальной статистики нет.'}]});
+   {name:'Claude',stage:'Раунд 2',text:'Компания работает в Великом\nНовгороде, но официальной статистики нет.'}]});
   const found=store.list(user,{search:'НОВГОРОД',limit:7});
   assert.equal(found.total,1);
   assert.equal(found.items[0].matchLabel,'Claude · Раунд 2');
   assert.match(found.items[0].excerpt,/Новгороде/);
   assert.ok(found.items[0].excerpt.length<180);
+  assert.doesNotMatch(found.items[0].excerpt,/\n/);
   assert.equal(store.list(user,{search:'Зеленоград'}).total,0);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
