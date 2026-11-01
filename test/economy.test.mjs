@@ -177,3 +177,48 @@ test('non-user failure before any success continues to return allocation',()=>{
  assert.equal(closed.refunded,true);
  assert.equal(econ.access('visitor').remainingFreeTasks,3);
 });
+
+test('token billing charges one credit per selected model, not per round',()=>{
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'10'}});
+ const identity='account:'+'e'.repeat(32);
+ const available=['openai','mistral','grok','claude','gemini','deepseek','qwen'];
+ const first=econ.start(identity,false,{participants:available.slice(0,3),rounds:5,mode:'judge'},available);
+ assert.equal(first.chargedTokens,3);
+ assert.equal(econ.access(identity).remainingFreeTasks,7);
+ econ.success(first.taskId);econ.finish(first.taskId,identity);
+ assert.equal(econ.access(identity).remainingFreeTasks,7);
+ const second=econ.start(identity,false,{participants:available.slice(0,3),rounds:2,mode:'judge'},available);
+ assert.equal(second.chargedTokens,3);
+ assert.equal(econ.access(identity).remainingFreeTasks,4);
+ assert.equal(econ.finish(second.taskId,identity).refunded,true);
+ assert.equal(econ.access(identity).remainingFreeTasks,7);
+});
+test('subscription bills seven models as seven tokens and can combine pack remainder',()=>{
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'0'}});
+ const identity='account:'+'f'.repeat(32);
+ const available=['openai','mistral','grok','claude','gemini','deepseek','qwen'];
+ econ.grant(identity,'subscription');
+ assert.equal(econ.access(identity).subscriptionRemaining,300);
+ const first=econ.start(identity,false,{participants:available,rounds:5,mode:'judge'},available);
+ assert.equal(first.chargedTokens,7);
+ assert.equal(econ.access(identity).subscriptionRemaining,293);
+ econ.success(first.taskId);econ.finish(first.taskId,identity);
+ econ.grant(identity,'pack5');
+ // Simulate 2 subscription tokens left, combine them with 5 purchased tokens.
+ econ.grant(identity,'subscription');
+ for(let i=0;i<42;i++){
+  const t=econ.start(identity,false,{participants:available,rounds:2,mode:'judge'},available);
+  econ.success(t.taskId);econ.finish(t.taskId,identity);
+ }
+ assert.equal(econ.access(identity).subscriptionRemaining,6);
+ const small=econ.start(identity,false,{participants:available.slice(0,4),rounds:2,mode:'judge'},available);
+ econ.success(small.taskId);econ.finish(small.taskId,identity);
+ assert.equal(econ.access(identity).subscriptionRemaining,2);
+ const mixed=econ.start(identity,false,{participants:available,rounds:3,mode:'judge'},available);
+ assert.equal(mixed.chargedTokens,7);
+ assert.equal(econ.access(identity).subscriptionRemaining,0);
+ assert.equal(econ.access(identity).purchasedTasks,0);
+ assert.equal(econ.finish(mixed.taskId,identity).refunded,true);
+ assert.equal(econ.access(identity).subscriptionRemaining,2);
+ assert.equal(econ.access(identity).purchasedTasks,5);
+});
