@@ -75,7 +75,7 @@ test('pricing modal has readable cards, fixed close button and responsive pack l
  assert.match(html,/class="pricing-offer pricing-offer-sub"/);
  assert.equal((html.match(/class="pricing-offer pricing-offer-pack"/g)||[]).length,3);
  assert.match(html,/class="pricing-value">1 200 ₽/);
- assert.match(html,/class="pricing-close"/);
+ assert.match(html,/class="quiet pricing-close"/);
  assert.match(css,/\.pricing-dialog \.pricing-offers\{[\s\S]*?grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
  assert.match(css,/@media\(max-width:540px\)/);
  assert.match(css,/\.pricing-dialog \.pricing-offer-sub/);
