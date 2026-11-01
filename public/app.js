@@ -312,7 +312,7 @@ async function refreshAccess(){
   for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
  }
- renderAccess();refreshHistory(true).catch(()=>{});
+ renderAccess();refreshHistory(true).catch(()=>{});if(new URLSearchParams(location.search).has('payment'))checkPayment().catch(()=>{});
 }
 function taskCount(value){
  const n=Math.abs(Number(value)||0),lastTwo=n%100,last=n%10;
@@ -370,6 +370,8 @@ function renderPricing(){
  const offers=priceCatalog||access?.catalog;
  if(!offers)return; // Keep the four static price cards readable offline.
  const target=$('pricingOffers');target.replaceChildren();
+ $('pricingRefreshPayment').hidden=!access?.paidPlansAvailable;
+ $('pricingPaymentStatus').textContent=!access?'Войдите в аккаунт, чтобы оплатить тариф.':access.paidPlansAvailable?'Выберите тариф, примите условия и оплатите через СБП.':'Оплата СБП пока не настроена.';
  const sub=offers.subscription;
  if(sub){
   const card=node('article',null,'pricing-offer pricing-offer-sub');
@@ -390,6 +392,8 @@ function renderPricing(){
   card.append(node('span',offer.tasks+' '+taskCount(offer.tasks),'pricing-pack-title'),
     node('strong',offer.priceRub.toLocaleString('ru-RU')+' ₽','pricing-value'),
     node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ за токен','pricing-unit'));
+  const pay=node('button','Оплатить через СБП','pricing-buy');
+  pay.type='button';pay.disabled=!access?.paidPlansAvailable;pay.onclick=()=>purchase(key);card.append(pay);
   target.append(card);
  }
 }
