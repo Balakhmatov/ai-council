@@ -395,3 +395,23 @@ test('existing email cookie session gains owner privileges after server restart 
   assert.equal((await t.send('/api/admin',undefined,login.token)).status,200);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
+
+test('verified owner email remains administrator without newer VPS admin email env setting',async()=>{
+ const t=await setup({QUORUM_ADMIN_EMAILS:''});
+ try{
+  const owner=(await t.login('ILYA.BALAKHMATOV@gmail.com')).data;
+  assert.equal(owner.user.email,'ilya.balakhmatov@gmail.com');
+  assert.equal(owner.isAdmin,true);
+  const session=(await t.send('/api/auth/session',undefined,owner.token)).data;
+  assert.equal(session.isAdmin,true);
+  const access=(await t.send('/api/access',undefined,owner.token)).data;
+  assert.equal(access.admin,true);
+  assert.equal(access.plan,'admin');
+  assert.equal(access.maxModels,7);
+  assert.equal(access.remainingFreeTasks,null);
+  assert.equal((await t.send('/api/admin',undefined,owner.token)).status,200);
+  const ordinary=(await t.login('ordinary-user@example.com')).data;
+  assert.equal(ordinary.isAdmin,false);
+  assert.equal((await t.send('/api/access',undefined,ordinary.token)).data.maxModels,3);
+ }finally{await t.close();}
+});
