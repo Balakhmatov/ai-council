@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=quorum-fix45/);
+ assert.match(html,/app\.js\?v=qwen-deepseek46/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -125,7 +125,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=quorum-fix45/);
+ assert.match(html,/app\.js\?v=qwen-deepseek46/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -169,7 +169,7 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=quorum-fix45/);
+ assert.match(html,/app\.js\?v=qwen-deepseek46/);
 });
 
 test('round and named response length selectors appear under task input, separate from modes',()=>{
@@ -205,8 +205,8 @@ test('research UI is selective, source-based and never silently claims every mod
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/app\.js\?v=quorum-fix45/);
- assert.match(html,/uiux32\.css\?v=quorum-fix45/);
+ assert.match(html,/app\.js\?v=qwen-deepseek46/);
+ assert.match(html,/uiux32\.css\?v=qwen-deepseek46/);
  assert.match(app,/needsSources\(task\)/);
  assert.match(app,/api\/research/);
  assert.match(app,/onResearch:showResearch/);
@@ -244,4 +244,25 @@ test('voting responses are readable, model cards are distinct, premium details a
  assert.match(engine,/readableBallot\(ballot,stage,agents\)/);
  assert.match(css,/\.message-head \.stage-pill/);
  assert.match(css,/provider-mistral/);
+});
+
+test('choosing a fourth model on free plan shows an anchored tooltip, not a removed choice',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(app,/function showModelLimitTooltip\(label\)/);
+ assert.match(app,/Использование всех моделей одновременно доступно по подписке/);
+ assert.match(app,/if\(input\.checked&&chosen\.size>=cap\)/);
+ assert.match(app,/input\.checked=false/);
+ assert.match(app,/if\(cap===3\)showModelLimitTooltip\(label\)/);
+ assert.match(css,/\.model-limit-tooltip\{/);
+ assert.match(css,/pointer-events:none/);
+ assert.match(html,/app\.js\?v=qwen-deepseek46/);
+ assert.match(html,/uiux32\.css\?v=qwen-deepseek46/);
+});
+test('Qwen and DeepSeek models are available in the selection UI when configured',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(app,/qwen:\{name:'Qwen'/);
+ assert.match(app,/deepseek:\{name:'DeepSeek'/);
+ assert.match(app,/available\.has\(a\.id\)/);
 });
