@@ -221,3 +221,39 @@ test('subscription bills seven models as seven tokens and can combine pack remai
  assert.equal(econ.access(identity).subscriptionRemaining,2);
  assert.equal(econ.access(identity).purchasedTasks,5);
 });
+
+test('failed majority of real discussion rounds refunds exactly one credit for that AI',()=>{
+ for(const [rounds,failedRounds,refundExpected] of [[2,1,false],[2,2,true],[3,1,false],[3,2,true],[4,2,false],[4,3,true],[5,2,false],[5,3,true]]){
+  const economy=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'10'}});
+  const identity='account:'+'a'.repeat(32),models=['openai','mistral'];
+  const task=economy.start(identity,false,{participants:models,mode:'judge',rounds},models);
+  for(let round=1;round<=rounds;round++){
+   const step=round===1?'Первый раунд':'Раунд '+round;
+   economy.logCall({taskId:task.taskId,provider:'openai',model:'gpt-6-luna',
+    step,status:round<=failedRounds?'error':'ok',httpStatus:round<=failedRounds?503:200});
+   if(round>failedRounds)economy.success(task.taskId);
+   economy.logCall({taskId:task.taskId,provider:'mistral',model:'mistral-large-2512',step,status:'ok',httpStatus:200});
+   economy.success(task.taskId);
+  }
+  // A failed consensus/final call must not change round-based refunds.
+  economy.logCall({taskId:task.taskId,provider:'mistral',model:'mistral-large-2512',step:'Проверка согласия',status:'error'});
+  const result=economy.finish(task.taskId,identity);
+  assert.equal(result.refundedTokens,refundExpected?1:0,'rounds='+rounds+' failed='+failedRounds);
+  assert.deepEqual(result.refundedModels,refundExpected?['openai']:[]);
+  assert.equal(economy.access(identity).remainingFreeTasks,8+(refundExpected?1:0));
+ }
+});
+test('paid model refund restores the same paid balance and cannot run twice',()=>{
+ const economy=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'0'}}),id='account:'+'b'.repeat(32);
+ economy.grant(id,'pack5');
+ const models=['openai','mistral'],task=economy.start(id,false,{participants:models,rounds:3,mode:'judge'},models);
+ for(const step of ['Первый раунд','Раунд 2','Раунд 3']){
+  economy.logCall({taskId:task.taskId,provider:'openai',model:'gpt-6-luna',step,status:'error'});
+  economy.logCall({taskId:task.taskId,provider:'mistral',model:'mistral-large-2512',step,status:'ok'});
+  economy.success(task.taskId);
+ }
+ assert.equal(economy.access(id).purchasedTasks,3);
+ assert.equal(economy.finish(task.taskId,id).refundedTokens,1);
+ assert.equal(economy.access(id).purchasedTasks,4);
+ assert.equal(economy.finish(task.taskId,id),null);
+});
