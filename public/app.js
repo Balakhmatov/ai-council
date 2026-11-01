@@ -4,23 +4,26 @@ import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
 import {loadRememberedSession,rememberSession,forgetSession} from './auth-state.js';
 import {formatTranscript} from './transcript.js';
+import {MODEL_PRIORITY,defaultParticipants,chooseModerator} from './model-priority.js';
 
 const $=id=>document.getElementById(id);
-const agents=[
- {id:'openai',name:'OpenAI',sub:'Логика и структура'},
- {id:'grok',name:'Grok',sub:'Нестандартный взгляд'},
- {id:'mistral',name:'Mistral',sub:'Ясность и точность'},
- {id:'qwen',name:'Qwen',sub:'Детали и анализ'},
- {id:'deepseek',name:'DeepSeek',sub:'Глубина рассуждений'},
- {id:'gemini',name:'Gemini',sub:'Широта контекста'},
- {id:'claude',name:'Claude',sub:'Аргументы и редактура'}
-];
+const agentDetails={
+ claude:{name:'Claude',sub:'Аргументы и редактура'},
+ openai:{name:'OpenAI',sub:'Логика и структура'},
+ mistral:{name:'Mistral',sub:'Ясность и точность'},
+ gemini:{name:'Gemini',sub:'Широта контекста'},
+ qwen:{name:'Qwen',sub:'Детали и анализ'},
+ deepseek:{name:'DeepSeek',sub:'Глубина рассуждений'},
+ grok:{name:'Grok',sub:'Нестандартный взгляд'}
+};
+const agents=MODEL_PRIORITY.map(id=>({id,...agentDetails[id]}));
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false;
-const chosen=new Set(['openai','grok','mistral']);
+const chosen=new Set(MODEL_PRIORITY.slice(0,3));
+let moderatorChosenByUser=false;
 
 function renderProfiles(){
  $('profiles').replaceChildren(...profiles.map(p=>{
@@ -69,9 +72,10 @@ for(const [id,[title,description]] of Object.entries(modes)){
 }
 function update(){
  const old=$('judge').value;
+ if(moderatorChosenByUser&&!chosen.has(old))moderatorChosenByUser=false;
  $('count').textContent=chosen.size+' / '+(access?.maxModels??3);
  $('judge').replaceChildren(...agents.filter(a=>chosen.has(a.id)).map(a=>new Option(a.name,a.id)));
- const preferred=chosen.has(old)?old:chosen.has('grok')?'grok':agents.find(a=>chosen.has(a.id))?.id;
+ const preferred=chooseModerator(chosen,old,{manual:moderatorChosenByUser});
  if(preferred)$('judge').value=preferred;
  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
@@ -88,7 +92,8 @@ function update(){
  });
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
 }
-$('rounds').onchange=update;$('length').onchange=update;$('judge').onchange=update;
+$('rounds').onchange=update;$('length').onchange=update;
+$('judge').onchange=()=>{moderatorChosenByUser=true;update();};
 
 $('agentsToggle')?.addEventListener('click',()=>{
   const body=$('participantsBody');
@@ -401,7 +406,9 @@ async function loadConfig(){
    }catch(error){if(error.status!==401)throw error;clearIdentity();if(telegramContext)saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));}
   }
   available=new Set(config.providers);connected=true;priceCatalog=config.catalog;renderPricing();
-  for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
+  chosen.clear();
+  for(const id of defaultParticipants(available))chosen.add(id);
+  moderatorChosenByUser=false;
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
   await refreshAccess();if(access?.admin)await showAdmin();
   $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks===0?'Бесплатные задачи закончились.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
