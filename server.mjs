@@ -37,8 +37,10 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  // created before QUORUM_ADMIN_EMAILS was introduced. Only a real, authenticated
  // email session can match this; a client-supplied header cannot grant ownership.
  const adminEmails=new Set([...String(env.QUORUM_ADMIN_EMAILS||'').split(/[\s,;]+/),
-   'ilya.balakhmatov@gmail.com']
-  .map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@[^\s@]+\.[^\s@]+$/.test(x)));
+   'ilya.balahmatov@gmail.com']
+  .map(x=>x.trim().toLowerCase())
+  // Revoke the mistyped address provisioned by an earlier release.
+  .filter(x=>x!=='ilya.balakhmatov@gmail.com'&&/^\S+@[^\s@]+\.[^\s@]+$/.test(x)));
  const isOwnerAccount=value=>!!(value&&(
   (value.telegramUser&&adminTelegramIds.has(String(value.telegramUser.id)))||
   (value.emailUser&&adminEmails.has(String(value.emailUser.email||'').trim().toLowerCase()))
