@@ -97,3 +97,29 @@ test('history input validation rejects malformed and oversized conversation dump
  assert.throws(()=>history.record(identity,id(0),{prompt:'x',messages:new Array(91).fill({name:'x',stage:'y',text:'ok'})}),/Некорректная история/);
  assert.throws(()=>history.record(identity,id(0),{prompt:'',messages:[]}),/Некорректная задача/);
 });
+
+test('explicitly linked authenticated identities see both existing histories after restart',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-linked-history-'));
+ const a='account:'+'a'.repeat(32),b='account:'+'b'.repeat(32),outsider='account:'+'c'.repeat(32);
+ try{
+  const file=join(dir,'history.json');
+  let store=createHistoryStore({file});
+  const payload=prompt=>({prompt,messages:[{name:'ИИ',stage:'Итог',text:'Ответ'}]});
+  store.record(a,id(41),payload('Из Telegram'));
+  store.record(b,id(42),payload('Из email'));
+  assert.equal(store.list(a).total,1);
+  assert.equal(store.list(b).total,1);
+  assert.equal(store.list(outsider).total,0);
+  assert.throws(()=>store.link(a,outsider.slice(2)),/Некорректные аккаунты/);
+  assert.equal(store.link(a,b).linked,true);
+  assert.equal(store.list(a).total,2);
+  assert.equal(store.list(b,{search:'Telegram'}).total,1);
+  assert.equal(store.get(b,id(41)).prompt,'Из Telegram');
+  assert.equal(store.get(outsider,id(41)),null);
+  store=createHistoryStore({file});
+  assert.equal(store.list(b).total,2);
+  assert.equal(store.members(a).length,2);
+  assert.equal(store.link(b,a).accounts,2);
+  assert.equal(store.list(outsider).total,0);
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});
