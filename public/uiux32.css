@@ -326,3 +326,7 @@ textarea::placeholder{color:#7d7286!important}
 #emailRecovery .hint,#emailPasswordSetup .hint{font-size:12px;line-height:1.6;margin:12px 0}
 #emailRecovery form{margin-top:14px}
 #emailRecovery input{font-size:16px;min-height:46px}
+
+.password-settings{font-size:11px;font-weight:650;padding:6px 8px;color:#7556a8;border:0;background:transparent;white-space:nowrap}
+.password-settings:hover:not(:disabled){background:#f4edfc}
+@media(max-width:580px){.password-settings{font-size:10px;padding:4px 5px}}
