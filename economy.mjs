@@ -101,10 +101,11 @@ export function createEconomy({env,now=Date.now}){
    catalog:BILLING_CATALOG
   };
  }
- function grant(identity,sku){
+ function grant(identity,sku,paymentId=null){
   if(typeof identity!=='string'||!/^account:[0-9a-f]{32}$/.test(identity))throw Error('Некорректный ID аккаунта');
   const offer=BILLING_CATALOG[sku];
   if(!offer)throw Error('Неизвестный тариф');
+  if(paymentId&&state.appliedPayments[paymentId])return access(identity);
   if(sku==='subscription'){
    const active=subscription(identity),expiry=active?Date.parse(active.expiresAt):now();
    state.subscriptions[identity]={
@@ -113,17 +114,18 @@ export function createEconomy({env,now=Date.now}){
     remainingTasks:(active?.remainingTasks||0)+offer.tasks
    };
   }else state.purchasedCredits[identity]=Math.max(0,state.purchasedCredits[identity]||0)+offer.tasks;
+  if(paymentId)state.appliedPayments[paymentId]={identity,sku,at:new Date(now()).toISOString()};
   save();return access(identity);
  }
  function grantPayment(identity,sku,paymentId){
   if(typeof paymentId!=='string'||!/^quorum:[a-f0-9-]{36}$/.test(paymentId))throw Error('Некорректный ID платежа');
-  if(state.appliedPayments[paymentId])return access(identity);
-  if(!BILLING_CATALOG[sku])throw Error('Неизвестный тариф');
   if(typeof identity!=='string'||!/^account:[0-9a-f]{32}$/.test(identity))throw Error('Некорректный аккаунт');
-  const result=grant(identity,sku);
-  state.appliedPayments[paymentId]={identity,sku,at:new Date(now()).toISOString()};
-  save();
-  return result;
+  if(state.appliedPayments[paymentId]){
+   const applied=state.appliedPayments[paymentId];
+   if(applied.identity!==identity||applied.sku!==sku)throw Error('Платёж уже связан с другим тарифом');
+   return access(identity);
+  }
+  return grant(identity,sku,paymentId);
  }
  function activeTaskAccess(id,identity){
   const task=tasks.get(id);
