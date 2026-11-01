@@ -8,10 +8,10 @@ const direct=Object.freeze({
 });
 const grokHeavyCny=Object.freeze({input:0.60,cached:0.15,output:1.80});
 export const BILLING_CATALOG=Object.freeze({
- subscription:{label:'Подписка · 30 дней',tasks:500,priceRub:1200,discount:20,monthly:true},
- pack10:{label:'10 задач',tasks:10,priceRub:30,discount:0},
- pack50:{label:'50 задач',tasks:50,priceRub:135,discount:10},
- pack100:{label:'100 задач',tasks:100,priceRub:255,discount:15}
+ subscription:{label:'Подписка · 30 дней',tasks:300,priceRub:1200,discount:20,monthly:true},
+ pack5:{label:'5 токенов',tasks:5,priceRub:25,discount:0},
+ pack50:{label:'50 токенов',tasks:50,priceRub:225,discount:10},
+ pack100:{label:'100 токенов',tasks:100,priceRub:425,discount:15}
 });
 // Effective RUB rates reconciled against the owner's DDTokens receipts.
 // Dynamic group prices are estimates, not USD converted at the CBR rate.
@@ -156,21 +156,22 @@ export function createEconomy({env,now=Date.now}){
   const sub=isAdmin?null:subscription(identity);
   let source='admin';
   if(!isAdmin){
-   if(sub&&sub.remainingTasks>0){sub.remainingTasks--;source='subscription';}
-   else if(!sub&&allowance(identity).remainingFreeTasks>0){allowance(identity).remainingFreeTasks--;source='free';}
-   else if((state.purchasedCredits[identity]||0)>0){state.purchasedCredits[identity]--;source='pack';}
+   const needed=models.length;
+   if(sub&&sub.remainingTasks>=needed){sub.remainingTasks-=needed;source='subscription';}
+   else if(!sub&&allowance(identity).remainingFreeTasks>=needed){allowance(identity).remainingFreeTasks-=needed;source='free';}
+   else if((state.purchasedCredits[identity]||0)>=needed){state.purchasedCredits[identity]-=needed;source='pack';}
    else return {insufficient:true};
    save();
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,historyEnabled:!!identity&&(isAdmin||!!sub)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
   if(state.discussions.length>300)state.discussions.splice(0,state.discussions.length-300);
   save();
-  return {taskId:id,maxCalls:limit,remainingFreeTasks:isAdmin?null:access(identity).remainingFreeTasks,historyEnabled:!!identity&&(isAdmin||!!sub)};
+  return {taskId:id,maxCalls:limit,chargedTokens:isAdmin?0:models.length,remainingFreeTasks:isAdmin?null:access(identity).remainingFreeTasks,historyEnabled:!!identity&&(isAdmin||!!sub)};
  }
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
@@ -187,9 +188,9 @@ export function createEconomy({env,now=Date.now}){
   const refunded=!cancelled&&!task.isAdmin&&task.successful===0;
   if(refunded){
    if(task.source==='subscription'&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
-    state.subscriptions[identity].remainingTasks++;
-   else if(task.source==='free'&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks++;
-   else if(task.source==='pack')state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+1;
+    state.subscriptions[identity].remainingTasks+=task.chargedTokens;
+   else if(task.source==='free'&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks+=task.chargedTokens;
+   else if(task.source==='pack')state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+task.chargedTokens;
   }
   const group=state.discussions.find(x=>x.taskId===id);
   if(group){group.endedAt=new Date(now()).toISOString();group.status=cancelled?'cancelled':task.successful?'done':'failed';}
