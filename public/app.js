@@ -51,6 +51,16 @@ function syncTaskHint(){
  $('task').placeholder=getTaskHint(profileId,taskId);
 }
 renderProfiles();renderSubtasks();syncTaskHint();
+let modelLimitTooltipTimer=null;
+function showModelLimitTooltip(label){
+ document.querySelector('.model-limit-tooltip')?.remove();
+ clearTimeout(modelLimitTooltipTimer);
+ const tip=document.createElement('span');
+ tip.className='model-limit-tooltip';tip.setAttribute('role','tooltip');
+ tip.textContent='Использование всех моделей одновременно доступно по подписке.';
+ label.append(tip);
+ modelLimitTooltipTimer=setTimeout(()=>tip.remove(),4500);
+}
 for(const a of agents){
  const label=document.createElement('label');label.className='agent';
  const avatar=document.createElement('span');avatar.className='avatar provider-avatar';
@@ -61,7 +71,8 @@ for(const a of agents){
   const cap=access?.maxModels??3;
   if(input.checked&&chosen.size>=cap){
    input.checked=false;
-   $('status').textContent=cap===3?'Без подписки можно выбрать максимум 3 модели. Снимите одну или подключите подписку.':'Выбрано максимальное число моделей.';
+   if(cap===3)showModelLimitTooltip(label);
+   else $('status').textContent='Выбрано максимальное число моделей.';
    return;
   }
   input.checked?chosen.add(a.id):chosen.delete(a.id);update();
