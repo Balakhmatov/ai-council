@@ -94,5 +94,5 @@ test('history input validation rejects malformed and oversized conversation dump
  const history=createHistoryStore();
  assert.throws(()=>history.record(identity,id(0),{prompt:'x',messages:[{name:'x',stage:'y',text:'x'.repeat(80001)}]}),/Некорректные сообщения/);
  assert.throws(()=>history.record(identity,id(0),{prompt:'x',messages:new Array(91).fill({name:'x',stage:'y',text:'ok'})}),/Некорректная история/);
- assert.throws(()=>history.record(identity,id(0),{prompt:'',messages:[]}),/Некорректное задание/);
+ assert.throws(()=>history.record(identity,id(0),{prompt:'',messages:[]}),/Некорректная задача/);
 });
