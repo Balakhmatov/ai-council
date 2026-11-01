@@ -248,7 +248,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    const callStarted=now();let upstreamLogged=false;
-   const log=(model,status,usage=null,httpStatus=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:body.step,status,usage,httpStatus,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};
+   const log=(model,status,usage=null,httpStatus=null,errorType=null,errorDetail=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:body.step,status,usage,httpStatus,errorType,errorDetail,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};
    try{
     const model=models[body.provider],key=keyFor(body.provider);
     await fx.refresh();
@@ -272,13 +272,18 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
     if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
-    if(!upstream.ok){log(model,'error',null,upstream.status);await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider[0].toUpperCase()+body.provider.slice(1)} сейчас недоступна. Попробуйте позже или выберите другую.`);}
+    if(!upstream.ok){
+       let reason='';try{const errorBody=(await upstream.text()).slice(0,4096);const parsed=JSON.parse(errorBody);reason=String(parsed?.error?.message||parsed?.message||parsed?.error?.type||'');}catch{}
+       const safeReason=reason.replace(/sk-[A-Za-z0-9_-]{8,}|Bearer\s+\S+|(?:api[_-]?key|token|secret|password)\s*[:=]\s*\S+/gi,'[redacted]').slice(0,240);
+       log(model,'error',null,upstream.status,'upstream_error',safeReason);
+       return fail(upstream.status,`Модель ${body.provider[0].toUpperCase()+body.provider.slice(1)} сейчас недоступна. Попробуйте позже или выберите другую.`);
+     }
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
-    if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502);return fail(502,'Модель вернула пустой ответ');}
+    if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502,'empty_response','Ответ не содержит текстового содержимого');return fail(502,'Модель вернула пустой ответ');}
     log(model,'ok',data.usage,200);
     economy.success(body.taskId);
     json(200,{text});
-   }catch{if(!upstreamLogged)log(models[body.provider],'error',null,502);if(!res.destroyed)fail(502,'Модель не ответила вовремя. Попробуйте позже.');}finally{active--;accountActive.set(visitorHash,Math.max(0,(accountActive.get(visitorHash)||1)-1));}return;
+   }catch(error){const timeout=error?.name==='TimeoutError'||error?.cause?.name==='TimeoutError';const aborted=error?.name==='AbortError';const type=timeout?'timeout':aborted?'client_aborted':error instanceof SyntaxError?'invalid_json':'network_error';if(!upstreamLogged)log(models[body.provider],'error',null,timeout?504:502,type,timeout?'Превышено 110 секунд':type==='invalid_json'?'Некорректный JSON провайдера':String(error?.cause?.code||error?.code||error?.name||'Network failure').slice(0,80));if(!res.destroyed)fail(timeout?504:502,timeout?'Модель не ответила за 110 секунд.':'Ошибка соединения с моделью.');}finally{active--;accountActive.set(visitorHash,Math.max(0,(accountActive.get(visitorHash)||1)-1));}return;
   }
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}
   const assetFiles=['quorum-logo-v1.png','quorum-icon-192-v1.png','quorum-icon-512-v1.png','apple-touch-icon-v1.png','favicon-32-v1.png','quorum-logo-v2.png','quorum-icon-192-v2.png','quorum-icon-512-v2.png','apple-touch-icon-v2.png','favicon-32-v2.png'];
