@@ -292,7 +292,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=quorum-fix45/);
+  assert.match(html.body,/uiux32\.css\?v=qwen-deepseek46/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -485,7 +485,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=quorum-fix45/);
+  assert.match(html.body,/app\.js\?v=qwen-deepseek46/);
  }finally{await t.close();}
 });
 
@@ -607,4 +607,53 @@ test('unavailable source verification never exposes private proxy routing to the
   assert.equal(answer.data.status,'unavailable');
   assert.doesNotMatch(JSON.stringify(answer.data),/прокси|ddtnew|api[-_ ]key/i);
  }finally{await t.close();}
+});
+
+test('Qwen 3.7 Plus and DeepSeek V4.1 Flash share the private DDT API key and route safely',async()=>{
+ const t=await setup({
+  NEW_API_KEY:'ddt-shared-secret',
+  QWEN_MODEL:'qwen3.7-plus',DEEPSEEK_MODEL:'deepseek-v4.1-flash',
+  QWEN_BASE_URL:'https://ddtnew.com/v1',DEEPSEEK_BASE_URL:'https://ddtnew.com/v1',
+  ACCOUNT_DAILY_CALL_LIMIT:'10'
+ });
+ try{
+  const config=(await t.send('/api/config')).data;
+  assert.deepEqual(config.providers,['openai','qwen','deepseek']);
+  assert.ok(!JSON.stringify(config).includes('ddt-shared-secret'));
+  const user=(await t.login('both-new-models@example.com')).data;
+  const task=(await t.send('/api/task/start',{
+   participants:['openai','qwen','deepseek'],rounds:2,mode:'judge'
+  },user.token)).data;
+  for(const provider of ['qwen','deepseek']){
+   const result=await t.send('/api/chat',{provider,taskId:task.taskId,stage:'intermediate',step:'Первый раунд',
+    maxWords:300,messages:[{role:'user',content:'Explain briefly'}]},user.token);
+   assert.equal(result.status,200);
+   assert.equal(result.data.text,'OK');
+  }
+  assert.equal(t.calls.length,2);
+  assert.ok(t.calls.every(c=>c.url==='https://ddtnew.com/v1/chat/completions'));
+  assert.ok(t.calls.every(c=>c.options.headers.Authorization==='Bearer ddt-shared-secret'));
+  assert.deepEqual(t.calls.map(c=>JSON.parse(c.options.body).model),['qwen3.7-plus','deepseek-v4.1-flash']);
+  assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},user.token)).status,200);
+  const prices=(await t.send('/api/admin',undefined,'admin-test-only')).data;
+  assert.ok(JSON.stringify(prices).includes('qwen3.7-plus'));
+  assert.ok(JSON.stringify(prices).includes('deepseek-v4.1-flash'));
+ }finally{await t.close();}
+});
+test('shared DDT key is never forwarded to an official provider endpoint, nor enabled without model config',async()=>{
+ const t=await setup({
+  NEW_API_KEY:'ddt-only-secret',
+  QWEN_MODEL:'qwen3.7-plus',DEEPSEEK_MODEL:'deepseek-v4.1-flash'
+ });
+ try{
+  const config=(await t.send('/api/config')).data;
+  assert.deepEqual(config.providers,['openai']);
+ }finally{await t.close();}
+ const t2=await setup({NEW_API_KEY:'ddt-only-secret',QWEN_BASE_URL:'https://ddtnew.com/v1',DEEPSEEK_BASE_URL:'https://ddtnew.com/v1'});
+ try{assert.deepEqual((await t2.send('/api/config')).data.providers,['openai']);}
+ finally{await t2.close();}
+});
+test('reject unapproved URLs for new providers rather than leaking shared keys',()=>{
+ assert.throws(()=>createServer({env:{QWEN_BASE_URL:'https://evil.invalid/v1'}}),/Invalid qwen base URL/);
+ assert.throws(()=>createServer({env:{DEEPSEEK_BASE_URL:'https://evil.invalid/v1'}}),/Invalid deepseek base URL/);
 });
