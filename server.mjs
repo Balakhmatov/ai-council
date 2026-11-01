@@ -5,6 +5,7 @@ import {createSessionStore,createTelegramBrowserLogin,SESSION_LIFETIME} from './
 import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramApi} from './telegram.mjs';
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
+import {createPayments} from './payments.mjs';
 import {createHistoryStore} from './history.mjs';
 import {groundTask} from './public/fact-grounding.mjs';
 import {createFxUpdater} from './fx.mjs';
@@ -12,10 +13,11 @@ import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','XAI_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
-export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetchImpl=globalThis.fetch,emailFetchImpl=globalThis.fetch,now=Date.now}={}){
+export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetchImpl=globalThis.fetch,emailFetchImpl=globalThis.fetch,paymentFetchImpl=globalThis.fetch,now=Date.now}={}){
  const adminToken=env.PROXY_TOKEN||'';
  const emailAuth=createEmailAuth({env,now,fetchImpl:emailFetchImpl});
  const economy=createEconomy({env,now});
+ const payments=createPayments({env,economy,fetchImpl:paymentFetchImpl,now});
  const history=createHistoryStore({file:env.HISTORY_FILE||'',now});
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
@@ -145,7 +147,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     try{return json(200,issueSession({telegramUser:user}));}catch(error){return fail(error.status||503,error.message);}
    }
    if(path==='/api/logout'&&req.method==='POST'){try{sessions.delete(bearer);sessionCookie('',now());return json(200,{ok:true});}catch{return fail(503,'Не удалось завершить выход. Попробуйте ещё раз.');}}
-   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,catalog:economy.catalog(),telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
+   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,catalog:economy.catalog(),paymentsAvailable:payments.ready,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get('admin');if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
     if(!isAdmin){authFailures.set('admin',{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
@@ -160,7 +162,19 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
 
    if(path==='/api/access'&&req.method==='GET'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    return json(200,economy.access(visitorHash,isAdmin));
+    return json(200,{...economy.access(visitorHash,isAdmin),paidPlansAvailable:payments.ready});
+   }
+   if(path==='/api/payments'&&req.method==='GET'){
+    if(!validSession||!visitorHash)return fail(401,'Для оплаты войдите в аккаунт.');
+    try{return json(200,{...await payments.refresh(visitorHash),access:{...economy.access(visitorHash,isAdmin),paidPlansAvailable:payments.ready}});}
+    catch(e){return fail(e.status||502,e.message);}
+   }
+   if(path==='/api/payments'&&req.method==='POST'){
+    if(!validSession||!visitorHash)return fail(401,'Для оплаты войдите в аккаунт.');
+    let details;try{details=await readBody(2000);}catch{return fail(400,'Некорректный тариф');}
+    if(details?.acceptedTerms!==true)return fail(400,'Перед оплатой примите условия использования.');
+    try{return json(200,await payments.create(visitorHash,details.sku));}
+    catch(e){return fail(e.status||502,e.message);}
    }
    if(path==='/api/history'&&req.method==='GET'){
     if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
