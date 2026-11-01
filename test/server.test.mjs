@@ -292,7 +292,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=copy-stop41/);
+  assert.match(html.body,/uiux32\.css\?v=history-layout43/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -485,7 +485,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=moderator42/);
+  assert.match(html.body,/app\.js\?v=history-layout43/);
  }finally{await t.close();}
 });
 
@@ -512,7 +512,7 @@ test('full-history search is server-side, scoped to authenticated account and su
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
 test('selected intermediate length reduces the actual model token budget, not final tokens',async()=>{
- const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-test'});
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-test',ACCOUNT_DAILY_CALL_LIMIT:'8'});
  try{
   const user=(await t.login('length@example.com')).data;
   const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},user.token)).data;
