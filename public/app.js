@@ -658,7 +658,7 @@ function renderProgress(){
   const done=events.some(e=>e.stage===name&&e.status==='done');
   const marker=document.createElement('span');marker.className='progress-mark';marker.textContent=done?'✓':'·';
   const label=document.createElement('span');
-  label.textContent=name==='Независимая идея'?'Нейросети готовят независимые варианты':name==='Итоговый проект'?'Подготовка готового материала':name==='Проверка согласия'?'Финальная проверка':name==='Готово'?'Результат готов':name.replace(/^Раунд /,'Обсуждение · раунд ');
+  label.textContent=name==='Первый раунд'||name==='Независимая идея'?'Первый раунд · независимые варианты':name==='Итоговый проект'?'Подготовка готового материала':name==='Проверка согласия'?'Финальная проверка':name==='Готово'?'Результат готов':name.replace(/^Раунд /,'Обсуждение · раунд ');
   row.append(marker,label);if(done)row.classList.add('done');return row;
  }));
 }
