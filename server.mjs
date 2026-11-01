@@ -187,7 +187,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
     if(!task)return fail(400,'Некорректные параметры задачи');
     if(task.upgradeRequired)return fail(403,'Больше трёх моделей доступны по подписке.');
-    if(task.insufficient)return fail(402,'Лимит задач исчерпан. Дождитесь обновления бесплатного лимита или пополните пакет задач.');
+    if(task.insufficient)return fail(402,'Недостаточно токенов для выбранного количества моделей. Пополните баланс или уменьшите число моделей.');
     return json(200,task);
    }
    if(path==='/api/research'&&req.method==='POST'){
