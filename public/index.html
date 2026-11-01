@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=pricing36">
-<link rel="stylesheet" href="./uiux32.css?v=pricing36">
+<link rel="stylesheet" href="./style.css?v=pricing-fix37">
+<link rel="stylesheet" href="./uiux32.css?v=pricing-fix37">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -70,17 +70,25 @@
 <footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span></footer>
 </main>
 <dialog id="pricingDialog" class="pricing-dialog" aria-labelledby="pricingTitle">
- <div class="pricing-modal-head"><div><span class="pricing-eyebrow">КВОРУМ</span><h2 id="pricingTitle">Тарифы</h2></div><button id="pricingClose" type="button" class="quiet" aria-label="Закрыть тарифы">✕</button></div>
- <p class="pricing-intro">Дополнительные задания без обязательной подписки или полный доступ со всеми моделями и историей.</p>
- <section id="pricingPanel" class="pricing-panel">
-  <div id="pricingOffers">
-   <div class="pricing-offer pricing-offer-sub"><span>Подписка · 30 дней</span><strong>1 200 ₽</strong><small>500 заданий · до 7 моделей · история навсегда · −20%</small></div>
-   <div class="pricing-offer"><span>10 заданий</span><strong>30 ₽</strong><small>3 ₽/задание</small></div>
-   <div class="pricing-offer"><span>50 заданий</span><strong>135 ₽</strong><small>−10%</small></div>
-   <div class="pricing-offer"><span>100 заданий</span><strong>255 ₽</strong><small>−15%</small></div>
+ <div class="pricing-modal-head">
+  <div><span class="pricing-eyebrow">КВОРУМ / ДОСТУП</span><h2 id="pricingTitle">Тарифы</h2></div>
+  <button id="pricingClose" type="button" class="quiet pricing-close" aria-label="Закрыть тарифы">✕</button>
+ </div>
+ <p class="pricing-intro">Все модели и сохранение обсуждений — по подписке. Пакеты заданий можно докупать отдельно.</p>
+ <section id="pricingPanel" class="pricing-panel" aria-label="Тарифные предложения">
+  <div id="pricingOffers" class="pricing-offers">
+   <article class="pricing-offer pricing-offer-sub">
+    <div class="pricing-offer-top"><span class="pricing-plan-title">Подписка · 30 дней</span><span class="pricing-save">−20%</span></div>
+    <div class="pricing-value">1 200 ₽ <small>/ 30 дней</small></div>
+    <div class="pricing-perks"><span>500 заданий</span><span>До 7 моделей</span><span>История без ограничений</span></div>
+   </article>
+   <div class="pricing-pack-heading"><span>Дополнительные задания</span><small>Без подписки</small></div>
+   <article class="pricing-offer pricing-offer-pack"><span class="pricing-pack-title">10 заданий</span><strong class="pricing-value">30 ₽</strong><small class="pricing-unit">3 ₽ / задание</small></article>
+   <article class="pricing-offer pricing-offer-pack"><span class="pricing-pack-title">50 заданий</span><strong class="pricing-value">135 ₽</strong><small class="pricing-unit">−10% · 2,70 ₽ / задание</small></article>
+   <article class="pricing-offer pricing-offer-pack"><span class="pricing-pack-title">100 заданий</span><strong class="pricing-value">255 ₽</strong><small class="pricing-unit">−15% · 2,55 ₽ / задание</small></article>
   </div>
  </section>
- <p class="pricing-footnote">Без подписки — до 3 моделей, без сохранения новых заданий. После окончания подписки старая история остаётся доступна.</p>
+ <p class="pricing-footnote">Без подписки — максимум 3 модели. После её окончания сохранённая история остаётся доступной, новые задания не сохраняются.</p>
  <p class="hint pricing-payment-note">Оплата пока не подключена. Тарифы доступны для ознакомления.</p>
 </dialog>
 <dialog id="historyDialog" class="history-dialog">
@@ -114,4 +122,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=pricing36"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=pricing-fix37"></script></body></html>
