@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <link rel="stylesheet" href="./style.css?v=history-layout43">
-<link rel="stylesheet" href="./uiux32.css?v=pricing-hover47">
+<link rel="stylesheet" href="./uiux32.css?v=history-sync48">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -72,6 +72,19 @@
   <p id="budget" class="hint"></p>
 </div>
 <div class="access-panel"><div class="access-title">Бесплатные токены</div><p id="accessInfo" class="access-lead">Войдите через Telegram или email — 10 бесплатных токенов при регистрации.</p><p class="hint">Без подписки — до 3 моделей и без сохранения новых задач. С подпиской — все доступные модели и бессрочная история.</p></div>
+<div class="history-link-box" id="historyLinkBox" hidden>
+ <button type="button" class="quiet history-link-toggle" id="historyLinkToggle" aria-expanded="false">Связать историю Telegram и email</button>
+ <div id="historyLinkPanel" hidden>
+  <p id="historyLinkExplanation" class="hint"></p>
+  <form id="historyLinkEmailForm" class="history-link-form" hidden>
+   <input id="historyLinkEmail" type="email" placeholder="Email вашего аккаунта" autocomplete="email" required>
+   <input id="historyLinkPassword" type="password" placeholder="Пароль от email-аккаунта" autocomplete="current-password" required>
+   <button type="submit" class="primary">Связать историю</button>
+  </form>
+  <button id="historyLinkTelegram" type="button" class="primary" hidden>Подтвердить Telegram</button>
+  <p id="historyLinkStatus" class="hint" role="status"></p>
+ </div>
+</div>
 
 <details class="account-code" id="accountCodeDetails" hidden>
  <summary>Код аккаунта для активации тарифа</summary>
@@ -158,4 +171,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=refund-mobile-pay-20261101"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=history-sync48"></script></body></html>
