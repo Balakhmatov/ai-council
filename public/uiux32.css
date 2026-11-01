@@ -549,3 +549,19 @@ dialog.history-dialog.history-fullscreen::backdrop{background:rgba(30,20,40,.66)
 .model-limit-tooltip::after{content:"";position:absolute;bottom:-6px;left:27px;
  width:10px;height:10px;background:#352748;transform:rotate(45deg)}
 @media(max-width:600px){.model-limit-tooltip{left:0;right:0;font-size:11px;padding:9px 10px}}
+
+/* AI selector and free-trial access, both mobile and desktop */
+#agentsPanel{min-width:0}
+.access-panel .access-title{font-size:17px;font-weight:750;line-height:1.3}
+.access-panel .access-lead{font-size:15px;font-weight:600;line-height:1.5;color:#44344f;margin:10px 0 13px}
+.access-panel .hint{font-size:11px;line-height:1.55;opacity:.8}
+.legal-footer{display:flex;flex-wrap:wrap;gap:8px 17px;align-items:center}
+.legal-footer a{font-size:11px;color:inherit;text-decoration:underline;text-underline-offset:3px}
+@media(max-width:880px){
+ .participants-toggle-mobile{touch-action:manipulation;min-height:36px}
+ #agentsPanel.is-open{display:block!important;visibility:visible!important;max-height:none!important}
+ #agentsPanel:not(.is-open){display:none!important}
+ .access-panel .access-title{font-size:17px}
+ .access-panel .access-lead{font-size:15px}
+ .legal-footer{width:100%;justify-content:center}
+}
