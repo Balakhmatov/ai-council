@@ -80,5 +80,5 @@ test('pricing modal has readable cards, fixed close button and responsive pack l
  assert.match(css,/@media\(max-width:540px\)/);
  assert.match(css,/\.pricing-dialog \.pricing-offer-sub/);
  assert.match(app,/function renderPricing\(\)/);
- assert.match(app,/className='pricing-offer pricing-offer-sub'/);
+ assert.match(app,/node\('article',null,'pricing-offer pricing-offer-sub'\)/);
 });
