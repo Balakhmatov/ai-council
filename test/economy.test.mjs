@@ -137,3 +137,41 @@ test('monthly quota resets on Moscow month boundary and old refunds do not add c
  time=Date.parse('2026-10-31T21:00:00Z');econ.finish(pending.taskId,identity);
  assert.equal(econ.access(identity).remainingFreeTasks,10);assert.equal(econ.access(identity).period,'month');
 });
+
+test('stopping a task before any model responds never refunds free task allocation',()=>{
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
+ const started=task(econ);assert.equal(econ.access('visitor').remainingFreeTasks,1);
+ const closed=econ.finish(started.taskId,'visitor',{cancelled:true});
+ assert.equal(closed.ok,true);
+ assert.equal(closed.cancelled,true);
+ assert.equal(closed.refunded,false);
+ assert.equal(closed.remainingFreeTasks,1);
+ assert.equal(econ.access('visitor').remainingFreeTasks,1);
+ assert.equal(econ.summary().discussions.find(x=>x.taskId===started.taskId).status,'cancelled');
+ assert.equal(econ.finish(started.taskId,'visitor',{cancelled:true}),null);
+});
+test('stopping with zero answers consumes a subscription task and a purchased pack task',()=>{
+ const identity='account:'+'c'.repeat(32);
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'0'}});
+ econ.grant(identity,'subscription');
+ const args={participants:['openai','grok'],mode:'judge',rounds:2};
+ const t=econ.start(identity,false,args,args.participants);
+ assert.equal(econ.access(identity).subscriptionRemaining,499);
+ const ended=econ.finish(t.taskId,identity,{cancelled:true});
+ assert.equal(ended.refunded,false);
+ assert.equal(econ.access(identity).subscriptionRemaining,499);
+ const second='account:'+'d'.repeat(32);
+ econ.grant(second,'pack10');
+ const t2=econ.start(second,false,args,args.participants);
+ assert.equal(econ.access(second).purchasedTasks,9);
+ assert.equal(econ.finish(t2.taskId,second,{cancelled:true}).refunded,false);
+ assert.equal(econ.access(second).purchasedTasks,9);
+});
+test('non-user failure before any success continues to return allocation',()=>{
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
+ const started=task(econ);
+ const closed=econ.finish(started.taskId,'visitor');
+ assert.equal(closed.cancelled,false);
+ assert.equal(closed.refunded,true);
+ assert.equal(econ.access('visitor').remainingFreeTasks,2);
+});
