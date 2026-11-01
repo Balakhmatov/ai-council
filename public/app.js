@@ -337,6 +337,35 @@ $('copyAccountCode').onclick=async()=>{
 };
 $('pricingOpen').onclick=()=>{if(!$('pricingDialog').open)$('pricingDialog').showModal();};
 $('pricingClose').onclick=()=>$('pricingDialog').close();
+async function checkPayment(){
+ const status=$('pricingPaymentStatus');
+ if(!access?.paidPlansAvailable){status.textContent='Оплата СБП пока не настроена.';return;}
+ try{
+  status.textContent='Проверяем платёж…';
+  const result=await api('/api/payments',{token:await ensureSession()});
+  const latest=result.orders?.[0];
+  if(latest?.status==='succeeded'&&latest.applied)status.textContent='Оплата подтверждена, токены начислены.';
+  else if(latest?.status==='pending')status.textContent='Ожидаем оплату через СБП. После платежа нажмите «Проверить оплату».';
+  else if(latest?.status==='canceled')status.textContent='Платёж отменён. Можно попробовать снова.';
+  else status.textContent='Платёж не найден.';
+  if(result.access){access=result.access;renderAccess();}
+ }catch(error){status.textContent=error.message;}
+}
+$('pricingRefreshPayment').onclick=checkPayment;
+async function purchase(sku){
+ const status=$('pricingPaymentStatus');
+ if(!access){status.textContent='Сначала войдите через Telegram или email.';return;}
+ if(!$('pricingAgree').checked){status.textContent='Примите условия использования перед оплатой.';return;}
+ if(!access.paidPlansAvailable){status.textContent='СБП пока не настроена. Повторите позже.';return;}
+ try{
+  status.textContent='Открываем безопасную оплату СБП…';
+  const result=await api('/api/payments',{method:'POST',token:await ensureSession(),body:{sku,acceptedTerms:true}});
+  if(result.applied){status.textContent='Оплата подтверждена, токены начислены.';await refreshAccess();return;}
+  if(!result.paymentUrl){status.textContent='Платёж создан. Нажмите «Проверить оплату».';return;}
+  // Navigation is an explicit user action; return URL brings the payer back to Quorum.
+  window.location.assign(result.paymentUrl);
+ }catch(error){status.textContent=error.message;}
+}
 function renderPricing(){
  const offers=priceCatalog||access?.catalog;
  if(!offers)return; // Keep the four static price cards readable offline.
@@ -350,7 +379,7 @@ function renderPricing(){
   price.append(document.createTextNode(sub.priceRub.toLocaleString('ru-RU')+' ₽ '),node('small','/ 30 дней'));
   const perks=node('div',null,'pricing-perks');
   perks.append(node('span',sub.tasks+' '+taskCount(sub.tasks)),node('span','До 7 моделей'),node('span','История без ограничений'));
-  card.append(top,price,perks);target.append(card);
+  card.append(top,price,perks);const pay=node('button','Оплатить 1 200 ₽ через СБП','pricing-buy');pay.type='button';pay.disabled=!access?.paidPlansAvailable;pay.onclick=()=>purchase('subscription');card.append(pay);target.append(card);
  }
  const heading=node('div',null,'pricing-pack-heading');
  heading.append(node('span','Дополнительные токены'),node('small','Без подписки'));
