@@ -6,7 +6,7 @@ except KeyError:subprocess.run(['useradd','--system','--home-dir','/var/lib/quor
 uid=pwd.getpwnam('quorum').pw_uid;gid=grp.getgrnam('quorum').gr_gid
 for folder in [dest,Path('/var/lib/quorum'),Path('/etc/quorum')]:folder.mkdir(parents=True,exist_ok=True)
 os.chown('/var/lib/quorum',uid,gid);os.chmod('/var/lib/quorum',0o700);os.chmod('/etc/quorum',0o700)
-for name in ['server.mjs','email-auth.mjs','password-auth.mjs','auth-sessions.mjs','telegram.mjs','economy.mjs','history.mjs','fx.mjs','package.json','package-lock.json']:
+for name in ['server.mjs','email-auth.mjs','password-auth.mjs','auth-sessions.mjs','telegram.mjs','economy.mjs','payments.mjs','history.mjs','fx.mjs','package.json','package-lock.json']:
  shutil.copy2(src/name,dest/name);os.chmod(dest/name,0o644)
 subprocess.run(['npm','ci','--omit=dev','--ignore-scripts','--no-audit','--no-fund'],cwd=dest,check=True)
 for name in ['public','scripts']:
@@ -17,6 +17,16 @@ subprocess.run(['/usr/bin/node','--input-type=module','-e',r'''
 import fs from 'node:fs';import {parseEnv} from 'node:util';import crypto from 'node:crypto';
 const target='/etc/quorum/quorum.env';
 const source=fs.existsSync(target)?target:'/root/ai-council/.env.private';const config=parseEnv(fs.readFileSync(source,'utf8'));
+// Reuse the existing working YooKassa shop, copying only its two secret env values.
+for(const p of ['/etc/business-pulse/yookassa.env','/var/byvshaya/shared/cityai.env']){
+ if(config.YOOKASSA_SHOP_ID&&config.YOOKASSA_SECRET_KEY)break;
+ if(!fs.existsSync(p))continue;
+ const existing=parseEnv(fs.readFileSync(p,'utf8'));
+ if(existing.YOOKASSA_SHOP_ID&&existing.YOOKASSA_SECRET_KEY){
+  config.YOOKASSA_SHOP_ID=config.YOOKASSA_SHOP_ID||existing.YOOKASSA_SHOP_ID;
+  config.YOOKASSA_SECRET_KEY=config.YOOKASSA_SECRET_KEY||existing.YOOKASSA_SECRET_KEY;
+ }
+}
 // Migrate the existing server-pinned OpenAI model without touching credentials or custom newer models.
 if(!config.OPENAI_MODEL||/^gpt-(?:4|5)(?:[.-]|$)/.test(config.OPENAI_MODEL))config.OPENAI_MODEL='gpt-6-luna';
 if(!config.MISTRAL_MODEL||config.MISTRAL_MODEL==='mistral-large-4'||config.MISTRAL_MODEL==='mistral-large-latest'||config.MISTRAL_MODEL==='mistral-small-latest')config.MISTRAL_MODEL='mistral-large-2512';
