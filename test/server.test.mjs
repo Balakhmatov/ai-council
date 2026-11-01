@@ -292,7 +292,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=fact-research44/);
+  assert.match(html.body,/uiux32\.css\?v=quorum-fix45/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -485,7 +485,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=fact-research44/);
+  assert.match(html.body,/app\.js\?v=quorum-fix45/);
  }finally{await t.close();}
 });
 
@@ -574,5 +574,37 @@ test('fact-check module is served to mobile Quorum webview',async()=>{
   const asset=await t.asset('/fact-check.js');
   assert.equal(asset.status,200);assert.match(asset.type,/javascript/);
   assert.match(asset.body,/export function numericClaims/);
+ }finally{await t.close();}
+});
+
+test('premium 1000-word intermediary is rejected for free users, then allowed after subscription',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-test',ACCOUNT_DAILY_CALL_LIMIT:'12'});
+ try{
+  const user=(await t.login('detailed-test@example.com')).data;
+  const access=(await t.send('/api/access',undefined,user.token)).data;
+  const args={participants:['openai','mistral'],rounds:2,mode:'judge'};
+  const started=(await t.send('/api/task/start',args,user.token)).data;
+  const ask=async(maxWords,stage='intermediate',step='Первый раунд')=>
+   t.send('/api/chat',{...body,provider:'mistral',taskId:started.taskId,maxWords,stage,step},user.token);
+  assert.equal((await ask(1000)).status,403);
+  assert.equal(t.calls.filter(c=>c.url.includes('mistral')).length,0);
+  assert.equal((await ask(300)).status,200);
+  assert.equal((await ask(600)).status,200);
+  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:access.accountRef,sku:'subscription'},'admin-test-only')).status,200);
+  assert.equal((await ask(1000)).status,200);
+  const payloads=t.calls.filter(c=>c.url.includes('mistral')).map(c=>JSON.parse(c.options.body));
+  assert.deepEqual(payloads.map(p=>p.max_tokens),[1650,2900,4600]);
+  assert.equal((await t.send('/api/task/finish',{taskId:started.taskId},user.token)).status,200);
+ }finally{await t.close();}
+});
+test('unavailable source verification never exposes private proxy routing to the end user',async()=>{
+ const t=await setup({GEMINI_API_KEY:'proxy-key',GEMINI_MODEL:'gemini-2.5-flash',GEMINI_BASE_URL:'https://ddtnew.com/v1'});
+ try{
+  const user=(await t.login('hidden-proxy@example.com')).data;
+  const started=(await t.send('/api/task/start',{participants:['openai','gemini'],rounds:2,mode:'judge'},user.token)).data;
+  const answer=await t.send('/api/research',{taskId:started.taskId,prompt:'Анализ рынка недвижимости в городе'},user.token);
+  assert.equal(answer.status,200);
+  assert.equal(answer.data.status,'unavailable');
+  assert.doesNotMatch(JSON.stringify(answer.data),/прокси|ddtnew|api[-_ ]key/i);
  }finally{await t.close();}
 });
