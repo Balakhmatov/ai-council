@@ -128,9 +128,15 @@ async function loginTelegram(){
 try{publicSession=loadRememberedSession(localStorage);}catch{}
 let loginEmail='',pendingLogin=null,pollTimer=null,polling=false;
 function saveIdentity(identity){
- publicSession={...(publicSession||{}),...identity};
- if(identity.isAdmin){adminToken=publicSession.token||'';telegramIdentity=publicSession;}
- else{adminToken='';sessionStorage.removeItem('quorum-admin');}
+ // Never carry a previous account's token into a different authenticated identity.
+ const previous=publicSession;
+ const sameUser=previous?.user&&identity?.user&&(
+  (previous.user.email&&previous.user.email===identity.user.email)||
+  (previous.user.id&&previous.user.id===identity.user.id));
+ publicSession={...identity,...(!Object.hasOwn(identity,'token')&&sameUser&&previous.token?{token:previous.token}:{})};
+ adminToken=identity.isAdmin?(publicSession.token||''):'';
+ telegramIdentity=identity.isAdmin?publicSession:null;
+ sessionStorage.removeItem('quorum-admin');
  try{const remembered={...publicSession};if(!location.hostname.endsWith('github.io'))delete remembered.token;rememberSession(localStorage,remembered);}catch{}
 }
 function clearIdentity(){
@@ -239,13 +245,14 @@ $('emailLogout').onclick=async()=>{
  catch(error){$('status').textContent=error.message;}
 };
 async function ensureSession(){
- if(adminToken)return adminToken;
  if(publicSession?.expires>Date.now())return publicSession.token||null;
- if(telegramContext){saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));return publicSession.token;}
+ if(adminToken)return adminToken;
+ if(telegramContext){saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));return publicSession.token||null;}
  return null;
 }
 function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
+ $('settingsOpen').hidden=true;$('demoControls').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных задач в месяц, до 3 моделей, без истории.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('accountCodeDetails').hidden=true;
@@ -253,13 +260,28 @@ function showSignedOut(){
 }
 async function refreshAccess(){
  const token=await ensureSession();if(!token&&!publicSession){showSignedOut();return;}
- try{access=await api('/api/access',{token});}catch(error){
+ // Revalidate the owner's role against the live server, not a stale browser snapshot.
+ // A session cookie also works after the page reloads (the bearer token is not persisted).
+ if(publicSession){
+  try{
+   let identity;
+   try{identity=await api('/api/auth/session',{token:publicSession.token});}
+   catch(error){
+    if(error.status!==401||!publicSession.token)throw error;
+    identity={...await api('/api/auth/session'),token:null}; // Drop stale bearer and rely on the valid cookie.
+   }
+   saveIdentity(identity);
+  }catch(error){if(error.status!==401)throw error;}
+ }
+ try{access=await api('/api/access',{token:await ensureSession()});}catch(error){
   if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток задач. '+error.message;update();throw error;}
   clearIdentity();showSignedOut();return;
  }
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
  $('passwordSettings').hidden=!publicSession?.user?.email;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
+ $('settingsOpen').hidden=!access.admin;
+ $('demoControls').hidden=!access.admin;
  const cap=access.maxModels??3;
  if(chosen.size>cap){
   for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
@@ -365,9 +387,16 @@ $('historyMore').onclick=()=>refreshHistory().catch(e=>{$('status').textContent=
 async function loadConfig(){
  try{
   await loginTelegram();const config=await api('/api/config');
-  if(!adminToken){
-   try{saveIdentity(await api('/api/auth/session',{token:publicSession?.token}));}
-   catch(error){if(error.status!==401)throw error;clearIdentity();if(telegramContext)saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));}
+  if(publicSession||!adminToken){
+   try{
+    let identity;
+    try{identity=await api('/api/auth/session',{token:publicSession?.token});}
+    catch(error){
+     if(error.status!==401||!publicSession?.token)throw error;
+     identity={...await api('/api/auth/session'),token:null};
+    }
+    saveIdentity(identity);
+   }catch(error){if(error.status!==401)throw error;clearIdentity();if(telegramContext)saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));}
   }
   available=new Set(config.providers);connected=true;priceCatalog=config.catalog;renderPricing();
   for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);
@@ -592,6 +621,17 @@ if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
 
 $('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
+let lastRoleRefresh=0;
+window.addEventListener('focus',()=>{
+ if(!publicSession||running||Date.now()-lastRoleRefresh<15000)return;
+ lastRoleRefresh=Date.now();
+ refreshAccess().catch(()=>{});
+});
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState!=='visible'||!publicSession||running||Date.now()-lastRoleRefresh<15000)return;
+ lastRoleRefresh=Date.now();
+ refreshAccess().catch(()=>{});
+});
 $('task').oninput=()=>$('chars').textContent=$('task').value.length.toLocaleString('ru')+' / 20 000';
 
 function renderProgress(){
