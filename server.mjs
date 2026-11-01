@@ -147,7 +147,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const id=path.slice('/api/history/'.length);
     if(!/^[0-9a-f]{48}$/.test(id))return fail(400,'Некорректный идентификатор');
     const item=history.get(visitorHash,id);
-    return item?json(200,item):fail(404,'Задание не найдено');
+    return item?json(200,item):fail(404,'Задача не найдена');
    }
    if(path==='/api/admin/billing/grant'&&req.method==='POST'){
     if(!isAdmin)return fail(403,'Доступ запрещён');
@@ -157,26 +157,26 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    }
    if(path==='/api/task/start'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректное задание');}
+    let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректная задача');}
     await fx.refresh();
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
-    if(!task)return fail(400,'Некорректные параметры задания');
+    if(!task)return fail(400,'Некорректные параметры задачи');
     if(task.upgradeRequired)return fail(403,'Больше трёх моделей доступны по подписке.');
-    if(task.insufficient)return fail(402,'Лимит заданий исчерпан. Дождитесь обновления бесплатного лимита или пополните пакет заданий.');
+    if(task.insufficient)return fail(402,'Лимит задач исчерпан. Дождитесь обновления бесплатного лимита или пополните пакет задач.');
     return json(200,task);
    }
    if(path==='/api/task/finish'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    let info;try{info=await readBody(800000);}catch{return fail(400,'Некорректное задание');}
+    let info;try{info=await readBody(800000);}catch{return fail(400,'Некорректная задача');}
     const entitlement=economy.activeTaskAccess(info.taskId,visitorHash);
-    if(!entitlement)return fail(404,'Задание не найдено');
+    if(!entitlement)return fail(404,'Задача не найдена');
     let historySaved=false;
     if(entitlement.historyEnabled&&entitlement.successful>0&&info.history){
      try{historySaved=!!history.record(visitorHash,info.taskId,info.history);}
      catch(e){return fail(400,e.message);}
     }
     const closed=economy.finish(info.taskId,visitorHash);
-    return closed?json(200,{...closed,historySaved}):fail(404,'Задание не найдено');
+    return closed?json(200,{...closed,historySaved}):fail(404,'Задача не найдена');
    }
    if(path==='/api/admin/logs'&&req.method==='GET'){
     if(!isAdmin)return fail(403,'Доступ запрещён');
@@ -201,7 +201,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
-   if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активному заданию либо лимит исчерпан');
+   if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активной задаче либо лимит исчерпан');
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    const callStarted=now();let upstreamLogged=false;
