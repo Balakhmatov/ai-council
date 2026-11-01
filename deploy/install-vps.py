@@ -24,6 +24,9 @@ config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/
 config.SESSION_FILE='/var/lib/quorum/sessions.enc';config.PASSWORD_FILE='/var/lib/quorum/passwords.json';
 config.ACCOUNT_MONTHLY_TASKS=(!config.ACCOUNT_MONTHLY_TASKS||config.ACCOUNT_MONTHLY_TASKS==='5')?'10':config.ACCOUNT_MONTHLY_TASKS;delete config.FREE_START_TASKS;delete config.GUEST_DAILY_TASKS;delete config.PUBLIC_IP_DAILY_LIMIT;delete config.FREE_START_COINS;delete config.TASK_COIN_COST;config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';
+# Owner email is stored only in the private service configuration. It does not
+# appear in the client bundle or grant access unless the email is authenticated.
+config.QUORUM_ADMIN_EMAILS=','.join(dict.fromkeys([v.strip().lower() for v in (config.get('QUORUM_ADMIN_EMAILS','')+',ilya.balakhmatov@gmail.com').replace(';',',').split(',') if v.strip()]));
 config.TELEGRAM_WEBHOOK_SECRET=config.TELEGRAM_WEBHOOK_SECRET||crypto.randomBytes(32).toString('hex');
 config.ALLOWED_ORIGINS=[...new Set((config.ALLOWED_ORIGINS||'').split(',').concat(['https://cityai.site','https://stage.cityai.site','https://balakhmatov.github.io']))].filter(Boolean).join(',');
 const tokenFile='/root/ai-council/.telegram-token';
