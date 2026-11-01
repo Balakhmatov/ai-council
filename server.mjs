@@ -1,5 +1,6 @@
 import http from 'node:http';
 import {createEmailAuth} from './email-auth.mjs';
+import {createPasswordAuth} from './password-auth.mjs';
 import {createSessionStore,createTelegramBrowserLogin,SESSION_LIFETIME} from './auth-sessions.mjs';
 import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramApi} from './telegram.mjs';
 import crypto from 'node:crypto';
@@ -13,6 +14,7 @@ const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_AP
 export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetchImpl=globalThis.fetch,emailFetchImpl=globalThis.fetch,now=Date.now}={}){
  const adminToken=env.PROXY_TOKEN||'';
  const emailAuth=createEmailAuth({env,now,fetchImpl:emailFetchImpl});
+ const passwordAuth=createPasswordAuth({env,now});
  const economy=createEconomy({env,now});
  const history=createHistoryStore({file:env.HISTORY_FILE||'',now});
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
@@ -87,13 +89,26 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     try{const body=await readBody(1000),user=browserLogin.inspect(body.id,body.secret);if(!user)return json(200,{pending:true});const identity=issueSession({telegramUser:user});browserLogin.consume(body.id);return json(200,identity);}
     catch(error){return fail(error.status||400,error.status?error.message:'Не удалось завершить вход. Попробуйте заново.');}
    }
-   if(path==='/api/email/config'&&req.method==='GET')return json(200,{enabled:emailAuth.enabled});
+   if(path==='/api/email/config'&&req.method==='GET')return json(200,{enabled:emailAuth.enabled,passwordLogin:true});
+   if(path==='/api/email/password/login'&&req.method==='POST'){
+    try{const body=await readBody(3000),user=await passwordAuth.login(body.email,body.password);
+     return json(200,issueSession({emailUser:user}));
+    }catch(e){return fail(e.status||400,e.status?e.message:'Не удалось выполнить вход.');}
+   }
+   if(path==='/api/email/password/set'&&req.method==='POST'){
+    if(!validSession||!session.emailUser||!session.emailVerifiedAt||now()-session.emailVerifiedAt>600000)return fail(403,'Для установки или восстановления пароля подтвердите email кодом.');
+    try{const body=await readBody(3000);
+     const result=await passwordAuth.set(session.emailUser.email,body.password);
+     session.emailVerifiedAt=0;sessions.set(bearer,session);
+     return json(200,result);
+    }catch(e){return fail(e.status||400,e.status?e.message:'Не удалось установить пароль.');}
+   }
    if(['/api/email/request','/api/email/verify'].includes(path)&&req.method==='POST'){
     try{
      const body=await readBody(2000);
      if(path.endsWith('/request'))return json(200,await emailAuth.request(body.email));
      const user=emailAuth.verify(body.email,body.code);
-     return json(200,issueSession({emailUser:user}));
+     return json(200,issueSession({emailUser:user,emailVerifiedAt:now()}));
     }catch(e){return fail(e.status||400,e.status?e.message:'Некорректный запрос');}
    }
    if(path==='/api/telegram/auth'&&req.method==='POST'){
