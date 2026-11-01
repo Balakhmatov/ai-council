@@ -205,12 +205,13 @@ test('subscription bills seven models as seven tokens and can combine pack remai
  econ.grant(identity,'pack5');
  // Simulate 2 subscription tokens left, combine them with 5 purchased tokens.
  econ.grant(identity,'subscription');
- for(let i=0;i<42;i++){
+ assert.equal(econ.access(identity).subscriptionRemaining,593,'Renewal preserves credits');
+ for(let i=0;i<84;i++){
   const t=econ.start(identity,false,{participants:available,rounds:2,mode:'judge'},available);
   econ.success(t.taskId);econ.finish(t.taskId,identity);
  }
- assert.equal(econ.access(identity).subscriptionRemaining,6);
- const small=econ.start(identity,false,{participants:available.slice(0,4),rounds:2,mode:'judge'},available);
+ assert.equal(econ.access(identity).subscriptionRemaining,5);
+ const small=econ.start(identity,false,{participants:available.slice(0,3),rounds:2,mode:'judge'},available);
  econ.success(small.taskId);econ.finish(small.taskId,identity);
  assert.equal(econ.access(identity).subscriptionRemaining,2);
  const mixed=econ.start(identity,false,{participants:available,rounds:3,mode:'judge'},available);
