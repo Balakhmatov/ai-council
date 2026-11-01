@@ -575,3 +575,15 @@ dialog.history-dialog.history-fullscreen::backdrop{background:rgba(30,20,40,.66)
 .pricing-dialog .pricing-agree a{color:#6944a4;text-decoration:underline}
 .pricing-dialog #pricingRefreshPayment{display:block;margin:10px 0 0;padding:8px 12px;font-size:12px}
 .pricing-dialog #pricingRefreshPayment[hidden]{display:none!important}
+
+/* Explicit two-provider history linking (credentials never saved in the browser). */
+.history-link-box{margin-top:12px;padding:12px;border:1px solid #e5d9f1;border-radius:12px;background:#fbf8ff}
+.history-link-box [hidden]{display:none!important}
+.history-link-toggle{width:100%;font-size:12px;font-weight:700;text-align:left;color:#6844a0;background:transparent;border:0;padding:5px 2px;cursor:pointer}
+.history-link-toggle:hover:not(:disabled){background:#f1eafb;color:#503078}
+.history-link-box #historyLinkPanel{padding:9px 2px 3px}
+.history-link-box .hint{margin:0 0 9px;font-size:11px;line-height:1.5}
+.history-link-form{display:grid;gap:8px}
+.history-link-form input{box-sizing:border-box;width:100%;min-width:0;padding:10px 12px;border:1px solid #ddcfeb;border-radius:9px;font-size:14px}
+.history-link-form .primary,.history-link-box #historyLinkTelegram{font-size:12px;min-height:36px;padding:8px 12px}
+.history-link-box #historyLinkStatus{margin:9px 0 0;color:#60418b!important}
