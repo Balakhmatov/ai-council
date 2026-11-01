@@ -115,7 +115,7 @@ $('rounds').onchange=update;$('length').onchange=update;
 $('judge').onchange=()=>{moderatorChosenByUser=true;update();};
 
 $('agentsToggle')?.addEventListener('click',()=>{
-  const body=$('participantsBody');
+  const body=$('agentsPanel');
   const btn=$('agentsToggle');
   if(!body||!btn)return;
   if(window.matchMedia('(min-width:881px)').matches)return;
@@ -123,7 +123,7 @@ $('agentsToggle')?.addEventListener('click',()=>{
   btn.setAttribute('aria-expanded',String(open));
 });
 window.matchMedia('(max-width:880px)').addEventListener('change',()=>{
-  const body=$('participantsBody');
+  const body=$('agentsPanel');
   const btn=$('agentsToggle');
   if(!body||!btn)return;
   if(window.matchMedia('(min-width:881px)').matches){
@@ -135,7 +135,7 @@ window.matchMedia('(max-width:880px)').addEventListener('change',()=>{
   }
 });
 if(window.matchMedia('(min-width:881px)').matches){
-  $('participantsBody')?.classList.add('is-open');
+  $('agentsPanel')?.classList.add('is-open');
   $('agentsToggle')?.setAttribute('aria-expanded','true');
 }
 
@@ -278,7 +278,7 @@ async function ensureSession(){
 function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
  $('settingsOpen').hidden=true;$('demoControls').hidden=true;
- $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных токенов при регистрации, до 3 моделей, без истории.';
+ $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных токенов при регистрации.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('accountCodeDetails').hidden=true;
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
@@ -928,9 +928,9 @@ $('start').onclick=async()=>{
     prompt:$('task').value,profile:profile.name,
     specialization:subtask?.[1]||'',messages:messages.map(({name,stage,text,final,error})=>({name,stage,text,final:!!final,error:!!error}))
    };
-   try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
-    taskId:activeTask.taskId,cancelled:stopRequested,...(activeTask.historyEnabled?{history:historyPayload}:{})
-   }});}catch(e){$('status').textContent+=' Не удалось сохранить задачу: '+e.message;}
+   try{const finished=await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
+     taskId:activeTask.taskId,cancelled:stopRequested,...(activeTask.historyEnabled?{history:historyPayload}:{})
+    }});if(finished.refundedTokens>0)$('status').textContent+=' Возвращено '+finished.refundedTokens+' '+taskCount(finished.refundedTokens)+' за ошибки ИИ.';}catch(e){$('status').textContent+=' Не удалось завершить задачу: '+e.message;}
    activeTask=null;
   }
   if(!$('demo').checked)await refreshAccess().catch(()=>{});
