@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=copy-stop41/);
+ assert.match(html,/app\.js\?v=moderator42/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -125,7 +125,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=copy-stop41/);
+ assert.match(html,/app\.js\?v=moderator42/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -157,4 +157,17 @@ test('per-model and complete copy controls exist in current tasks and archived d
  assert.match(css,/\.message-head \.copy-single/);
  assert.match(app,/\$\('feed'\)\.append\(renderMessage\(m\)\)/);
  assert.doesNotMatch(app,/function emit\(m\)\{messages\.push\(m\);renderMessages\(\);\}/);
+});
+
+test('Quorum defaults to Claude for the final answer and never silently prioritizes Grok',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(app,/import \{MODEL_PRIORITY,defaultParticipants,chooseModerator\} from '\.\/model-priority\.js'/);
+ assert.match(app,/const agents=MODEL_PRIORITY\.map/);
+ assert.match(app,/const chosen=new Set\(MODEL_PRIORITY\.slice\(0,3\)\)/);
+ assert.match(app,/chooseModerator\(chosen,old,\{manual:moderatorChosenByUser\}\)/);
+ assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
+ assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
+ assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
+ assert.match(html,/app\.js\?v=moderator42/);
 });
