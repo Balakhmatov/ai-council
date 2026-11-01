@@ -829,7 +829,7 @@ function renderMessage(m){
  const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
  const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
  identity.append(dot,name);
- const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ':m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ · '+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
  const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
