@@ -192,7 +192,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(researchDone.size>3000)for(const [id,v] of researchDone)if(v.expires<now())researchDone.delete(id);
     if(researchDone.size>3000)return fail(429,'Слишком много проверок. Повторите позже.');
     const work=(async()=>{
-     if((env.GEMINI_BASE_URL||'https://generativelanguage.googleapis.com/v1beta/openai')!=='https://generativelanguage.googleapis.com/v1beta/openai')
+     if(!env.FACT_GROUNDING_API_KEY&&(env.GEMINI_BASE_URL||'https://generativelanguage.googleapis.com/v1beta/openai')!=='https://generativelanguage.googleapis.com/v1beta/openai')
       return {status:'unavailable',reason:'Поиск недоступен для прокси-модели Gemini',sources:[],facts:[]};
      return groundTask({task:info.prompt,key:env.FACT_GROUNDING_API_KEY||env.GEMINI_API_KEY,
       model:env.FACT_GROUNDING_MODEL||'gemini-2.5-flash',fetchImpl});
