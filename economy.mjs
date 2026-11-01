@@ -177,10 +177,11 @@ export function createEconomy({env,now=Date.now}){
   task.calls++;return true;
  }
  function success(id){const task=tasks.get(id);if(task)task.successful++;}
- function finish(id,identity){
+ function finish(id,identity,{cancelled=false}={}){
   const task=tasks.get(id);if(!task||task.identity!==identity)return null;
   tasks.delete(id);
-  const refunded=!task.isAdmin&&task.successful===0;
+  // An explicit user stop consumes the allocated task even before the first answer.
+  const refunded=!cancelled&&!task.isAdmin&&task.successful===0;
   if(refunded){
    if(task.source==='subscription'&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
     state.subscriptions[identity].remainingTasks++;
@@ -188,9 +189,9 @@ export function createEconomy({env,now=Date.now}){
    else if(task.source==='pack')state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+1;
   }
   const group=state.discussions.find(x=>x.taskId===id);
-  if(group){group.endedAt=new Date(now()).toISOString();group.status=task.successful?'done':'failed';}
+  if(group){group.endedAt=new Date(now()).toISOString();group.status=cancelled?'cancelled':task.successful?'done':'failed';}
   save();
-  return {ok:true,refunded,remainingFreeTasks:task.isAdmin?null:access(identity).remainingFreeTasks};
+  return {ok:true,refunded,cancelled:!!cancelled,remainingFreeTasks:task.isAdmin?null:access(identity).remainingFreeTasks};
  }
  function logCall({taskId=null,provider,model,stage='intermediate',step='',status='ok',httpStatus=null,durationMs=null,usage=null}){
   const hasUsage=!!usage&&typeof usage==='object'&&(

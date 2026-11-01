@@ -330,3 +330,50 @@ textarea::placeholder{color:#7d7286!important}
 .password-settings{font-size:11px;font-weight:650;padding:6px 8px;color:#7556a8;border:0;background:transparent;white-space:nowrap}
 .password-settings:hover:not(:disabled){background:#f4edfc}
 @media(max-width:580px){.password-settings{font-size:10px;padding:4px 5px}}
+
+/* Deliberate user cancellation: clear stop control and truthful quota notice. */
+.stop-action{display:flex;flex:0 1 190px;min-width:0;flex-direction:column;gap:4px;align-items:stretch}
+.stop-action[hidden]{display:none!important}
+.stop-action #stop{min-height:40px;padding:9px 13px;border:1px solid #ddadae;border-radius:11px;background:#fff7f6;color:#ad494c;font-weight:750;font-size:12px;cursor:pointer}
+.stop-action #stop:hover:not(:disabled){background:#ffece9;border-color:#cd777b}
+.stop-action #stop:disabled{opacity:.65;cursor:default}
+.stop-action small{display:block;color:#96848a;font-size:10px;font-weight:500;line-height:1.4;text-align:center;overflow-wrap:anywhere}
+
+/* Copy icons are ordinary accessible buttons, never overlays on selectable text. */
+.result-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;min-width:0;flex-wrap:wrap}
+.copy-action{display:inline-flex;align-items:center;justify-content:center;gap:7px;flex:none;
+ border:1px solid #e2d7ea;border-radius:9px;background:#fff;color:#6c5582;
+ cursor:pointer;line-height:1.2;font-weight:650;box-shadow:none}
+.copy-action svg{width:17px;height:17px;flex:none;pointer-events:none}
+.copy-action:not(:disabled):hover{background:#f8f3ff;border-color:#bb9ede;color:#6640a8}
+.copy-action.copied{background:#f3f9f4;border-color:#abd4b7;color:#286f48}
+.copy-action:disabled{cursor:default;opacity:.48}
+.copy-all{padding:8px 11px;font-size:11px;min-height:34px}
+.copy-single{min-width:34px;height:34px;padding:6px;border-radius:9px}
+.message-head{gap:8px}
+.message-head strong{min-width:0;flex:1 1 auto}
+.message-head small{flex:0 1 auto}
+.message-head .copy-single{margin-left:auto}
+
+/* iOS Safari and Telegram WebView need explicit text selection, including history. */
+#feed .message .message-text,
+.history-dialog .message .message-text,
+.history-dialog .history-prompt p,
+#feed .message .message-text *,
+.history-dialog .message .message-text *{
+ -webkit-user-select:text!important;user-select:text!important;
+ -webkit-touch-callout:default!important;
+ cursor:text;touch-action:auto;
+}
+#feed .message .message-text::selection,
+.history-dialog .message .message-text::selection{background:#d9c6f4;color:#2d2038}
+@media(max-width:880px){
+ .launch .stop-action{width:100%;flex:none;gap:5px}
+ .launch .stop-action #stop{width:100%;min-height:46px;font-size:13px}
+ .launch .stop-action small{font-size:11px;text-align:center}
+ .result-actions{gap:6px}
+ .copy-all{font-size:11px;padding:8px 9px}
+ .message-head{flex-wrap:wrap;align-items:center}
+ .message-head small{max-width:70%}
+ .message-head .copy-single{margin-left:auto}
+}

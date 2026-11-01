@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=role-refresh40/);
+ assert.match(html,/app\.js\?v=copy-stop41/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -37,7 +37,7 @@ test('iOS fields use 16px text to prevent WebView focus zoom without disabling u
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=password38/);
+ assert.match(html,/style\.css\?v=copy-stop41/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
 });
 
@@ -125,5 +125,36 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=role-refresh40/);
+ assert.match(html,/app\.js\?v=copy-stop41/);
+});
+
+test('stop button clearly discloses that user cancellation does not refund quota',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ assert.match(html,/id="stopAction"/);
+ assert.match(html,/id="stop"[^>]*>Остановить задачу/);
+ assert.match(html,/При остановке квота не возвращается/);
+ assert.match(app,/stopRequested=true/);
+ assert.match(app,/controller\?\.abort\(\)/);
+ assert.match(app,/cancelled:stopRequested/);
+ assert.match(app,/\$\('stopAction'\)\.hidden=false/);
+ assert.match(app,/\$\('stopAction'\)\.hidden=true/);
+});
+test('per-model and complete copy controls exist in current tasks and archived discussions',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ for(const id of ['copyAll','historyCopyAll'])assert.ok(html.includes('id="'+id+'"'),id+' missing');
+ assert.match(app,/import \{formatTranscript\} from '\.\/transcript\.js'/);
+ assert.match(app,/function renderMessage\(m\)/);
+ assert.match(app,/className='copy-action copy-single'/);
+ assert.match(app,/writeClipboard\(text\)/);
+ assert.match(app,/document\.execCommand\('copy'\)/);
+ assert.match(app,/formatTranscript\(item\)/);
+ assert.match(app,/formatTranscript\(\{\.\.\.details,messages\}\)/);
+ assert.match(css,/-webkit-user-select:text!important/);
+ assert.match(css,/-webkit-touch-callout:default!important/);
+ assert.match(css,/\.message-head \.copy-single/);
+ assert.match(app,/\$\('feed'\)\.append\(renderMessage\(m\)\)/);
+ assert.doesNotMatch(app,/function emit\(m\)\{messages\.push\(m\);renderMessages\(\);\}/);
 });
