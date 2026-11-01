@@ -101,7 +101,9 @@
   </div>
  </section>
  <p class="pricing-footnote">Без подписки — максимум 3 модели. После её окончания сохранённая история остаётся доступной, новые задачи не сохраняются.</p>
- <p class="hint pricing-payment-note">Оплата пока не подключена. Тарифы доступны для ознакомления.</p>
+ <label class="pricing-agree"><input id="pricingAgree" type="checkbox"> Согласен с <a href="./terms.html" target="_blank" rel="noopener">офертой и условиями использования</a> и ознакомлен с <a href="./privacy.html" target="_blank" rel="noopener">политикой конфиденциальности</a>.</label>
+  <p id="pricingPaymentStatus" class="hint pricing-payment-note" role="status">Для оплаты войдите в аккаунт.</p>
+  <button id="pricingRefreshPayment" type="button" class="quiet" hidden>Проверить оплату</button>
 </dialog>
 <dialog id="historyDialog" class="history-dialog history-fullscreen">
  <div class="section-title"><h2>Сохранённое обсуждение</h2><div class="result-actions"><button id="historyCopyAll" class="copy-action copy-all" type="button" aria-label="Скопировать сохранённую задачу полностью">Скопировать всё</button><button id="historyClose" class="quiet" type="button" aria-label="Закрыть">Закрыть ✕</button></div></div>
