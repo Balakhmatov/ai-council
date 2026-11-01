@@ -324,8 +324,8 @@ function renderAccess(){
  $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining):'Доступно: '+access.remainingFreeTasks+' '+taskCount(access.remainingFreeTasks);
  const plan=access.subscriptionActive;
  $('accessInfo').textContent=access.admin?'Администратор: задачи без ограничений.':
-  plan?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining)+' из 300 токенов, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задачи: '+access.purchasedTasks+'.':
-  'Бесплатно: '+access.freeRemaining+' '+taskCount(access.freeRemaining)+' из '+access.freeStartingTasks+' '+taskCount(access.freeStartingTasks)+' при регистрации. Купленные токены: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задачи не сохраняются.';
+  plan?'Подписка активна до '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Осталось '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining)+' из 300.':
+  'При регистрации — 10 бесплатных токенов. Доступно сейчас: '+access.remainingFreeTasks+' '+taskCount(access.remainingFreeTasks)+(access.purchasedTasks?' (из них куплено '+access.purchasedTasks+')':'')+'.';
  $('accountCodeDetails').hidden=!access.accountRef;
  $('accountCode').textContent=access.accountRef||'';
  renderPricing();
@@ -349,6 +349,7 @@ async function checkPayment(){
   else if(latest?.status==='canceled')status.textContent='Платёж отменён. Можно попробовать снова.';
   else status.textContent='Платёж не найден.';
   if(result.access){access=result.access;renderAccess();}
+  if(latest?.status==='succeeded'&&latest.applied)status.textContent='Оплата подтверждена, токены начислены.';
  }catch(error){status.textContent=error.message;}
 }
 $('pricingRefreshPayment').onclick=checkPayment;
