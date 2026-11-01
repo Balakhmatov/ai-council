@@ -98,10 +98,10 @@ function update(){
  if(preferred)$('judge').value=preferred;
  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
- $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · итог подготовит '+judgeName;
+ $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
  const mq=$('mobileQuorumText');
- if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · итог '+judgeName;
- const enough=access?.admin||access?.remainingFreeTasks>0;
+ if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
+ const enough=access?.admin||access?.remainingFreeTasks>=chosen.size;
  $('start').textContent=access?'Получить результат':'Войти и начать';
  $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||(!connected&&!$('demo').checked)||(!!access&&!enough&&!$('demo').checked);
  document.querySelectorAll('.agent').forEach((label,i)=>{
@@ -316,7 +316,7 @@ async function refreshAccess(){
 }
 function taskCount(value){
  const n=Math.abs(Number(value)||0),lastTwo=n%100,last=n%10;
- return lastTwo>=11&&lastTwo<=14?'задач':last===1?'задача':last>=2&&last<=4?'задачи':'задач';
+ return lastTwo>=11&&lastTwo<=14?'токенов':last===1?'токен':last>=2&&last<=4?'токена':'токенов';
 }
 function renderAccess(){
  if(!access)return;
@@ -324,7 +324,7 @@ function renderAccess(){
  $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining):'Доступно: '+access.remainingFreeTasks+' '+taskCount(access.remainingFreeTasks);
  const plan=access.subscriptionActive;
  $('accessInfo').textContent=access.admin?'Администратор: задачи без ограничений.':
-  plan?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining)+' из 500 задач, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задачи: '+access.purchasedTasks+'.':
+  plan?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining)+' из 300 токенов, все подключённые модели, история без ограничений. До '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Дополнительные задачи: '+access.purchasedTasks+'.':
   'Бесплатно: '+access.freeRemaining+' '+taskCount(access.freeRemaining)+' из '+access.freeStartingTasks+' '+taskCount(access.freeStartingTasks)+' за месяц. Купленные задачи: '+access.purchasedTasks+'. Доступно до 3 моделей, новые задачи не сохраняются.';
  $('accountCodeDetails').hidden=!access.accountRef;
  $('accountCode').textContent=access.accountRef||'';
@@ -353,14 +353,14 @@ function renderPricing(){
   card.append(top,price,perks);target.append(card);
  }
  const heading=node('div',null,'pricing-pack-heading');
- heading.append(node('span','Дополнительные задачи'),node('small','Без подписки'));
+ heading.append(node('span','Дополнительные токены'),node('small','Без подписки'));
  target.append(heading);
- for(const key of ['pack10','pack50','pack100']){
+ for(const key of ['pack5','pack50','pack100']){
   const offer=offers[key];if(!offer)continue;
   const card=node('article',null,'pricing-offer pricing-offer-pack');
   card.append(node('span',offer.tasks+' '+taskCount(offer.tasks),'pricing-pack-title'),
     node('strong',offer.priceRub.toLocaleString('ru-RU')+' ₽','pricing-value'),
-    node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ за задачу','pricing-unit'));
+    node('small',(offer.discount?'−'+offer.discount+'% · ':'')+(offer.priceRub/offer.tasks).toLocaleString('ru-RU',{maximumFractionDigits:2})+' ₽ за токен','pricing-unit'));
   target.append(card);
  }
 }
