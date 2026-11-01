@@ -485,7 +485,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=qwen-deepseek46/);
+  assert.match(html.body,/app\.js\?v=credits-300-20261101/);
  }finally{await t.close();}
 });
 
