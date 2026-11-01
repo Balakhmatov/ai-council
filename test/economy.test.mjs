@@ -26,13 +26,15 @@ test('free tasks persist; completed task costs one, empty task refunds',()=>{
   assert.equal(restored.summary().discussions.length,2);
  }finally{rmSync(dir,{force:true,recursive:true});}
 });
-test('cannot call unselected providers or invoke multiple long finals',()=>{
+test('cannot call unselected providers or retry the same final model; distinct fallback is allowed',()=>{
  const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'1'}});
  const t=econ.start('one',false,{participants:['openai','mistral'],mode:'judge',rounds:2},['openai','mistral','grok']);
  assert.equal(econ.checkCall(t.taskId,'another','openai'),false);
  assert.equal(econ.checkCall(t.taskId,'one','grok'),false);
  assert.equal(econ.checkCall(t.taskId,'one','openai','final'),true);
  assert.equal(econ.checkCall(t.taskId,'one','openai','final'),false);
+  assert.equal(econ.checkCall(t.taskId,'one','mistral','final'),true);
+  assert.equal(econ.checkCall(t.taskId,'one','mistral','final'),false);
  assert.equal(econ.start('one',false,{participants:['openai','mistral'],mode:'judge',rounds:2},['openai','mistral']).insufficient,true);
 });
 test('all three model prices and token costs are in RUB with CBR rate snapshot',()=>{
