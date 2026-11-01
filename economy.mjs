@@ -193,7 +193,7 @@ export function createEconomy({env,now=Date.now}){
   save();
   return {ok:true,refunded,cancelled:!!cancelled,remainingFreeTasks:task.isAdmin?null:access(identity).remainingFreeTasks};
  }
- function logCall({taskId=null,provider,model,stage='intermediate',step='',status='ok',httpStatus=null,durationMs=null,usage=null}){
+ function logCall({taskId=null,provider,model,stage='intermediate',step='',status='ok',httpStatus=null,durationMs=null,usage=null,errorType=null,errorDetail=null}){
   const hasUsage=!!usage&&typeof usage==='object'&&(
    Number.isFinite(Number(usage.prompt_tokens??usage.input_tokens))||Number.isFinite(Number(usage.completion_tokens??usage.output_tokens)));
   const rawInput=safeInt(usage?.prompt_tokens??usage?.input_tokens,0,100000000);
@@ -221,6 +221,7 @@ export function createEconomy({env,now=Date.now}){
    at:new Date(now()).toISOString(),provider,model,stage:typeof stage==='string'?stage.slice(0,32):'',
    step:typeof step==='string'?step.slice(0,48):'',status:status==='ok'?'ok':'error',
    httpStatus:Number.isInteger(httpStatus)?httpStatus:null,durationMs:safeInt(durationMs,0,3600000),
+    errorType:typeof errorType==='string'?errorType.slice(0,40):null,errorDetail:typeof errorDetail==='string'?errorDetail.slice(0,240):null,
    input,output,cached,cacheWrite5m,cacheWrite1h,reasoning,usageReported:hasUsage,
    costRub:amount,costBreakdownRub:breakdown,currency:'RUB',rateUsed:p?.rate??null,rateCurrency:p?.rateCurrency??null,
    rateDate:p?.rateDate??null,unitPriceRub:p?{input:p.input,cached:p.cached,output:p.output,cacheWrite5m:p.cacheWrite5m??null,cacheWrite1h:p.cacheWrite1h??null}:null,
