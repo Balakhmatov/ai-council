@@ -153,6 +153,14 @@ $('emailDialog').addEventListener('close',stopLoginPolling);
 $('emailOpen').onclick=()=>{
  $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;$('emailStatus').textContent='';$('emailPasswordLogin').hidden=false;$('emailRecovery').hidden=true;$('emailPasswordSetup').hidden=true;$('loginPasswordEmail').focus();
 };
+$('passwordSettings').onclick=()=>{
+ showLoginMethods();
+ $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;
+ $('emailPasswordLogin').hidden=true;$('emailRecovery').hidden=false;$('emailPasswordSetup').hidden=true;
+ $('emailAddress').value=publicSession?.user?.email||'';
+ $('emailStatus').textContent='Подтвердите email один раз, чтобы установить или заменить пароль.';
+ if(!$('emailDialog').open)$('emailDialog').showModal();
+};
 $('emailRecoveryOpen').onclick=()=>{
  $('emailPasswordLogin').hidden=true;$('emailRecovery').hidden=false;$('emailPasswordSetup').hidden=true;
  $('emailAddress').value=$('loginPasswordEmail').value.trim();
@@ -237,7 +245,7 @@ async function ensureSession(){
  return null;
 }
 function showSignedOut(){
- access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;
+ access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц, до 3 моделей, без истории.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('accountCodeDetails').hidden=true;
@@ -250,6 +258,7 @@ async function refreshAccess(){
   clearIdentity();showSignedOut();return;
  }
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
+ $('passwordSettings').hidden=!publicSession?.user?.email;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
  const cap=access.maxModels??3;
  if(chosen.size>cap){
