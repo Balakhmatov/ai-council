@@ -374,3 +374,24 @@ test('an email account is never admin without private allowlist even when passwo
   assert.equal((await t.send('/api/admin',undefined,'admin-test-only')).status,200);
  }finally{await t.close();}
 });
+
+test('existing email cookie session gains owner privileges after server restart with allowlist',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-owner-upgrade-'));
+ const base={SESSION_FILE:join(dir,'sessions.enc'),QUORUM_ADMIN_EMAILS:''};
+ let t=await setup(base);
+ try{
+  const login=(await t.login('owner@example.com')).data;
+  assert.equal(login.isAdmin,false);
+  assert.equal((await t.send('/api/access',undefined,login.token)).data.maxModels,3);
+  await t.close();
+  t=await setup({...base,QUORUM_ADMIN_EMAILS:'owner@example.com'});
+  const identity=await t.send('/api/auth/session',undefined,login.token);
+  assert.equal(identity.status,200);
+  assert.equal(identity.data.isAdmin,true);
+  const access=await t.send('/api/access',undefined,login.token);
+  assert.equal(access.status,200);
+  assert.equal(access.data.plan,'admin');
+  assert.equal(access.data.maxModels,7);
+  assert.equal((await t.send('/api/admin',undefined,login.token)).status,200);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
