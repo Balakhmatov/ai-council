@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {test} from 'node:test';import assert from 'node:assert/strict';import {createServer} from '../server.mjs';import {mkdtempSync,rmSync} from 'node:fs';import {tmpdir} from 'node:os';import {join} from 'node:path';
 async function setup(overrides={},options={}){
  let calls=[],emailCode;
@@ -661,4 +662,50 @@ test('reject unapproved URLs for new providers rather than leaking shared keys',
 test('Qwen Chinese-group key is mandatory; NEW_API_KEY alone does not enable Qwen',async()=>{
  const t=await setup({NEW_API_KEY:'deepseek-only',QWEN_MODEL:'qwen3.8-flash',DEEPSEEK_MODEL:'deepseek-v4.1-flash',QWEN_BASE_URL:'https://ddtnew.com/v1',DEEPSEEK_BASE_URL:'https://ddtnew.com/v1'});
  try{assert.deepEqual((await t.send('/api/config')).data.providers,['openai','deepseek']);}finally{await t.close();}
+});
+
+test('Telegram and email histories merge only after proving both accounts',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-linked-history-api-'));
+ const botToken='test-bot-token';
+ const t=await setup({HISTORY_FILE:join(dir,'history.json'),ACCOUNTING_FILE:join(dir,'accounting.json'),
+  TELEGRAM_BOT_TOKEN:botToken,TELEGRAM_APP_URL:'https://cityai.site/quorum/',MISTRAL_API_KEY:'test-mistral'});
+ const signTelegram=(userId)=>{
+  const params=new URLSearchParams({auth_date:String(Math.floor(Date.now()/1000)),user:JSON.stringify({id:userId,first_name:'Test'})});
+  const check=[...params].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+'='+v).join('\n');
+  const secret=crypto.createHmac('sha256','WebAppData').update(botToken).digest();
+  params.set('hash',crypto.createHmac('sha256',secret).update(check).digest('hex'));
+  return params.toString();
+ };
+ try{
+  const email=(await t.login('link@example.com')).data;
+  assert.equal((await t.send('/api/email/password/set',{password:'Some-very-strong-password-123'},email.token)).status,200);
+  const telegram=(await t.send('/api/telegram/auth',{initData:signTelegram(123456)})).data;
+  const outsider=(await t.login('outsider@example.com')).data;
+  for(const token of [telegram.token,email.token]){
+   const account=(await t.send('/api/access',undefined,token)).data;
+   assert.equal((await t.send('/api/admin/billing/grant',{accountRef:account.accountRef,sku:'subscription'},'admin-test-only')).status,200);
+  }
+  async function record(token,prompt){
+   const start=await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'consensus'},token);
+   assert.equal(start.status,200);
+   const taskId=start.data.taskId;
+   assert.equal((await t.send('/api/chat',{provider:'openai',taskId,messages:[{role:'user',content:prompt}]},token)).status,200);
+   const end=await t.send('/api/task/finish',{taskId,history:{prompt,messages:[{name:'ИИ',stage:'Итог',text:'Ответ'}]}},token);
+   assert.equal(end.status,200);assert.equal(end.data.historySaved,true);
+   return taskId;
+  }
+  const tgTask=await record(telegram.token,'Задача Telegram');
+  await record(email.token,'Задача Email');
+  assert.equal((await t.send('/api/history',undefined,email.token)).data.total,1);
+  assert.equal((await t.send('/api/history',undefined,telegram.token)).data.total,1);
+  assert.equal((await t.send('/api/history/link',undefined,email.token)).data.linked,false);
+  assert.equal((await t.send('/api/history/link',{email:'link@example.com',password:'wrong-password'},telegram.token)).status,401);
+  assert.equal((await t.send('/api/history/link',{email:'link@example.com',password:'Some-very-strong-password-123'},telegram.token)).status,200);
+  assert.equal((await t.send('/api/history/link',undefined,email.token)).data.linked,true);
+  assert.equal((await t.send('/api/history',undefined,email.token)).data.total,2);
+  assert.equal((await t.send('/api/history',undefined,telegram.token)).data.total,2);
+  assert.equal((await t.send('/api/history/'+tgTask,undefined,email.token)).status,200);
+  assert.equal((await t.send('/api/history',undefined,outsider.token)).data.total,0);
+  assert.equal((await t.send('/api/history/link',{initData:'forged'},outsider.token)).status,400);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
