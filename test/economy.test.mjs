@@ -11,23 +11,23 @@ function task(economy){
 test('free tasks persist; completed task costs one, empty task refunds',()=>{
  const dir=mkdtempSync(join(tmpdir(),'quorum-cost-'));
  try{
-  const env={ACCOUNTING_FILE:join(dir,'ledger.json'),ACCOUNT_MONTHLY_TASKS:'3'};
+  const env={ACCOUNTING_FILE:join(dir,'ledger.json'),ACCOUNT_MONTHLY_TASKS:'6'};
   const econ=createEconomy({env,now:()=>Date.parse('2026-10-31T06:00:00Z')});
   econ.updateExchangeRates(fx);
   assert.equal(econ.access('visitor').remainingFreeTasks,3);
-  const t=task(econ);assert.equal(t.remainingFreeTasks,2);
+  const t=task(econ);assert.equal(t.remainingFreeTasks,3);
   assert.equal(econ.checkCall(t.taskId,'visitor','openai'),true);
   econ.success(t.taskId);econ.finish(t.taskId,'visitor');
-  assert.equal(econ.access('visitor').remainingFreeTasks,2);
+  assert.equal(econ.access('visitor').remainingFreeTasks,3);
   const t2=task(econ);assert.equal(econ.finish(t2.taskId,'visitor').refunded,true);
   const restored=createEconomy({env,now:()=>Date.parse('2026-10-31T06:00:01Z')});
-  assert.equal(restored.access('visitor').remainingFreeTasks,2);
+  assert.equal(restored.access('visitor').remainingFreeTasks,3);
   assert.equal(restored.exchangeRates().usdRub,82.5);
   assert.equal(restored.summary().discussions.length,2);
  }finally{rmSync(dir,{force:true,recursive:true});}
 });
 test('cannot call unselected providers or retry the same final model; distinct fallback is allowed',()=>{
- const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'1'}});
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
  const t=econ.start('one',false,{participants:['openai','mistral'],mode:'judge',rounds:2},['openai','mistral','grok']);
  assert.equal(econ.checkCall(t.taskId,'another','openai'),false);
  assert.equal(econ.checkCall(t.taskId,'one','grok'),false);
@@ -132,7 +132,7 @@ test('monthly quota resets on Moscow month boundary and old refunds do not add c
  let time=Date.parse('2026-10-30T20:59:00Z');
  const econ=createEconomy({env:{},now:()=>time}),identity='account:email-user';
  const params={participants:['openai','mistral'],rounds:2,mode:'judge'};
- for(let i=0;i<9;i++){const task=econ.start(identity,false,params,params.participants);econ.success(task.taskId);econ.finish(task.taskId,identity);}
+ for(let i=0;i<4;i++){const task=econ.start(identity,false,params,params.participants);econ.success(task.taskId);econ.finish(task.taskId,identity);}
  const pending=econ.start(identity,false,params,params.participants);
  assert(econ.start(identity,false,params,params.participants).insufficient);
  time=Date.parse('2026-10-30T21:00:00Z');assert.equal(econ.access(identity).remainingFreeTasks,0);
@@ -147,7 +147,7 @@ test('stopping a task before any model responds never refunds free task allocati
  assert.equal(closed.ok,true);
  assert.equal(closed.cancelled,true);
  assert.equal(closed.refunded,false);
- assert.equal(closed.remainingFreeTasks,1);
+ assert.equal(closed.remainingFreeTasks,0);
  assert.equal(econ.access('visitor').remainingFreeTasks,1);
  assert.equal(econ.summary().discussions.find(x=>x.taskId===started.taskId).status,'cancelled');
  assert.equal(econ.finish(started.taskId,'visitor',{cancelled:true}),null);
@@ -158,16 +158,16 @@ test('stopping with zero answers consumes a subscription task and a purchased pa
  econ.grant(identity,'subscription');
  const args={participants:['openai','grok'],mode:'judge',rounds:2};
  const t=econ.start(identity,false,args,args.participants);
- assert.equal(econ.access(identity).subscriptionRemaining,499);
+ assert.equal(econ.access(identity).subscriptionRemaining,298);
  const ended=econ.finish(t.taskId,identity,{cancelled:true});
  assert.equal(ended.refunded,false);
- assert.equal(econ.access(identity).subscriptionRemaining,499);
+ assert.equal(econ.access(identity).subscriptionRemaining,298);
  const second='account:'+'d'.repeat(32);
- econ.grant(second,'pack10');
+ econ.grant(second,'pack5');
  const t2=econ.start(second,false,args,args.participants);
- assert.equal(econ.access(second).purchasedTasks,9);
+ assert.equal(econ.access(second).purchasedTasks,3);
  assert.equal(econ.finish(t2.taskId,second,{cancelled:true}).refunded,false);
- assert.equal(econ.access(second).purchasedTasks,9);
+ assert.equal(econ.access(second).purchasedTasks,3);
 });
 test('non-user failure before any success continues to return allocation',()=>{
  const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
@@ -175,5 +175,5 @@ test('non-user failure before any success continues to return allocation',()=>{
  const closed=econ.finish(started.taskId,'visitor');
  assert.equal(closed.cancelled,false);
  assert.equal(closed.refunded,true);
- assert.equal(econ.access('visitor').remainingFreeTasks,2);
+ assert.equal(econ.access('visitor').remainingFreeTasks,3);
 });
