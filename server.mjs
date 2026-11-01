@@ -102,7 +102,8 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    const sessionCookie=(token,expires)=>res.setHeader('Set-Cookie','quorum_session='+token+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+Math.max(0,Math.floor((expires-now())/1000))+(String(env.TELEGRAM_APP_URL||'').startsWith('https:')?'; Secure':''));
    const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser,isAdmin:isOwnerAccount(value)});
    const issueSession=value=>{sessions.prune();if(sessions.size>=10000)throw Object.assign(Error('Слишком много подключений. Повторите позже.'),{status:429});const token=crypto.randomBytes(32).toString('hex');value.expires=now()+SESSION_LIFETIME;sessions.set(token,value);sessionCookie(token,value.expires);return sessionIdentity(value,token);};
-   const visitorHash=validSession&&(session.telegramUser||session.emailUser)?'account:'+crypto.createHmac('sha256',adminToken).update(session.telegramUser?'telegram:'+session.telegramUser.id:'email:'+session.emailUser.id).digest('hex').slice(0,32):null;
+   const accountHash=(type,id)=>'account:'+crypto.createHmac('sha256',adminToken).update(type+':'+id).digest('hex').slice(0,32);
+   const visitorHash=validSession?(session.telegramUser?accountHash('telegram',session.telegramUser.id):accountHash('email',session.emailUser.id)):null;
    if(path==='/api/auth/session'&&req.method==='GET'){
     if(!validSession)return fail(401,'Войдите в аккаунт.');
     return json(200,sessionIdentity(session));
@@ -175,6 +176,28 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(details?.acceptedTerms!==true)return fail(400,'Перед оплатой примите условия использования.');
     try{return json(200,await payments.create(visitorHash,details.sku));}
     catch(e){return fail(e.status||502,e.message);}
+   }
+   if(path==='/api/history/link'&&req.method==='GET'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
+    return json(200,{linked:history.members(visitorHash).length>1});
+   }
+   if(path==='/api/history/link'&&req.method==='POST'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
+    let body;try{body=await readBody(30000);}catch{return fail(400,'Некорректные данные');}
+    try{
+     let other;
+     if(session.telegramUser){
+      // Email credentials are verified server-side; a typed address alone is not ownership.
+      const email=await passwordAuth.login(body.email,body.password);
+      other=accountHash('email',email.id);
+     }else{
+      // An email user inside Telegram can prove Telegram ownership via signed initData.
+      if(!env.TELEGRAM_BOT_TOKEN)return fail(503,'Telegram временно недоступен');
+      const telegram=verifyTelegramInitData(body.initData,env.TELEGRAM_BOT_TOKEN,{now:now()});
+      other=accountHash('telegram',telegram.id);
+     }
+     return json(200,history.link(visitorHash,other));
+    }catch(error){return fail(error.status||400,error.message||'Не удалось связать аккаунты');}
    }
    if(path==='/api/history'&&req.method==='GET'){
     if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт.');
