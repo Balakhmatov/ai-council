@@ -296,3 +296,34 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
+
+test('first email verification creates password; subsequent login needs no code and preserves user quota',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-persistent-password-'));
+ const env={
+  PASSWORD_FILE:join(dir,'passwords.json'),SESSION_FILE:join(dir,'sessions.enc'),ACCOUNTING_FILE:join(dir,'accounting.json'),
+  MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'
+ };
+ let t=await setup(env);
+ try{
+  const old=(await t.login('member@example.com')).data,token=old.token;
+  assert.equal((await t.send('/api/email/password/set',{password:'safe-password-2026'},token)).status,200);
+  assert.equal((await t.send('/api/email/password/set',{password:'another-password-2026'},token)).status,403);
+  const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},token)).data;
+  assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},token)).status,200);
+  const wrong=await t.send('/api/email/password/login',{email:'member@example.com',password:'wrong-password'});
+  assert.equal(wrong.status,401);
+  const login=await t.send('/api/email/password/login',{email:'MEMBER@example.com',password:'safe-password-2026'});
+  assert.equal(login.status,200);
+  assert.equal(login.data.user.email,'member@example.com');
+  assert.equal((await t.send('/api/access',undefined,login.data.token)).data.remainingFreeTasks,10);
+  // Quota is charged only if a model returns a successful answer.
+  assert.equal((await t.send('/api/email/password/set',{password:'compromised-password'},login.data.token)).status,403);
+  await t.close();t=await setup(env);
+  assert.equal((await t.send('/api/auth/session',undefined,login.data.token)).status,200);
+  assert.equal((await t.send('/api/email/password/login',{email:'member@example.com',password:'safe-password-2026'})).status,200);
+  const verified=(await t.login('member@example.com')).data;
+  assert.equal((await t.send('/api/email/password/set',{password:'new-password-2026'},verified.token)).status,200);
+  assert.equal((await t.send('/api/email/password/login',{email:'member@example.com',password:'safe-password-2026'})).status,401);
+  assert.equal((await t.send('/api/email/password/login',{email:'member@example.com',password:'new-password-2026'})).status,200);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
