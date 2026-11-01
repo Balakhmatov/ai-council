@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=pricing-fix37/);
+ assert.match(html,/app\.js\?v=password38/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -37,7 +37,7 @@ test('iOS fields use 16px text to prevent WebView focus zoom without disabling u
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=pricing-fix37/);
+ assert.match(html,/style\.css\?v=password38/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
 });
 
@@ -81,4 +81,20 @@ test('pricing modal has readable cards, fixed close button and responsive pack l
  assert.match(css,/\.pricing-dialog \.pricing-offer-sub/);
  assert.match(app,/function renderPricing\(\)/);
  assert.match(app,/node\('article',null,'pricing-offer pricing-offer-sub'\)/);
+});
+
+test('password sign-in and first-time code verification retain Telegram login and auto-session controls',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ for(const id of ['emailPasswordLogin','loginPasswordEmail','loginPassword','emailRecoveryOpen','emailRecovery','emailRequest','emailVerify','emailPasswordSetup','emailNewPassword','emailRepeatPassword','telegramOpen']){
+  assert.ok(html.includes('id="'+id+'"'),id+' missing');
+ }
+ assert.match(html,/autocomplete="current-password"/);
+ assert.match(html,/autocomplete="new-password"/);
+ assert.match(app,/api\/email\/password\/login/);
+ assert.match(app,/api\/email\/password\/set/);
+ assert.match(app,/api\/auth\/session/);
+ assert.match(app,/api\/telegram\/auth/);
+ assert.match(css,/\.auth-password-form/);
 });
