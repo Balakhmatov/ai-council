@@ -232,12 +232,16 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
     const longFinal=body.stage==='final';
+    const maxWords=[120,250,500].includes(body.maxWords)?body.maxWords:120;
+    // Keep actual API output budgets aligned with the selected short/medium/detailed mode.
+    const intermediateTokens={120:900,250:1500,500:2300}[maxWords];
+    const reasoningTokens={120:1800,250:2700,500:4000}[maxWords];
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
-      ?{model,messages,max_completion_tokens:longFinal?10000:4096,reasoning_effort:'medium'}
-      :{model,messages,max_tokens:longFinal?7000:1800};
+      ?{model,messages,max_completion_tokens:longFinal?10000:reasoningTokens,reasoning_effort:longFinal?'medium':'low'}
+      :{model,messages,max_tokens:longFinal?7000:intermediateTokens};
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:1800,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){log(model,'error',null,upstream.status);await upstream.body?.cancel();return fail(upstream.status,`Модель ${body.provider} сейчас недоступна (HTTP ${upstream.status}). Попробуйте позже или выберите другую.`);}
     const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
