@@ -474,3 +474,17 @@ test('transcript export formatter module is served publicly as JavaScript',async
   assert.match(result.body,/export function formatTranscript/);
  }finally{await t.close();}
 });
+
+test('model-priority module is served to real browser, preserving Claude-first defaults',async()=>{
+ const t=await setup();
+ try{
+  const result=await t.asset('/model-priority.js');
+  assert.equal(result.status,200);
+  assert.match(result.type,/javascript/);
+  assert.match(result.body,/\['claude','openai'/);
+  assert.match(result.body,/'grok'\]/);
+  assert.match(result.body,/export function chooseModerator/);
+  const html=await t.asset('/');
+  assert.match(html.body,/app\.js\?v=moderator42/);
+ }finally{await t.close();}
+});
