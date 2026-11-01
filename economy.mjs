@@ -155,17 +155,23 @@ export function createEconomy({env,now=Date.now}){
   if(!isAdmin&&models.length>allowedModels)return {upgradeRequired:true};
   const sub=isAdmin?null:subscription(identity);
   let source='admin';
+  const debits={subscription:0,free:0,pack:0};
   if(!isAdmin){
    const needed=models.length;
-   if(sub&&sub.remainingTasks>=needed){sub.remainingTasks-=needed;source='subscription';}
-   else if(!sub&&allowance(identity).remainingFreeTasks>=needed){allowance(identity).remainingFreeTasks-=needed;source='free';}
-   else if((state.purchasedCredits[identity]||0)>=needed){state.purchasedCredits[identity]-=needed;source='pack';}
-   else return {insufficient:true};
+   const availableBase=sub?sub.remainingTasks:allowance(identity).remainingFreeTasks;
+   const availablePacks=Math.max(0,state.purchasedCredits[identity]||0);
+   if(availableBase+availablePacks<needed)return {insufficient:true};
+   const baseCharge=Math.min(needed,availableBase);
+   const packCharge=needed-baseCharge;
+   if(sub){sub.remainingTasks-=baseCharge;debits.subscription=baseCharge;}
+   else{allowance(identity).remainingFreeTasks-=baseCharge;debits.free=baseCharge;}
+   if(packCharge){state.purchasedCredits[identity]=availablePacks-packCharge;debits.pack=packCharge;}
+   source=packCharge?(baseCharge?'mixed':'pack'):(sub?'subscription':'free');
    save();
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,debits,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
@@ -187,10 +193,11 @@ export function createEconomy({env,now=Date.now}){
   // An explicit user stop consumes the allocated task even before the first answer.
   const refunded=!cancelled&&!task.isAdmin&&task.successful===0;
   if(refunded){
-   if(task.source==='subscription'&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
-    state.subscriptions[identity].remainingTasks+=task.chargedTokens;
-   else if(task.source==='free'&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks+=task.chargedTokens;
-   else if(task.source==='pack')state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+task.chargedTokens;
+   const debits=task.debits||{subscription:task.source==='subscription'?task.chargedTokens:0,free:task.source==='free'?task.chargedTokens:0,pack:task.source==='pack'?task.chargedTokens:0};
+   if(debits.subscription&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
+    state.subscriptions[identity].remainingTasks+=debits.subscription;
+   if(debits.free&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks+=debits.free;
+   if(debits.pack)state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+debits.pack;
   }
   const group=state.discussions.find(x=>x.taskId===id);
   if(group){group.endedAt=new Date(now()).toISOString();group.status=cancelled?'cancelled':task.successful?'done':'failed';}
