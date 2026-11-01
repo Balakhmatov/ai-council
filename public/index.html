@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=pricing-fix37">
-<link rel="stylesheet" href="./uiux32.css?v=pricing-fix37">
+<link rel="stylesheet" href="./style.css?v=password38">
+<link rel="stylesheet" href="./uiux32.css?v=password38">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -96,12 +96,34 @@
  <div id="historyBody" class="history-detail"></div>
 </dialog>
 <dialog id="emailDialog" class="auth-dialog"><form method="dialog"><div class="section-title"><h2>Войти в Кворум</h2><button aria-label="Закрыть">✕</button></div></form>
-<div id="authMethods" class="auth-methods"><p class="hint">Выберите способ входа. На этом устройстве вход сохранится.</p><button id="emailOpen" class="primary" type="button">Войти через email</button><button id="telegramOpen" class="quiet auth-telegram" type="button">Войти через Telegram</button></div>
+<div id="authMethods" class="auth-methods"><p class="hint">Выберите способ входа. На этом устройстве вход сохранится.</p><button id="emailOpen" class="primary" type="button">Войти с паролем</button><button id="telegramOpen" class="quiet auth-telegram" type="button">Войти через Telegram</button></div>
 <button id="authBack" class="quiet" type="button" hidden>← Другой способ входа</button>
-<div id="emailFlow" hidden><p class="hint">При первом входе подтвердите email кодом из письма. Пароль не нужен. Аккаунт создастся автоматически.</p>
-<form id="emailRequest"><label>Email<input id="emailAddress" type="email" autocomplete="email" maxlength="254" required></label><button class="primary" type="submit">Получить код</button></form>
-<form id="emailVerify" hidden><label>Код из письма<input id="emailCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button class="primary" type="submit">Подтвердить и войти</button></form></div>
-<div id="telegramFlow" hidden><p>Сверьте код в Telegram: <strong id="telegramCode"></strong></p><a id="telegramContinue" class="primary auth-link" target="_blank" rel="noopener noreferrer">Открыть Telegram</a><p class="hint">Подтвердите вход в боте и вернитесь сюда. Вход завершится автоматически.</p></div>
+<div id="emailFlow" hidden>
+ <form id="emailPasswordLogin" class="auth-password-form">
+  <label>Email<input id="loginPasswordEmail" type="email" autocomplete="username" maxlength="254" required placeholder="name@example.com"></label>
+  <label>Пароль<input id="loginPassword" type="password" autocomplete="current-password" minlength="10" maxlength="128" required></label>
+  <button class="primary" type="submit">Войти</button>
+  <button id="emailRecoveryOpen" class="quiet auth-text-action" type="button">Первый вход или забыли пароль?</button>
+ </form>
+ <div id="emailRecovery" hidden>
+  <p class="hint">Один раз подтвердите email, затем установите постоянный пароль. Для восстановления пароля используйте этот же способ.</p>
+  <form id="emailRequest">
+   <label>Email<input id="emailAddress" type="email" autocomplete="email" maxlength="254" required></label>
+   <button class="primary" type="submit">Получить код подтверждения</button>
+  </form>
+  <form id="emailVerify" hidden>
+   <label>Код из письма<input id="emailCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label>
+   <button class="primary" type="submit">Подтвердить email</button>
+  </form>
+ </div>
+ <form id="emailPasswordSetup" class="auth-password-form" hidden>
+  <p class="hint">Почта подтверждена. Придумайте пароль: в следующий раз код не понадобится.</p>
+  <label>Новый пароль<input id="emailNewPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+  <label>Повторите пароль<input id="emailRepeatPassword" type="password" autocomplete="new-password" minlength="10" maxlength="128" required></label>
+  <button class="primary" type="submit">Сохранить пароль и войти</button>
+ </form>
+</div>
+<div id="telegramFlow" hidden><p>Первый вход через браузер — подтвердите запрос в Telegram: <strong id="telegramCode"></strong></p><a id="telegramContinue" class="primary auth-link" target="_blank" rel="noopener noreferrer">Открыть Telegram</a><p class="hint">После подтверждения вход сохранится на этом устройстве. В Mini App Telegram авторизация автоматическая.</p></div>
 <p id="emailStatus" role="status" aria-live="polite"></p></dialog>
 <dialog id="settings"><form method="dialog"><div class="section-title"><h2 class="admin-brand"><img src="./assets/quorum-icon-192-v2.png" width="32" height="32" alt="">Администрирование</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
@@ -122,4 +144,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=pricing-fix37"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=password38"></script></body></html>
