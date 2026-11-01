@@ -141,16 +141,53 @@ function clearIdentity(){
 function stopLoginPolling(){clearTimeout(pollTimer);pollTimer=null;pendingLogin=null;}
 function showLoginMethods(){
  stopLoginPolling();$('authMethods').hidden=false;$('emailFlow').hidden=true;$('telegramFlow').hidden=true;$('authBack').hidden=true;$('emailStatus').textContent='';
+ $('emailPasswordLogin').hidden=false;$('emailRecovery').hidden=true;$('emailPasswordSetup').hidden=true;$('emailVerify').hidden=true;
 }
 $('loginOpen').onclick=async()=>{
  showLoginMethods();if(!$('emailDialog').open)$('emailDialog').showModal();
- try{const config=await api('/api/email/config');$('emailOpen').disabled=!config.enabled;if(!config.enabled)$('emailStatus').textContent='Вход по email пока недоступен. Выберите Telegram.';}
+ try{const config=await api('/api/email/config');$('emailOpen').disabled=!config.passwordLogin&&!config.enabled;$('emailRecoveryOpen').disabled=!config.enabled;}
  catch(error){$('emailStatus').textContent=error.message;}
 };
 $('authBack').onclick=showLoginMethods;
 $('emailDialog').addEventListener('close',stopLoginPolling);
 $('emailOpen').onclick=()=>{
- $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;$('emailStatus').textContent='';$('emailAddress').focus();
+ $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;$('emailStatus').textContent='';$('emailPasswordLogin').hidden=false;$('emailRecovery').hidden=true;$('emailPasswordSetup').hidden=true;$('loginPasswordEmail').focus();
+};
+$('passwordSettings').onclick=()=>{
+ showLoginMethods();
+ $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;
+ $('emailPasswordLogin').hidden=true;$('emailRecovery').hidden=false;$('emailPasswordSetup').hidden=true;
+ $('emailAddress').value=publicSession?.user?.email||'';
+ $('emailStatus').textContent='Подтвердите email один раз, чтобы установить или заменить пароль.';
+ if(!$('emailDialog').open)$('emailDialog').showModal();
+};
+$('emailRecoveryOpen').onclick=()=>{
+ $('emailPasswordLogin').hidden=true;$('emailRecovery').hidden=false;$('emailPasswordSetup').hidden=true;
+ $('emailAddress').value=$('loginPasswordEmail').value.trim();
+ $('emailStatus').textContent='';$('emailAddress').focus();
+};
+$('emailPasswordLogin').onsubmit=async e=>{
+ e.preventDefault();const button=e.submitter;button.disabled=true;
+ try{
+  const email=$('loginPasswordEmail').value.trim();
+  const pass=$('loginPassword').value;
+  saveIdentity(await api('/api/email/password/login',{method:'POST',body:{email,password:pass}}));
+  $('loginPassword').value='';$('emailDialog').close();
+  await refreshAccess();$('status').textContent='Вы вошли. Дальше вход будет автоматическим на этом устройстве.';
+ }catch(error){$('emailStatus').textContent=error.message;}
+ finally{button.disabled=false;}
+};
+$('emailPasswordSetup').onsubmit=async e=>{
+ e.preventDefault();const button=e.submitter;
+ const pass=$('emailNewPassword').value;
+ if(pass!==$('emailRepeatPassword').value){$('emailStatus').textContent='Пароли не совпадают.';return;}
+ button.disabled=true;
+ try{
+  await api('/api/email/password/set',{method:'POST',token:await ensureSession(),body:{password:pass}});
+  $('emailNewPassword').value='';$('emailRepeatPassword').value='';$('emailCode').value='';
+  $('emailDialog').close();await refreshAccess();$('status').textContent='Пароль сохранён. Вход на этом устройстве будет автоматическим.';
+ }catch(error){$('emailStatus').textContent=error.message;}
+ finally{button.disabled=false;}
 };
 $('emailRequest').onsubmit=async e=>{
  e.preventDefault();const button=e.submitter;button.disabled=true;
@@ -159,7 +196,12 @@ $('emailRequest').onsubmit=async e=>{
 };
 $('emailVerify').onsubmit=async e=>{
  e.preventDefault();const button=e.submitter;button.disabled=true;
- try{saveIdentity(await api('/api/email/verify',{method:'POST',body:{email:loginEmail,code:$('emailCode').value.trim()}}));$('emailCode').value='';$('emailDialog').close();await refreshAccess();$('status').textContent='Вы вошли. Можно начать обсуждение.';}
+ try{
+  saveIdentity(await api('/api/email/verify',{method:'POST',body:{email:loginEmail,code:$('emailCode').value.trim()}}));
+  $('emailRecovery').hidden=true;$('emailPasswordLogin').hidden=true;$('emailPasswordSetup').hidden=false;
+  $('emailStatus').textContent='Email подтверждён. Сохраните постоянный пароль.';
+  $('emailNewPassword').focus();
+ }
  catch(error){$('emailStatus').textContent=error.message;}finally{button.disabled=false;}
 };
 async function pollTelegramLogin(){
@@ -203,7 +245,7 @@ async function ensureSession(){
  return null;
 }
 function showSignedOut(){
- access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;
+ access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных заданий в месяц, до 3 моделей, без истории.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('accountCodeDetails').hidden=true;
@@ -216,6 +258,7 @@ async function refreshAccess(){
   clearIdentity();showSignedOut();return;
  }
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
+ $('passwordSettings').hidden=!publicSession?.user?.email;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
  const cap=access.maxModels??3;
  if(chosen.size>cap){
