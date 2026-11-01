@@ -3,15 +3,32 @@ import {existsSync,readFileSync,writeFileSync,renameSync} from 'node:fs';
 // User-visible results live in a separate private file from API metering.
 // No results are written for free or pack-only tasks.
 export function createHistoryStore({file='',now=Date.now}={}){
- let state={accounts:{}};
+ let state={accounts:{},links:{}};
  if(file&&existsSync(file)){
   const loaded=JSON.parse(readFileSync(file,'utf8'));
-  if(loaded&&typeof loaded==='object'&&loaded.accounts&&typeof loaded.accounts==='object')state=loaded;
+  if(loaded&&typeof loaded==='object'&&loaded.accounts&&typeof loaded.accounts==='object')state={accounts:loaded.accounts,links:loaded.links||{}};
  }
  function save(){
   if(!file)return;
   writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});
   renameSync(file+'.tmp',file);
+ }
+ const validIdentity=value=>typeof value==='string'&&/^account:[0-9a-f]{32}$/.test(value);
+ function members(identity){
+  const linked=state.links[identity];
+  return [identity,...(Array.isArray(linked)?linked.filter(validIdentity):[])];
+ }
+ // Linking always requires verified ownership of both identities in the API.
+ // Discussions stay under their original account keys and are never destroyed.
+ function link(a,b){
+  if(!validIdentity(a)||!validIdentity(b)||a===b)throw Error('Некорректные аккаунты для связи');
+  const group=[...new Set([...members(a),...members(b)])].sort();
+  if(group.length>8)throw Error('Слишком много связанных аккаунтов');
+  const previous=state.links;
+  state.links={...previous};
+  for(const member of group)state.links[member]=group.filter(id=>id!==member);
+  try{save();}catch(error){state.links=previous;throw error;}
+  return {linked:true,accounts:group.length};
  }
  function validateMessages(messages){
   if(!Array.isArray(messages)||messages.length>90)throw Error('Некорректная история');
@@ -52,7 +69,7 @@ export function createHistoryStore({file='',now=Date.now}={}){
  }
  function list(identity,{offset=0,limit=20,search=''}={}){
   const needle=String(search||'').trim().toLocaleLowerCase('ru-RU').slice(0,160);
-  const all=Object.values(state.accounts[identity]||{})
+  const all=[...new Map(members(identity).flatMap(id=>Object.values(state.accounts[id]||{})).map(item=>[item.taskId,item])).values()]
    .filter(item=>!needle||[item.prompt,item.profile,item.specialization,...item.messages.map(m=>m.text)]
     .some(value=>String(value||'').toLocaleLowerCase('ru-RU').includes(needle)))
    .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
@@ -63,6 +80,6 @@ export function createHistoryStore({file='',now=Date.now}={}){
    specialization:item.specialization,...(needle?excerpt(item,needle):{})
   })),nextOffset:start+take<all.length?start+take:null};
  }
- function get(identity,taskId){return state.accounts[identity]?.[taskId]||null;}
- return {record,list,get};
+ function get(identity,taskId){for(const id of members(identity)){if(state.accounts[id]?.[taskId])return state.accounts[id][taskId];}return null;}
+ return {record,list,get,link,members};
 }
