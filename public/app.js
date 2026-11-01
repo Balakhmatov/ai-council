@@ -24,7 +24,7 @@ const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':n
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
-let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyVersion=0,historySearchTimer=null;
+let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let moderatorChosenByUser=false;
 
@@ -281,9 +281,53 @@ function showSignedOut(){
  $('settingsOpen').hidden=true;$('demoControls').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных токенов при регистрации.';
  $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
+ $('historyLinkBox').hidden=true;$('historyLinkPanel').hidden=true;
  $('accountCodeDetails').hidden=true;
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
 }
+function historyLinkUi(linked){
+ $('historyLinkBox').hidden=false;
+ $('historyLinkToggle').textContent=linked?'✓ Истории Telegram и email связаны':'Связать историю Telegram и email';
+ const emailAccount=!!publicSession?.user?.email,canLinkTelegram=emailAccount&&!!telegramContext;
+ $('historyLinkEmailForm').hidden=linked||emailAccount;
+ $('historyLinkTelegram').hidden=linked||!canLinkTelegram;
+ $('historyLinkExplanation').textContent=linked
+  ?'Сохранённые обсуждения доступны при обоих способах входа. Новые задачи сохраняются по условиям тарифа текущего аккаунта.'
+  :emailAccount
+   ?canLinkTelegram?'Подтвердите Telegram, чтобы видеть историю обоих аккаунтов.':'Для объединения откройте Кворум через Telegram, войдите там через Telegram и укажите email и пароль.'
+   :'Введите email и пароль второго аккаунта. Уже сохранённые обсуждения объединятся без удаления.';
+}
+async function refreshHistoryLinkState(){
+ if(!publicSession||!access){$('historyLinkBox').hidden=true;return;}
+ const info=await api('/api/history/link',{token:await ensureSession()});
+ historyLinkUi(!!info.linked);
+}
+$('historyLinkToggle').onclick=()=>{
+ const panel=$('historyLinkPanel');panel.hidden=!panel.hidden;
+ $('historyLinkToggle').setAttribute('aria-expanded',String(!panel.hidden));
+};
+$('historyLinkEmailForm').onsubmit=async e=>{
+ e.preventDefault();const button=e.submitter;button.disabled=true;
+ try{
+  const info=await api('/api/history/link',{method:'POST',token:await ensureSession(),
+   body:{email:$('historyLinkEmail').value.trim(),password:$('historyLinkPassword').value}});
+  $('historyLinkPassword').value='';
+  historyLinkUi(!!info.linked);
+  $('historyLinkStatus').textContent='Истории объединены. Обновляем список задач.';
+  await refreshHistory(true);
+ }catch(error){$('historyLinkStatus').textContent=error.message;}
+ finally{button.disabled=false;}
+};
+$('historyLinkTelegram').onclick=async()=>{
+ const button=$('historyLinkTelegram');button.disabled=true;
+ try{
+  const info=await api('/api/history/link',{method:'POST',token:await ensureSession(),body:{initData:telegramContext?.initData}});
+  historyLinkUi(!!info.linked);
+  $('historyLinkStatus').textContent='Истории объединены. Обновляем список задач.';
+  await refreshHistory(true);
+ }catch(error){$('historyLinkStatus').textContent=error.message;}
+ finally{button.disabled=false;}
+};
 async function refreshAccess(){
  const token=await ensureSession();if(!token&&!publicSession){showSignedOut();return;}
  // Revalidate the owner's role against the live server, not a stale browser snapshot.
@@ -313,7 +357,9 @@ async function refreshAccess(){
   for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
  }
- renderAccess();refreshHistory(true).catch(()=>{});if(new URLSearchParams(location.search).has('payment'))checkPayment().catch(()=>{});
+ renderAccess();refreshHistory(true).catch(e=>{$('status').textContent='Не удалось загрузить историю: '+e.message;});
+ refreshHistoryLinkState().catch(()=>{$('historyLinkBox').hidden=true;});
+ if(new URLSearchParams(location.search).has('payment'))checkPayment().catch(()=>{});
 }
 function taskCount(value){
  const n=Math.abs(Number(value)||0),lastTwo=n%100,last=n%10;
@@ -402,14 +448,14 @@ function renderPricing(){
 async function refreshHistory(reset=false){
  if(!access)return;
  if(historyBusy&&!reset)return;
- const requestedVersion=reset?++historyVersion:historyVersion;
+ const requestedVersion=reset?++historyListVersion:historyListVersion;
  const accountRef=access.accountRef;
- if(reset){historyOffset=0;$('historyList').replaceChildren();$('historyMore').hidden=true;}
+ if(reset){++historySearchVersion;closeHistorySuggestions();historyOffset=0;$('historyList').replaceChildren();$('historyMore').hidden=true;}
  historyBusy=true;
  try{
   const offset=reset?0:historyOffset;
   const data=await api('/api/history?limit=20&offset='+offset,{token:await ensureSession()});
-  if(requestedVersion!==historyVersion||!access||access.accountRef!==accountRef)return;
+  if(requestedVersion!==historyListVersion||!access||access.accountRef!==accountRef)return;
   historyTotal=data.total;
   for(const item of data.items){
    const btn=document.createElement('button');btn.type='button';btn.className='history-cluster';
@@ -426,7 +472,13 @@ async function refreshHistory(reset=false){
    empty.textContent='Первое обсуждение появится здесь после завершения задачи.';
    $('historyList').append(empty);
   }
- }finally{if(requestedVersion===historyVersion)historyBusy=false;}
+ }catch(error){
+  if(requestedVersion===historyListVersion){$('historySection').hidden=false;$('historyCount').textContent='Ошибка загрузки';
+   const warning=document.createElement('p');warning.className='hint';warning.textContent='Не удалось получить историю: '+error.message;
+   $('historyList').append(warning);
+  }
+  throw error;
+ }finally{if(requestedVersion===historyListVersion)historyBusy=false;}
 }
 function highlightFound(text,term){
  const frag=document.createDocumentFragment(),value=String(text||''),index=value.toLocaleLowerCase('ru-RU').indexOf(term.toLocaleLowerCase('ru-RU'));
@@ -440,14 +492,14 @@ function closeHistorySuggestions(){
  $('historySearch').setAttribute('aria-expanded','false');
 }
 async function suggestHistory(){
- const term=$('historySearch').value.trim(),seq=++historyVersion;
+ const term=$('historySearch').value.trim(),seq=++historySearchVersion;
  if(term.length<3){closeHistorySuggestions();return;}
  const panel=$('historySuggest');panel.replaceChildren();panel.hidden=false;
  $('historySearch').setAttribute('aria-expanded','true');
  const waiting=document.createElement('p');waiting.className='history-suggest-state';waiting.textContent='Ищем в истории…';panel.append(waiting);
  try{
   const data=await api('/api/history?limit=7&offset=0&search='+encodeURIComponent(term),{token:await ensureSession()});
-  if(seq!==historyVersion||$('historySearch').value.trim()!==term)return;
+  if(seq!==historySearchVersion||$('historySearch').value.trim()!==term)return;
   panel.replaceChildren();
   if(!data.items.length){
    const empty=document.createElement('p');empty.className='history-suggest-state';empty.textContent='Совпадений нет';panel.append(empty);return;
@@ -467,7 +519,7 @@ async function suggestHistory(){
    panel.append(foot);
   }
  }catch(e){
-  if(seq!==historyVersion)return;
+  if(seq!==historySearchVersion)return;
   panel.replaceChildren();const info=document.createElement('p');info.className='history-suggest-state';
   info.textContent='Поиск временно недоступен. Попробуйте ещё раз.';panel.append(info);
  }
@@ -475,7 +527,7 @@ async function suggestHistory(){
 $('historySearch').addEventListener('input',()=>{
  clearTimeout(historySearchTimer);
  const term=$('historySearch').value.trim();
- if(term.length<3){++historyVersion;closeHistorySuggestions();return;}
+ if(term.length<3){++historySearchVersion;closeHistorySuggestions();return;}
  historySearchTimer=setTimeout(()=>suggestHistory(),190);
 });
 $('historySearch').addEventListener('keydown',e=>{
@@ -508,6 +560,9 @@ async function openHistory(taskId){
 }
 $('historyClose').onclick=()=>$('historyDialog').close();
 $('historyMore').onclick=()=>refreshHistory().catch(e=>{$('status').textContent=e.message;});
+document.addEventListener('visibilitychange',()=>{
+ if(document.visibilityState==='visible'&&access&&!running)refreshHistory(true).catch(e=>{$('status').textContent='Не удалось обновить историю: '+e.message;});
+});
 async function loadConfig(){
  try{
   await loginTelegram();const config=await api('/api/config');
