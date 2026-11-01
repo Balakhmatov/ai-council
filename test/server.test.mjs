@@ -485,7 +485,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=free-once-20261101/);
+  assert.match(html.body,/app\.js\?v=refund-mobile-pay-20261101/);
  }finally{await t.close();}
 });
 
