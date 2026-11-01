@@ -140,7 +140,7 @@ export function createEconomy({env,now=Date.now}){
    rateDate:fx?.rateDate??null};
  }
  function prices(models={}){
-  return ['openai','mistral','grok',...['claude','gemini'].filter(p=>models[p])].map(provider=>{
+  return ['openai','mistral','grok',...['claude','gemini','qwen','deepseek'].filter(p=>models[p])].map(provider=>{
    const model=models[provider]||({openai:'gpt-6-luna',mistral:'mistral-large-2512',grok:'grok-4.7'}[provider]);
    return {provider,model,...(price(provider,model)||{currency:'RUB',input:null,cached:null,output:null,source:'Тариф не задан',estimated:true})};
   });

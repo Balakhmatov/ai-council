@@ -21,14 +21,20 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
  const routes={...providers,grok:[grokBase+'/chat/completions','XAI_API_KEY']};
- for(const [id,official] of [['claude','https://api.anthropic.com/v1'],['gemini','https://generativelanguage.googleapis.com/v1beta/openai']]){
-  const base=(env[id.toUpperCase()+'_BASE_URL']||official).replace(/\/$/,'');
+ for(const [id,official] of [['claude','https://api.anthropic.com/v1'],['gemini','https://generativelanguage.googleapis.com/v1beta/openai'],
+  ['qwen','https://dashscope-intl.aliyuncs.com/compatible-mode/v1'],['deepseek','https://api.deepseek.com']]){
+  const configured=env[id.toUpperCase()+'_BASE_URL'];
+  const base=(configured||official).replace(/\/$/,'');
   if(![official,'https://ddtnew.com/v1'].includes(base))throw Error(`Invalid ${id} base URL`);
   routes[id]=[base+(id==='claude'?'/messages':'/chat/completions'),providers[id][1]];
  }
  const passwordAuth=createPasswordAuth({env,now});
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
- const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
+ // A single NEW_API_KEY enables Qwen and DeepSeek on the DDT OpenAI-compatible endpoint.
+ // It must never be forwarded to an official third-party endpoint.
+ const keyFor=id=>env[routes[id]?.[1]]||
+  (['qwen','deepseek'].includes(id)&&routes[id]?.[0]==='https://ddtnew.com/v1/chat/completions'?env.NEW_API_KEY:'')||
+  (id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
  const sessions=createSessionStore({env,now}),browserLogin=createTelegramBrowserLogin({now});
  const researchDone=new Map();
