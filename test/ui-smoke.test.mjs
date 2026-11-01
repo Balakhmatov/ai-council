@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=history-layout43/);
+ assert.match(html,/app\.js\?v=fact-research44/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -125,7 +125,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=history-layout43/);
+ assert.match(html,/app\.js\?v=fact-research44/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -169,7 +169,7 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=history-layout43/);
+ assert.match(html,/app\.js\?v=fact-research44/);
 });
 
 test('round and named response length selectors appear under task input, separate from modes',()=>{
@@ -197,4 +197,21 @@ test('history viewer is fullscreen and searchable on all stored tasks, using ser
  assert.match(css,/max-height:100dvh/);
  assert.match(css,/\.rendered-markdown \.md-table-scroll/);
  assert.match(css,/-webkit-overflow-scrolling:touch/);
+});
+
+test('research UI is selective, source-based and never silently claims every model number verified',()=>{
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/app\.js\?v=fact-research44/);
+ assert.match(html,/uiux32\.css\?v=fact-research44/);
+ assert.match(app,/needsSources\(task\)/);
+ assert.match(app,/api\/research/);
+ assert.match(app,/onResearch:showResearch/);
+ assert.match(app,/research\.status!=='grounded'/);
+ assert.match(app,/iframe/);
+ assert.match(css,/\.research-panel/);
+ assert.match(css,/\.research-source/);
 });
