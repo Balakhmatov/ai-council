@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=password38/);
+ assert.match(html,/app\.js\?v=tasks39/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -58,7 +58,7 @@ test('tariff prices have an always-visible entry point and static fallback befor
  assert.match(html,/<button id="pricingOpen"[^>]*>Тарифы<\/button>/);
  assert.match(html,/<dialog id="pricingDialog"[^>]*>/);
  assert.match(html,/id="pricingOffers"/);
- for(const text of ['1 200 ₽','30 ₽','135 ₽','255 ₽','500 заданий','До 7 моделей'])
+ for(const text of ['1 200 ₽','30 ₽','135 ₽','255 ₽','500 задач','До 7 моделей'])
   assert.ok(html.includes(text),'Static tariff must be visible without server response: '+text);
  assert.match(app,/\$\('pricingOpen'\)\.onclick=/);
  assert.match(app,/\$\('pricingDialog'\)\.showModal\(\)/);
@@ -98,4 +98,19 @@ test('password sign-in and first-time code verification retain Telegram login an
  assert.match(app,/api\/auth\/session/);
  assert.match(app,/api\/telegram\/auth/);
  assert.match(css,/\.auth-password-form/);
+});
+
+test('customer-facing Quorum consistently calls units tasks, not assignments',()=>{
+ const root=new URL('../',import.meta.url);
+ for(const path of ['public/index.html','public/app.js','server.mjs','economy.mjs','history.mjs']){
+  const content=readFileSync(new URL(path,root),'utf8');
+  assert.doesNotMatch(content,/задан(?:ие|ия|ий|ию|ии|ием|ием|иям|иями|иях|иe)/i,path+' contains outdated wording');
+ }
+ const html=readFileSync(new URL('public/index.html',root),'utf8');
+ const app=readFileSync(new URL('public/app.js',root),'utf8');
+ for(const text of ['Опишите задачу','История задач','500 задач','10 задач','50 задач','100 задач','за задачу']){
+  assert.ok(html.includes(text),text+' should appear in interface');
+ }
+ assert.match(app,/function taskCount\(value\)/);
+ assert.match(app,/taskCount\(access\.remainingFreeTasks\)/);
 });

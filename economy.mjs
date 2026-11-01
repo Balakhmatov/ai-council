@@ -9,9 +9,9 @@ const direct=Object.freeze({
 const grokHeavyCny=Object.freeze({input:0.60,cached:0.15,output:1.80});
 export const BILLING_CATALOG=Object.freeze({
  subscription:{label:'Подписка · 30 дней',tasks:500,priceRub:1200,discount:20,monthly:true},
- pack10:{label:'10 заданий',tasks:10,priceRub:30,discount:0},
- pack50:{label:'50 заданий',tasks:50,priceRub:135,discount:10},
- pack100:{label:'100 заданий',tasks:100,priceRub:255,discount:15}
+ pack10:{label:'10 задач',tasks:10,priceRub:30,discount:0},
+ pack50:{label:'50 задач',tasks:50,priceRub:135,discount:10},
+ pack100:{label:'100 задач',tasks:100,priceRub:255,discount:15}
 });
 // Effective RUB rates reconciled against the owner's DDTokens receipts.
 // Dynamic group prices are estimates, not USD converted at the CBR rate.
