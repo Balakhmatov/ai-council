@@ -38,8 +38,12 @@ export function createHistoryStore({file='',now=Date.now}={}){
   account[taskId]=item;state.accounts[identity]=account;save();
   return {taskId:item.taskId,createdAt:item.createdAt,title:item.title,profile,specialization};
  }
- function list(identity,{offset=0,limit=20}={}){
-  const all=Object.values(state.accounts[identity]||{}).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+ function list(identity,{offset=0,limit=20,search=''}={}){
+  const needle=String(search||'').trim().toLocaleLowerCase('ru-RU').slice(0,160);
+  const all=Object.values(state.accounts[identity]||{})
+   .filter(item=>!needle||[item.prompt,item.profile,item.specialization,...item.messages.map(m=>m.text)]
+    .some(value=>String(value||'').toLocaleLowerCase('ru-RU').includes(needle)))
+   .sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
   const start=Math.max(0,Math.min(1000000,Number(offset)||0));
   const take=Math.max(1,Math.min(50,Number(limit)||20));
   return {total:all.length,items:all.slice(start,start+take).map(({taskId,createdAt,title,profile,specialization})=>({taskId,createdAt,title,profile,specialization})),
