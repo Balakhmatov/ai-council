@@ -7,6 +7,7 @@ import {formatTranscript} from './transcript.js';
 import {renderMarkdown} from './markdown-render.js';
 import {wordsForPreset,limitIntermediate} from './response-length.js';
 import {MODEL_PRIORITY,defaultParticipants,chooseModerator} from './model-priority.js';
+import {needsSources} from './fact-check.js';
 
 const $=id=>document.getElementById(id);
 const agentDetails={
@@ -704,6 +705,35 @@ function taskTranscript(){
 $('copyAll').insertAdjacentHTML('afterbegin',COPY_SVG);
 $('copyAll').onclick=()=>copyText(taskTranscript(),$('copyAll'));
 $('historyCopyAll').insertAdjacentHTML('afterbegin',COPY_SVG);
+function showResearch(research){
+ const panel=$('researchPanel'),sources=$('researchSources'),widget=$('researchSearchWidget');
+ sources.replaceChildren();widget.replaceChildren();panel.hidden=false;
+ if(research.status!=='grounded'){
+  $('researchState').textContent='Нет подтверждённых источников';
+  sources.append(node('p',research.reason||'Поиск источников недоступен. Числовые показатели моделей требуют проверки.','research-warning'));
+  return;
+ }
+ $('researchState').textContent='Найдены ссылки на '+(research.facts?.length||0)+' фрагментов';
+ sources.append(node('p','Ссылки получены поиском Google. Проверяйте дату и соответствие конкретной компании.','research-warning'));
+ for(const source of research.sources||[]){
+  const a=node('a',source.title||source.url,'research-source');
+  a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';sources.append(a);
+ }
+ if(research.searchWidget){
+  const frame=document.createElement('iframe');
+  frame.className='research-search-frame';
+  frame.sandbox='allow-popups allow-popups-to-escape-sandbox';
+  frame.title='Поисковые предложения Google';
+  frame.referrerPolicy='no-referrer';
+  frame.srcdoc=research.searchWidget;
+  widget.append(frame);
+ }
+}
+async function verifyTaskSources(task,signal){
+ if($('demo').checked)return {status:'unavailable',reason:'В демонстрации веб-поиск не выполняется',sources:[],facts:[]};
+ return api('/api/research',{method:'POST',token:await ensureSession(),
+  body:{taskId:activeTask?.taskId,prompt:task.slice(0,1500)},signal:AbortSignal.any([signal,AbortSignal.timeout(90000)])});
+}
 function renderMessage(m){
  const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
  const head=document.createElement('div');head.className='message-head';
@@ -754,9 +784,9 @@ $('start').onclick=async()=>{
  running=true;stopRequested=false;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
  const {profile:currentProfile,task:currentSubtask}=resolveProfile(profileId,taskId);
  lastTaskContext={prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
- $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;
+ $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;$('researchPanel').hidden=true;$('researchSources').replaceChildren();$('researchSearchWidget').replaceChildren();
  $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
- document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#demo,#rounds,#length').forEach(e=>e.disabled=true);
+ document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#demo,#rounds,#length,#factCheck').forEach(e=>e.disabled=true);
  update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
  try{
   if(!$('demo').checked){
@@ -773,7 +803,8 @@ $('start').onclick=async()=>{
    access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   }
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
-  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress});
+  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
+   researchProvider:$('factCheck').checked&&needsSources(task)&&!$('demo').checked?verifyTaskSources:null,onResearch:showResearch});
   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
@@ -793,7 +824,7 @@ $('start').onclick=async()=>{
   }
   if(!$('demo').checked)await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length').forEach(e=>e.disabled=false);
+  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#factCheck').forEach(e=>e.disabled=false);
   update();
  }
 };

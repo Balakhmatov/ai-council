@@ -6,6 +6,7 @@ import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramAp
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
 import {createHistoryStore} from './history.mjs';
+import {groundTask} from './fact-grounding.mjs';
 import {createFxUpdater} from './fx.mjs';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
@@ -30,6 +31,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
  const sessions=createSessionStore({env,now}),browserLogin=createTelegramBrowserLogin({now});
+ const researchDone=new Map();
  // Owner privileges are granted only for a server-configured identity that
  // successfully authenticated through Telegram or a verified email account.
  const adminTelegramIds=telegramAdminIds(env);
@@ -180,6 +182,24 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(task.insufficient)return fail(402,'Лимит задач исчерпан. Дождитесь обновления бесплатного лимита или пополните пакет задач.');
     return json(200,task);
    }
+   if(path==='/api/research'&&req.method==='POST'){
+    if(!validSession||!visitorHash)return fail(401,'Для проверки источников войдите в аккаунт.');
+    let info;try{info=await readBody(2500);}catch{return fail(400,'Некорректная задача');}
+    if(!/^[0-9a-f]{48}$/.test(String(info.taskId||''))||typeof info.prompt!=='string'||info.prompt.length>1600||info.prompt.trim().length<8)return fail(400,'Неверные параметры исследования.');
+    if(!economy.activeTaskAccess(info.taskId,visitorHash))return fail(403,'Задача не принадлежит аккаунту.');
+    const cached=researchDone.get(info.taskId);
+    if(cached)return json(200,await cached.promise);
+    if(researchDone.size>3000)for(const [id,v] of researchDone)if(v.expires<now())researchDone.delete(id);
+    if(researchDone.size>3000)return fail(429,'Слишком много проверок. Повторите позже.');
+    const work=(async()=>{
+     if(!env.FACT_GROUNDING_API_KEY&&(env.GEMINI_BASE_URL||'https://generativelanguage.googleapis.com/v1beta/openai')!=='https://generativelanguage.googleapis.com/v1beta/openai')
+      return {status:'unavailable',reason:'Поиск недоступен для прокси-модели Gemini',sources:[],facts:[]};
+     return groundTask({task:info.prompt,key:env.FACT_GROUNDING_API_KEY||env.GEMINI_API_KEY,
+      model:env.FACT_GROUNDING_MODEL||'gemini-2.5-flash',fetchImpl});
+    })();
+    researchDone.set(info.taskId,{promise:work,expires:now()+3600000});
+    try{return json(200,await work);}catch{return json(200,{status:'unavailable',reason:'Проверка источников недоступна',sources:[],facts:[]});}
+   }
    if(path==='/api/task/finish'&&req.method==='POST'){
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(800000);}catch{return fail(400,'Некорректная задача');}
@@ -256,7 +276,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const providerAsset=['openai','grok','mistral','qwen','deepseek','gemini','claude'].find(id=>path==='/assets/models/'+id+'.svg');
   const special=providerAsset?'assets/models/'+providerAsset+'.svg':asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
-  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js','/model-priority.js':'model-priority.js','/markdown-render.js':'markdown-render.js','/response-length.js':'response-length.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js','/model-priority.js':'model-priority.js','/markdown-render.js':'markdown-render.js','/response-length.js':'response-length.js','/fact-check.js':'fact-check.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':file.endsWith('.ico')?'image/x-icon':file.endsWith('.webmanifest')?'application/manifest+json':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':file.endsWith('.html')||file.endsWith('.js')?'no-store':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }

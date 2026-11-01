@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <link rel="stylesheet" href="./style.css?v=history-layout43">
-<link rel="stylesheet" href="./uiux32.css?v=history-layout43">
+<link rel="stylesheet" href="./uiux32.css?v=fact-research44">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -33,6 +33,7 @@
  <label>Раунды обсуждения<select id="rounds"><option>2</option><option selected>3</option><option>4</option><option>5</option></select></label>
  <label>Длина промежуточных ответов<select id="length"><option value="short" selected>Коротко</option><option value="medium">Средне</option><option value="detailed">Подробно</option></select></label>
 </div>
+<label class="research-choice"><input id="factCheck" type="checkbox" checked><span><strong>Проверять факты по открытым источникам</strong><small>Автоматически для анализа компаний, рынков и конкурентов. Для творческих задач поиск не запускается.</small></span></label>
 <details class="advanced"><summary>Как нейросети будут работать над задачей <span class="advanced-chevron">⌄</span></summary>
 <p class="hint">Выберите способ совместной работы. Если не уверены, оставьте первый.</p>
 <div id="modes"></div>
@@ -41,6 +42,11 @@
 <button class="primary" id="start" type="button">Получить результат</button><div id="stopAction" class="stop-action" hidden><button id="stop" type="button">Остановить задачу</button><small>При остановке квота не возвращается.</small></div></div>
 <p id="status" role="status">Выберите направление и поставьте задачу.</p>
 <div id="progress" class="progress" hidden aria-live="polite"></div>
+<section id="researchPanel" class="research-panel" hidden aria-live="polite">
+ <div class="research-head"><strong>Проверка источников</strong><span id="researchState"></span></div>
+ <div id="researchSources" class="research-sources"></div>
+ <div id="researchSearchWidget" class="research-search-widget"></div>
+</section>
 <div class="discussion-title"><h2>Результат</h2><div class="result-actions"><button class="copy-action copy-all" id="copyAll" disabled type="button" title="Скопировать задачу, все раунды и итог" aria-label="Скопировать всю задачу">Скопировать всё</button><button class="quiet" id="export" disabled type="button">Скачать .md</button></div></div>
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 <section id="historySection" class="history-section" hidden>
@@ -147,4 +153,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=history-layout43"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=fact-research44"></script></body></html>

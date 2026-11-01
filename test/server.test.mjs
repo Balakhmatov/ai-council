@@ -292,7 +292,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=history-layout43/);
+  assert.match(html.body,/uiux32\.css\?v=fact-research44/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -485,7 +485,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=history-layout43/);
+  assert.match(html.body,/app\.js\?v=fact-research44/);
  }finally{await t.close();}
 });
 
@@ -524,5 +524,55 @@ test('selected intermediate length reduces the actual model token budget, not fi
   assert.equal(opts[0].max_tokens,900);
   assert.equal(opts[1].max_tokens,2300);
   assert.equal(opts[2].max_tokens,7000);
+ }finally{await t.close();}
+});
+
+test('grounded task search requires account ownership, cites sources and runs only once per task',async()=>{
+ let groundingCalls=0;
+ const t=await setup({GEMINI_API_KEY:'test-gemini-key',GEMINI_MODEL:'gemini-2.5-flash'},{
+  upstream:async(url,opts)=>{
+   if(url.includes(':generateContent')){
+    groundingCalls++;
+    assert.equal(opts.headers['x-goog-api-key'],'test-gemini-key');
+    return Response.json({candidates:[{content:{parts:[{text:'Публичные данные.'}]},
+      groundingMetadata:{groundingChunks:[{web:{uri:'https://source.example/report',title:'Report'}}],
+      groundingSupports:[{segment:{text:'Публичные данные.'},groundingChunkIndices:[0]}]}}]});
+   }
+   return Response.json({choices:[{message:{content:'OK'}}]});
+  }
+ });
+ try{
+  const owner=(await t.login('fact-owner@example.com')).data;
+  const stranger=(await t.login('fact-stranger@example.com')).data;
+  const task=(await t.send('/api/task/start',{participants:['openai','gemini'],rounds:2,mode:'judge'},owner.token)).data;
+  const input={taskId:task.taskId,prompt:'Анализ бизнеса доставки суши в Великом Новгороде'};
+  assert.equal((await t.send('/api/research',input,stranger.token)).status,403);
+  assert.equal((await t.send('/api/research',input)).status,401);
+  const first=await t.send('/api/research',input,owner.token);
+  assert.equal(first.status,200);
+  assert.equal(first.data.status,'grounded');
+  assert.equal(first.data.sources[0].url,'https://source.example/report');
+  assert.equal((await t.send('/api/research',input,owner.token)).status,200);
+  assert.equal(groundingCalls,1);
+ }finally{await t.close();}
+});
+test('fact search never calls a Gemini provider proxy and returns an honest unavailable state',async()=>{
+ let groundingCalls=0;
+ const t=await setup({GEMINI_API_KEY:'proxy-key',GEMINI_MODEL:'gemini-2.5-flash',GEMINI_BASE_URL:'https://ddtnew.com/v1'},{
+  upstream:async()=>{groundingCalls++;return Response.json({choices:[{message:{content:'OK'}}]});}
+ });
+ try{
+  const owner=(await t.login('research-proxy@example.com')).data;
+  const task=(await t.send('/api/task/start',{participants:['openai','gemini'],rounds:2,mode:'judge'},owner.token)).data;
+  const r=await t.send('/api/research',{taskId:task.taskId,prompt:'Рынок стоматологий Москвы'},owner.token);
+  assert.equal(r.status,200);assert.equal(r.data.status,'unavailable');
+  assert.equal(r.data.sources.length,0);assert.equal(groundingCalls,0);
+ }finally{await t.close();}
+});
+test('fact-check module is served to mobile Quorum webview',async()=>{
+ const t=await setup();try{
+  const asset=await t.asset('/fact-check.js');
+  assert.equal(asset.status,200);assert.match(asset.type,/javascript/);
+  assert.match(asset.body,/export function numericClaims/);
  }finally{await t.close();}
 });
