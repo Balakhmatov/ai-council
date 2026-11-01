@@ -46,7 +46,7 @@ export function createEconomy({env,now=Date.now}){
  const limitFor=()=>monthlyTasks;
  const ddtokensProxy=(env.XAI_BASE_URL||'').replace(/\/$/,'')==='https://ddtnew.com/v1';
  const ddtokensRubPerCny=rate(env.DDTOKENS_RUB_PER_CNY)||11.1;
- let state={allowances:{},subscriptions:{},purchasedCredits:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],fx:null};
+ let state={allowances:{},subscriptions:{},purchasedCredits:{},appliedPayments:{},totals:emptyMetrics(),byModel:{},recent:[],discussions:[],fx:null};
  if(file){try{
   const stored=JSON.parse(readFileSync(file,'utf8'));
   if(stored&&typeof stored==='object'&&stored.totals&&stored.byModel&&Array.isArray(stored.recent)&&(stored.allowances||stored.wallets)){
@@ -54,7 +54,7 @@ export function createEconomy({env,now=Date.now}){
    if(!state.allowances){state.allowances=Object.fromEntries(Object.entries(state.wallets||{}).map(([id,w])=>[id,{remainingFreeTasks:w.balance,createdAt:w.createdAt}]));delete state.wallets;}
    if(!Array.isArray(state.discussions))state.discussions=[];
    if(!state.fx)state.fx=null;
-   state.subscriptions??={};state.purchasedCredits??={};
+   state.subscriptions??={};state.purchasedCredits??={};state.appliedPayments??={};
   }
  }catch(e){if(e.code!=='ENOENT')throw Error('Accounting state unreadable');}}
  // Keep a separate append-only audit of every metered API call. The rolling
@@ -106,13 +106,24 @@ export function createEconomy({env,now=Date.now}){
   const offer=BILLING_CATALOG[sku];
   if(!offer)throw Error('Неизвестный тариф');
   if(sku==='subscription'){
+   const active=subscription(identity),expiry=active?Date.parse(active.expiresAt):now();
    state.subscriptions[identity]={
     activatedAt:new Date(now()).toISOString(),
-    expiresAt:new Date(now()+30*86400000).toISOString(),
-    remainingTasks:offer.tasks
+    expiresAt:new Date(Math.max(now(),expiry)+30*86400000).toISOString(),
+    remainingTasks:(active?.remainingTasks||0)+offer.tasks
    };
   }else state.purchasedCredits[identity]=Math.max(0,state.purchasedCredits[identity]||0)+offer.tasks;
   save();return access(identity);
+ }
+ function grantPayment(identity,sku,paymentId){
+  if(typeof paymentId!=='string'||!/^quorum:[a-f0-9-]{36}$/.test(paymentId))throw Error('Некорректный ID платежа');
+  if(state.appliedPayments[paymentId])return access(identity);
+  if(!BILLING_CATALOG[sku])throw Error('Неизвестный тариф');
+  if(typeof identity!=='string'||!/^account:[0-9a-f]{32}$/.test(identity))throw Error('Некорректный аккаунт');
+  const result=grant(identity,sku);
+  state.appliedPayments[paymentId]={identity,sku,at:new Date(now()).toISOString()};
+  save();
+  return result;
  }
  function activeTaskAccess(id,identity){
   const task=tasks.get(id);
@@ -320,6 +331,6 @@ export function createEconomy({env,now=Date.now}){
    prices:prices(models),fx:fx?{...fx,stale:now()-Date.parse(fx.fetchedAt)>48*3600000}:null,
    legacyCurrencyNotice:Number(legacyTotals.knownCostUsd||0)>0};
  }
- return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates,grant,catalog,activeTaskAccess};
+ return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates,grant,grantPayment,catalog,activeTaskAccess};
 }
 
