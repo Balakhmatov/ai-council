@@ -235,7 +235,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const maxWords=[120,250,500].includes(body.maxWords)?body.maxWords:120;
     // Keep actual API output budgets aligned with the selected short/medium/detailed mode.
     const intermediateTokens={120:900,250:1500,500:2300}[maxWords];
-    const reasoningTokens={120:1800,250:2700,500:4000}[maxWords];
+    const reasoningTokens=body.maxWords==null?4096:{120:1800,250:2700,500:4000}[maxWords];
     let payload=body.provider==='openai'&&model.startsWith('gpt-6')
       ?{model,messages,max_completion_tokens:longFinal?10000:reasoningTokens,reasoning_effort:'medium'}
       :{model,messages,max_tokens:longFinal?7000:intermediateTokens};
