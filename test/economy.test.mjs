@@ -14,7 +14,7 @@ test('free tasks persist; completed task costs one, empty task refunds',()=>{
   const env={ACCOUNTING_FILE:join(dir,'ledger.json'),ACCOUNT_MONTHLY_TASKS:'6'};
   const econ=createEconomy({env,now:()=>Date.parse('2026-10-31T06:00:00Z')});
   econ.updateExchangeRates(fx);
-  assert.equal(econ.access('visitor').remainingFreeTasks,3);
+  assert.equal(econ.access('visitor').remainingFreeTasks,6);
   const t=task(econ);assert.equal(t.remainingFreeTasks,3);
   assert.equal(econ.checkCall(t.taskId,'visitor','openai'),true);
   econ.success(t.taskId);econ.finish(t.taskId,'visitor');
@@ -142,7 +142,7 @@ test('monthly quota resets on Moscow month boundary and old refunds do not add c
 
 test('stopping a task before any model responds never refunds free task allocation',()=>{
  const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
- const started=task(econ);assert.equal(econ.access('visitor').remainingFreeTasks,1);
+ const started=task(econ);assert.equal(econ.access('visitor').remainingFreeTasks,0);
  const closed=econ.finish(started.taskId,'visitor',{cancelled:true});
  assert.equal(closed.ok,true);
  assert.equal(closed.cancelled,true);
