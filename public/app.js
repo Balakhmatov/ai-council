@@ -629,7 +629,7 @@ function renderAccounting(info){
  box.append(groupList);
  const logTitle=node('div',null,'account-log-title');logTitle.append(node('h4','Все API-вызовы · цена каждого'));
  const filter=node('select',null,'account-filter');
- for(const [value,label]of [['','Все модели'],['openai','Luna'],['mistral','Mistral'],['grok','Grok'],['claude','Claude'],['gemini','Gemini']])filter.append(new Option(label,value));
+ for(const [value,label]of [['','Все модели'],...agents.map(a=>[a.id,a.name])])filter.append(new Option(label,value));
  logTitle.append(filter);box.append(logTitle);
  const logCount=node('p','Загружаем журнал…','hint');
  box.append(logCount);
@@ -656,9 +656,25 @@ function renderAccounting(info){
  filter.onchange=()=>{loadPage(true);};
  more.onclick=()=>{loadPage();};
  loadPage(true);
- const exportButton=node('button','Скачать весь журнал CSV','account-export');
+ const exportChoices=node('div',null,'account-export-choices');
+ const allLabel=node('label');const allExport=node('input');allExport.type='checkbox';allExport.checked=true;allLabel.append(allExport,document.createTextNode(' Вся история'));exportChoices.append(allLabel);
+ const selectedTasks=new Set();
+ const taskChoices=node('div',null,'account-task-choices');
+ taskChoices.style.maxHeight='190px';taskChoices.style.overflowY='auto';
+ for(const group of groups){
+  if(!group.taskId)continue;
+  const label=node('label');label.style.display='block';
+  const checkbox=node('input');checkbox.type='checkbox';checkbox.value=group.taskId;
+  checkbox.onchange=()=>{checkbox.checked?selectedTasks.add(group.taskId):selectedTasks.delete(group.taskId);if(selectedTasks.size)allExport.checked=false;};
+  label.append(checkbox,document.createTextNode(' '+new Date(group.startedAt).toLocaleString('ru-RU')+' · '+group.participants.join(', ')+' · '+rub(group.costRub)));
+  taskChoices.append(label);
+ }
+ allExport.onchange=()=>{if(allExport.checked){selectedTasks.clear();taskChoices.querySelectorAll('input').forEach(x=>x.checked=false);}};
+ exportChoices.append(taskChoices);box.append(exportChoices);
+ const exportButton=node('button','Скачать CSV','account-export');
  exportButton.type='button';exportButton.onclick=async()=>{
-  exportButton.disabled=true;exportButton.textContent='Готовим полный CSV…';
+  if(!allExport.checked&&!selectedTasks.size){$('adminStatus').textContent='Выберите задачи для экспорта.';return;}
+  exportButton.disabled=true;exportButton.textContent='Готовим CSV…';
   try{
    const keys=['at','provider','model','step','status','httpStatus','input','cached','cacheWrite5m','cacheWrite1h','output','reasoning','costRub','discussionAccumulatedRub','modelAccumulatedRub','durationMs','errorType','errorDetail','taskId','rateUsed','rateCurrency','rateDate','costSource'];
    const escape=v=>'"'+String(v??'').replaceAll('"','""')+'"';
@@ -666,12 +682,12 @@ function renderAccounting(info){
    let next=0;
    for(let page=0;page<10000&&next!=null;page++){
     const result=await api('/api/admin/logs?limit=200&offset='+next,{token:adminToken});
-    for(const call of result.calls)rows.push(keys.map(k=>escape(call[k])).join(';'));
+    for(const call of result.calls){if(allExport.checked||selectedTasks.has(call.taskId))rows.push(keys.map(k=>escape(call[k])).join(';'));}
     next=result.nextOffset;
    }
    const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
    const url=URL.createObjectURL(blob),a=document.createElement('a');
-   a.href=url;a.download='quorum-all-api-requests.csv';a.click();
+   a.href=url;a.download=allExport.checked?'quorum-all-api-requests.csv':'quorum-selected-tasks.csv';a.click();
    setTimeout(()=>URL.revokeObjectURL(url),1000);
   }catch(e){$('adminStatus').textContent='Не удалось выгрузить журнал: '+e.message;}
   finally{exportButton.disabled=false;exportButton.textContent='Скачать весь журнал CSV';}
