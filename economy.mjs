@@ -170,7 +170,7 @@ export function createEconomy({env,now=Date.now}){
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:'lifetime',source,debits,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:'lifetime',source,debits,creditSourceByModel:Object.fromEntries(models.map((provider,i)=>[provider,i<(debits.subscription+debits.free)?(sub?'subscription':'free'):'pack'])),roundOutcomes:new Map(),rounds,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
@@ -189,21 +189,43 @@ export function createEconomy({env,now=Date.now}){
  function finish(id,identity,{cancelled=false}={}){
   const task=tasks.get(id);if(!task||task.identity!==identity)return null;
   tasks.delete(id);
-  // An explicit user stop consumes the allocated task even before the first answer.
-  const refunded=!cancelled&&!task.isAdmin&&task.successful===0;
-  if(refunded){
-   const debits=task.debits||{subscription:task.source==='subscription'?task.chargedTokens:0,free:task.source==='free'?task.chargedTokens:0,pack:task.source==='pack'?task.chargedTokens:0};
-   if(debits.subscription&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
-    state.subscriptions[identity].remainingTasks+=debits.subscription;
-   if(debits.free&&task.period==='lifetime')allowance(identity).remainingFreeTasks+=debits.free;
-   if(debits.pack)state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+debits.pack;
+  // Refund a model when more than half of its discussion rounds failed.
+  // Voting, consensus checks and the final synthesis are not discussion rounds.
+  const noResult=!cancelled&&task.successful===0;
+  const refunds=[];
+  if(!cancelled&&!task.isAdmin){
+   for(const provider of task.allowed){
+    const outcomes=task.roundOutcomes.get(provider)||new Map();
+    const failed=[...outcomes.values()].filter(status=>status==='error').length;
+    if(noResult||failed>task.rounds/2)refunds.push(provider);
+   }
   }
+  const refundedTokens=refunds.length;
+  for(const provider of refunds){
+   const pool=task.creditSourceByModel?.[provider];
+   if(pool==='subscription'&&state.subscriptions[identity]&&Date.parse(state.subscriptions[identity].expiresAt)>now())
+    state.subscriptions[identity].remainingTasks++;
+   else if(pool==='free'&&task.period==='lifetime')allowance(identity).remainingFreeTasks++;
+   else if(pool)state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+1;
+  }
+  const refunded=refundedTokens>0;
   const group=state.discussions.find(x=>x.taskId===id);
-  if(group){group.endedAt=new Date(now()).toISOString();group.status=cancelled?'cancelled':task.successful?'done':'failed';}
+  if(group){group.endedAt=new Date(now()).toISOString();group.status=cancelled?'cancelled':task.successful?'done':'failed';group.refundedTokens=refundedTokens;group.refundedModels=refunds;}
   save();
-  return {ok:true,refunded,cancelled:!!cancelled,remainingFreeTasks:task.isAdmin?null:access(identity).remainingFreeTasks};
+  return {ok:true,refunded,refundedTokens,refundedModels:refunds,cancelled:!!cancelled,remainingFreeTasks:task.isAdmin?null:access(identity).remainingFreeTasks};
  }
  function logCall({taskId=null,provider,model,stage='intermediate',step='',status='ok',httpStatus=null,durationMs=null,usage=null,errorType=null,errorDetail=null}){
+  if(taskId&&typeof provider==='string'){
+   const task=tasks.get(taskId);
+   const round=step==='Первый раунд'?1:/^Раунд ([2-5])$/.exec(step)?.[1];
+   if(task&&task.allowed.has(provider)&&round&&Number(round)<=task.rounds&&stage!=='final'){
+    let outcomes=task.roundOutcomes.get(provider);
+    if(!outcomes){outcomes=new Map();task.roundOutcomes.set(provider,outcomes);}
+    // A successful retry of the same round takes precedence over a failure.
+    const old=outcomes.get(Number(round));
+    if(old!=='ok')outcomes.set(Number(round),status==='ok'?'ok':'error');
+   }
+  }
   const hasUsage=!!usage&&typeof usage==='object'&&(
    Number.isFinite(Number(usage.prompt_tokens??usage.input_tokens))||Number.isFinite(Number(usage.completion_tokens??usage.output_tokens)));
   const rawInput=safeInt(usage?.prompt_tokens??usage?.input_tokens,0,100000000);
