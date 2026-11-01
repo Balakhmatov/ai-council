@@ -133,7 +133,7 @@ function saveIdentity(identity){
  const sameUser=previous?.user&&identity?.user&&(
   (previous.user.email&&previous.user.email===identity.user.email)||
   (previous.user.id&&previous.user.id===identity.user.id));
- publicSession={...identity,...(!identity.token&&sameUser&&previous.token?{token:previous.token}:{})};
+ publicSession={...identity,...(!Object.hasOwn(identity,'token')&&sameUser&&previous.token?{token:previous.token}:{})};
  adminToken=identity.isAdmin?(publicSession.token||''):'';
  telegramIdentity=identity.isAdmin?publicSession:null;
  sessionStorage.removeItem('quorum-admin');
@@ -268,7 +268,7 @@ async function refreshAccess(){
    try{identity=await api('/api/auth/session',{token:publicSession.token});}
    catch(error){
     if(error.status!==401||!publicSession.token)throw error;
-    identity=await api('/api/auth/session'); // Stale bearer may mask a valid cookie.
+    identity={...await api('/api/auth/session'),token:null}; // Drop stale bearer and rely on the valid cookie.
    }
    saveIdentity(identity);
   }catch(error){if(error.status!==401)throw error;}
@@ -393,7 +393,7 @@ async function loadConfig(){
     try{identity=await api('/api/auth/session',{token:publicSession?.token});}
     catch(error){
      if(error.status!==401||!publicSession?.token)throw error;
-     identity=await api('/api/auth/session');
+     identity={...await api('/api/auth/session'),token:null};
     }
     saveIdentity(identity);
    }catch(error){if(error.status!==401)throw error;clearIdentity();if(telegramContext)saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));}
