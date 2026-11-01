@@ -12,7 +12,7 @@ export function numericClaims(messages,max=12){
   for(const sentence of body.split(/(?<=[.!?])\s+|\n+/u)){
    const claim=sentence.replace(/^[-*]\s+|^\d+[.)]\s+/,'').replace(/\s+/g,' ').trim();
    if(claim.length<16||claim.length>600)continue;
-   if(!/\b\d[\d\s.,–—-]*\s*(?:%|₽|руб|тыс|млн|час|мин|дн|заказ|клиент|год|недел|чек|сек|км)\b?/iu.test(claim))continue;
+   if(!/\b\d[\d\s.,–—-]*\s*(?:%|₽|руб|тыс|млн|час|мин|дн|заказ|клиент|год|недел|чек|сек|км)/iu.test(claim))continue;
    const key=claim.toLowerCase().slice(0,140);
    if(seen.has(key))continue;seen.add(key);
    result.push({by:m.name||'Модель',claim:claim.slice(0,360),status:'unverified'});
