@@ -30,6 +30,15 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
  const sessions=createSessionStore({env,now}),browserLogin=createTelegramBrowserLogin({now});
+ // Owner privileges are granted only for a server-configured identity that
+ // successfully authenticated through Telegram or a verified email account.
+ const adminTelegramIds=telegramAdminIds(env);
+ const adminEmails=new Set(String(env.QUORUM_ADMIN_EMAILS||'')
+  .split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(x=>/^\S+@[^\s@]+\.[^\s@]+$/.test(x)));
+ const isOwnerAccount=value=>!!(value&&(
+  (value.telegramUser&&adminTelegramIds.has(String(value.telegramUser.id)))||
+  (value.emailUser&&adminEmails.has(String(value.emailUser.email||'').trim().toLowerCase()))
+ ));
  const handleTelegram=createTelegramWebhook({env,fetchImpl,browserLogin});
  const issuance=new Map(),accountActive=new Map();let active=0,authFailures=new Map();
  let botUsername='';
@@ -71,9 +80,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    const cookie=String(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('quorum_session='))?.slice(15)||'';
    const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'')||cookie;
    const session=sessions.get(bearer);const validSession=session&&session.expires>now()&&!!(session.telegramUser||session.emailUser);
-   const isAdmin=tokenEquals(bearer)||(validSession&&session.telegramUser&&telegramAdminIds(env).has(String(session.telegramUser.id)));
+   const isAdmin=tokenEquals(bearer)||(validSession&&isOwnerAccount(session));
    const sessionCookie=(token,expires)=>res.setHeader('Set-Cookie','quorum_session='+token+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+Math.max(0,Math.floor((expires-now())/1000))+(String(env.TELEGRAM_APP_URL||'').startsWith('https:')?'; Secure':''));
-   const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser,isAdmin:!!(value.telegramUser&&telegramAdminIds(env).has(String(value.telegramUser.id)))});
+   const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser,isAdmin:isOwnerAccount(value)});
    const issueSession=value=>{sessions.prune();if(sessions.size>=10000)throw Object.assign(Error('Слишком много подключений. Повторите позже.'),{status:429});const token=crypto.randomBytes(32).toString('hex');value.expires=now()+SESSION_LIFETIME;sessions.set(token,value);sessionCookie(token,value.expires);return sessionIdentity(value,token);};
    const visitorHash=validSession&&(session.telegramUser||session.emailUser)?'account:'+crypto.createHmac('sha256',adminToken).update(session.telegramUser?'telegram:'+session.telegramUser.id:'email:'+session.emailUser.id).digest('hex').slice(0,32):null;
    if(path==='/api/auth/session'&&req.method==='GET'){

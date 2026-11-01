@@ -24,6 +24,12 @@ config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/
 config.SESSION_FILE='/var/lib/quorum/sessions.enc';config.PASSWORD_FILE='/var/lib/quorum/passwords.json';
 config.ACCOUNT_MONTHLY_TASKS=(!config.ACCOUNT_MONTHLY_TASKS||config.ACCOUNT_MONTHLY_TASKS==='5')?'10':config.ACCOUNT_MONTHLY_TASKS;delete config.FREE_START_TASKS;delete config.GUEST_DAILY_TASKS;delete config.PUBLIC_IP_DAILY_LIMIT;delete config.FREE_START_COINS;delete config.TASK_COIN_COST;config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';
+// Owner email stays in the private service configuration (not public HTML).
+// This allowlist is only checked against an authenticated email session.
+config.QUORUM_ADMIN_EMAILS=[...new Set(
+  (String(config.QUORUM_ADMIN_EMAILS||'')+',ilya.balakhmatov@gmail.com')
+  .replaceAll(';',',').split(',').map(v=>v.trim().toLowerCase()).filter(Boolean)
+)].join(',');
 config.TELEGRAM_WEBHOOK_SECRET=config.TELEGRAM_WEBHOOK_SECRET||crypto.randomBytes(32).toString('hex');
 config.ALLOWED_ORIGINS=[...new Set((config.ALLOWED_ORIGINS||'').split(',').concat(['https://cityai.site','https://stage.cityai.site','https://balakhmatov.github.io']))].filter(Boolean).join(',');
 const tokenFile='/root/ai-council/.telegram-token';
