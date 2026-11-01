@@ -66,14 +66,13 @@ export function createEconomy({env,now=Date.now}){
  const tasks=new Map();
  function save(){if(file){writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});renameSync(file+'.tmp',file);}}
  function allowance(identity){
-  if(!Object.hasOwn(state.allowances,identity)||state.allowances[identity].period!==periodFor(identity)){
-   state.allowances[identity]={remainingFreeTasks:limitFor(identity),limit:limitFor(identity),period:periodFor(identity),createdAt:new Date(now()).toISOString()};save();
+  if(!Object.hasOwn(state.allowances,identity)){
+   state.allowances[identity]={remainingFreeTasks:limitFor(identity),limit:limitFor(identity),period:'lifetime',createdAt:new Date(now()).toISOString()};save();
   }
-  const entry=state.allowances[identity],limit=limitFor(identity),previous=entry.limit??5;
-  if(entry.limit!==limit){
-   entry.remainingFreeTasks=Math.max(0,Math.min(limit,entry.remainingFreeTasks+limit-previous));
-   entry.limit=limit;save();
-  }
+  const entry=state.allowances[identity];
+  // Existing accounts keep their current balance without a monthly reset.
+  // Previously spent free credits are never reissued on tariff migration.
+  if(entry.period!=='lifetime'){entry.period='lifetime';save();}
   return entry;
  }
  function subscription(identity){
@@ -94,7 +93,7 @@ export function createEconomy({env,now=Date.now}){
    remainingFreeTasks:isAdmin?null:(sub?sub.remainingTasks+(packs||0):free.remainingFreeTasks+packs),
    freeRemaining:free?.remainingFreeTasks??0,
    freeStartingTasks:limitFor(identity),
-   period:'month',resetTimezone:'Europe/Moscow',
+   period:'lifetime',resetTimezone:null,
    maxModels:isAdmin||sub?7:3,
    historyEnabled:!!identity&&(isAdmin||!!sub),
    authenticated:true,admin:isAdmin,
@@ -171,7 +170,7 @@ export function createEconomy({env,now=Date.now}){
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,debits,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:'lifetime',source,debits,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
@@ -196,7 +195,7 @@ export function createEconomy({env,now=Date.now}){
    const debits=task.debits||{subscription:task.source==='subscription'?task.chargedTokens:0,free:task.source==='free'?task.chargedTokens:0,pack:task.source==='pack'?task.chargedTokens:0};
    if(debits.subscription&&state.subscriptions[identity]?.expiresAt&&Date.parse(state.subscriptions[identity].expiresAt)>now())
     state.subscriptions[identity].remainingTasks+=debits.subscription;
-   if(debits.free&&task.period===periodFor(identity))allowance(identity).remainingFreeTasks+=debits.free;
+   if(debits.free&&task.period==='lifetime')allowance(identity).remainingFreeTasks+=debits.free;
    if(debits.pack)state.purchasedCredits[identity]=(state.purchasedCredits[identity]||0)+debits.pack;
   }
   const group=state.discussions.find(x=>x.taskId===id);
