@@ -1,4 +1,4 @@
-import {modes,discuss} from './engine.js';
+import {modes,discuss,parseBallotDetail} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -74,6 +74,11 @@ for(const [id,[title,description]] of Object.entries(modes)){
  b.append(name,small);b.onclick=()=>{mode=id;update();};$('modes').append(b);
 }
 function update(){
+ const premium=!!(access?.admin||access?.subscriptionActive);
+ const detailed=$('length').querySelector('option[value="detailed"]');
+ detailed.disabled=!premium;
+ $('lengthNote').textContent=premium?'Финальный результат не ограничивается длиной обсуждения.':'«Подробно» доступно по подписке.';
+ if(!premium&&$('length').value==='detailed')$('length').value='medium';
  const old=$('judge').value;
  if(moderatorChosenByUser&&!chosen.has(old))moderatorChosenByUser=false;
  $('count').textContent=chosen.size+' / '+(access?.maxModels??3);
@@ -769,7 +774,7 @@ function showResearch(research){
  sources.replaceChildren();widget.replaceChildren();panel.hidden=false;
  if(research.status!=='grounded'){
   $('researchState').textContent='Нет подтверждённых источников';
-  sources.append(node('p',research.reason||'Поиск источников недоступен. Числовые показатели моделей требуют проверки.','research-warning'));
+  sources.append(node('p','Не удалось проверить открытые источники. Числовые показатели моделей нельзя считать подтверждёнными.','research-warning'));
   return;
  }
  $('researchState').textContent='Найдены ссылки на '+(research.facts?.length||0)+' фрагментов';
@@ -790,21 +795,38 @@ function showResearch(research){
 }
 async function verifyTaskSources(task,signal){
  if($('demo').checked)return {status:'unavailable',reason:'В демонстрации веб-поиск не выполняется',sources:[],facts:[]};
- return api('/api/research',{method:'POST',token:await ensureSession(),
+ const result=await api('/api/research',{method:'POST',token:await ensureSession(),
   body:{taskId:activeTask?.taskId,prompt:task.slice(0,1500)},signal:AbortSignal.any([signal,AbortSignal.timeout(90000)])});
+ return result.status==='grounded'?result:{...result,reason:'Проверка открытых источников сейчас недоступна'};
+}
+function readableStoredMessage(m){
+ if(!['Проверка согласия','Голосование'].includes(m.stage))return m.text;
+ if(!String(m.text||'').trim().startsWith('{')&&!String(m.text||'').trim().startsWith('```'))return m.text;
+ const choices=m.stage==='Проверка согласия'?['agree','disagree']:agents.map(a=>a.id);
+ const ballot=parseBallotDetail(m.text,choices);
+ if(!ballot)return 'Модель не смогла дать корректную оценку.';
+ const label=m.stage==='Проверка согласия'
+  ?(ballot.vote==='agree'?'Согласна с итогом':'Не согласна с итогом')
+  :'Выбрала: '+(agents.find(a=>a.id===ballot.vote)?.name||ballot.vote);
+ return '**'+label+'**'+(ballot.reason?'\\n\\n'+ballot.reason:'');
 }
 function renderMessage(m){
- const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
+ const type=agents.find(a=>a.name===m.name)?.id||(m.final?'final':'service');
+ const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'');
  const head=document.createElement('div');head.className='message-head';
+ const identity=document.createElement('span');identity.className='model-identity';
+ const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
  const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
- const stage=document.createElement('small');stage.textContent=m.final?'Итоговый ответ':m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ identity.append(dot,name);
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ':m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
  copy.title='Скопировать ответ';copy.setAttribute('aria-label','Скопировать '+(m.final?'итоговый результат':'ответ '+m.name+' · '+m.stage));
  copyIcon(copy);
- copy.onclick=()=>copyText(m.text,copy);
- head.append(name,stage,copy);
- const body=renderMarkdown(m.text);body.classList.add('message-text');
+ copy.onclick=()=>copyText(text,copy);
+ head.append(identity,stage,copy);
+ const body=renderMarkdown(text);body.classList.add('message-text');
  card.append(head,body);return card;
 }
 function syncResultActions(){
@@ -834,7 +856,9 @@ async function request(a,chat,signal,stage={}){
  }
  const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
- return stage.stage==='final'?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
+ // JSON ballots are a control protocol, not a prose response. Never truncate them.
+ return stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
+  ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{
  if(!access&&!$('demo').checked){$('loginOpen').click();return;}
