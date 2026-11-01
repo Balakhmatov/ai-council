@@ -18,6 +18,8 @@ export const BILLING_CATALOG=Object.freeze({
 const ddtokensRates=Object.freeze({
  'gemini/gemini-4-argon-high':Object.freeze({input:15.192,cached:null,output:75.96,source:'DDTokens Gemini(Antigravity)4 ×0.6 · receipts 2026-10-31'}),
  'claude/claude-sonnet-5-5':Object.freeze({input:25.32,cached:1.266,output:126.6,cacheWrite5m:31.65,cacheWrite1h:50.64,source:'DDTokens Claude(Fool) ×1 · receipts 2026-10-31'}),
+ 'qwen/qwen3.7-plus':Object.freeze({input:15.192,cached:null,output:60.768,source:'DDTokens Qwen3.7 Plus · catalog 2026-11-01'}),
+ 'deepseek/deepseek-v4.1-flash':Object.freeze({input:5.6717,cached:null,output:17.015,source:'DDTokens DeepSeek V4.1 Flash · catalog 2026-11-01'}),
 });
 function safeInt(value,fallback,max=100000){
  const n=Number(value);return Number.isSafeInteger(n)&&n>=0&&n<=max?n:fallback;
