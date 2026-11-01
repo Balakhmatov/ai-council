@@ -11,7 +11,7 @@ const id=n=>n.toString(16).padStart(48,'0');
 const params=participants=>({participants,rounds:2,mode:'judge'});
 test('pricing catalog matches packs, volume discounts and monthly subscription',()=>{
  assert.deepEqual(Object.fromEntries(Object.entries(BILLING_CATALOG).map(([k,p])=>[k,[p.tasks,p.priceRub,p.discount]])),{
-  subscription:[500,1200,20],pack10:[10,30,0],pack50:[50,135,10],pack100:[100,255,15]
+  subscription:[300,1200,20],pack5:[5,25,0],pack50:[50,225,10],pack100:[100,425,15]
  });
 });
 test('free members cannot use more than three models or save history',()=>{
@@ -26,22 +26,22 @@ test('free members cannot use more than three models or save history',()=>{
  assert.equal(accepted.historyEnabled,false);
  economy.success(accepted.taskId);
  economy.finish(accepted.taskId,identity);
- assert.equal(economy.access(identity).freeRemaining,9);
+ assert.equal(economy.access(identity).freeRemaining,7);
 });
-test('subscriber has 500 tasks, all models and unlimited retained history after expiry',()=>{
+test('subscriber has 300 tokens, all models and unlimited retained history after expiry',()=>{
  let clock=Date.parse('2026-11-01T12:00:00Z');
  const economy=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'10'},now:()=>clock});
  const names=['openai','mistral','grok','gemini','claude','qwen','deepseek'];
  const subscription=economy.grant(identity,'subscription');
- assert.equal(subscription.subscriptionRemaining,500);
+ assert.equal(subscription.subscriptionRemaining,300);
  assert.equal(subscription.historyEnabled,true);
  assert.equal(subscription.maxModels,7);
  const task=economy.start(identity,false,params(names),names);
  assert.equal(task.historyEnabled,true);
- assert.equal(task.remainingFreeTasks,499);
+ assert.equal(task.remainingFreeTasks,293);
  economy.success(task.taskId);
  economy.finish(task.taskId,identity);
- assert.equal(economy.access(identity).subscriptionRemaining,499);
+ assert.equal(economy.access(identity).subscriptionRemaining,293);
  clock+=31*86400000;
  assert.equal(economy.access(identity).historyEnabled,false);
  assert.equal(economy.access(identity).maxModels,3);
@@ -51,19 +51,20 @@ test('subscriber has 500 tasks, all models and unlimited retained history after 
 test('prepaid packs survive monthly reset but do not grant 7 models or history',()=>{
  let clock=Date.parse('2026-11-01T12:00:00Z');
  const economy=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'10'},now:()=>clock});
- economy.grant(identity,'pack10');economy.grant(identity,'pack50');economy.grant(identity,'pack100');
- assert.equal(economy.access(identity).purchasedTasks,160);
- for(let i=0;i<10;i++){
+ economy.grant(identity,'pack5');economy.grant(identity,'pack50');economy.grant(identity,'pack100');
+ assert.equal(economy.access(identity).purchasedTasks,155);
+ for(let i=0;i<5;i++){
   const task=economy.start(identity,false,params(['grok','mistral']),['grok','mistral']);
   economy.success(task.taskId);economy.finish(task.taskId,identity);
  }
+ assert.equal(economy.access(identity).freeRemaining,0);
  const purchased=economy.start(identity,false,params(['grok','mistral']),['grok','mistral']);
  assert.equal(purchased.historyEnabled,false);
- assert.equal(economy.access(identity).purchasedTasks,159);
- economy.finish(purchased.taskId,identity);
- assert.equal(economy.access(identity).purchasedTasks,160);
+ assert.equal(economy.access(identity).purchasedTasks,153);
+ assert.equal(economy.finish(purchased.taskId,identity).refunded,true);
+ assert.equal(economy.access(identity).purchasedTasks,155);
  clock+=31*86400000;
- assert.equal(economy.access(identity).purchasedTasks,160);
+ assert.equal(economy.access(identity).purchasedTasks,155);
  assert.equal(economy.access(identity).historyEnabled,false);
 });
 test('saved discussions are private per account, permanent, paginated, and separate from metering',()=>{
