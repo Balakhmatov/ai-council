@@ -141,14 +141,14 @@ test('monthly quota resets on Moscow month boundary and old refunds do not add c
 });
 
 test('stopping a task before any model responds never refunds free task allocation',()=>{
- const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'3'}});
  const started=task(econ);assert.equal(econ.access('visitor').remainingFreeTasks,0);
  const closed=econ.finish(started.taskId,'visitor',{cancelled:true});
  assert.equal(closed.ok,true);
  assert.equal(closed.cancelled,true);
  assert.equal(closed.refunded,false);
  assert.equal(closed.remainingFreeTasks,0);
- assert.equal(econ.access('visitor').remainingFreeTasks,1);
+ assert.equal(econ.access('visitor').remainingFreeTasks,0);
  assert.equal(econ.summary().discussions.find(x=>x.taskId===started.taskId).status,'cancelled');
  assert.equal(econ.finish(started.taskId,'visitor',{cancelled:true}),null);
 });
@@ -170,7 +170,7 @@ test('stopping with zero answers consumes a subscription task and a purchased pa
  assert.equal(econ.access(second).purchasedTasks,3);
 });
 test('non-user failure before any success continues to return allocation',()=>{
- const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'2'}});
+ const econ=createEconomy({env:{ACCOUNT_MONTHLY_TASKS:'3'}});
  const started=task(econ);
  const closed=econ.finish(started.taskId,'visitor');
  assert.equal(closed.cancelled,false);
