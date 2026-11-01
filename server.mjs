@@ -14,7 +14,6 @@ const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_AP
 export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetchImpl=globalThis.fetch,emailFetchImpl=globalThis.fetch,now=Date.now}={}){
  const adminToken=env.PROXY_TOKEN||'';
  const emailAuth=createEmailAuth({env,now,fetchImpl:emailFetchImpl});
- const passwordAuth=createPasswordAuth({env,now});
  const economy=createEconomy({env,now});
  const history=createHistoryStore({file:env.HISTORY_FILE||'',now});
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
@@ -26,6 +25,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   if(![official,'https://ddtnew.com/v1'].includes(base))throw Error(`Invalid ${id} base URL`);
   routes[id]=[base+(id==='claude'?'/messages':'/chat/completions'),providers[id][1]];
  }
+ const passwordAuth=createPasswordAuth({env,now});
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
  const keyFor=id=>env[routes[id]?.[1]]||(id==='grok'?env.GROK_API_KEY:'');
  const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
