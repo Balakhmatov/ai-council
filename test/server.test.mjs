@@ -327,3 +327,50 @@ test('first email verification creates password; subsequent login needs no code 
   assert.equal((await t.send('/api/email/password/login',{email:'member@example.com',password:'new-password-2026'})).status,200);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
+
+test('configured, verified owner email gets admin UI/session, 7 models and billing access; other emails stay free',async()=>{
+ const env={
+  QUORUM_ADMIN_EMAILS:' owner@example.com; another-owner@example.com ',
+  MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test',
+  GROK_API_KEY:'g',GROK_MODEL:'test',
+  GEMINI_API_KEY:'ge',GEMINI_MODEL:'test'
+ };
+ const t=await setup(env);
+ try{
+  const normal=(await t.login('other@example.com')).data;
+  assert.equal(normal.isAdmin,false);
+  assert.equal((await t.send('/api/access',undefined,normal.token)).data.maxModels,3);
+  assert.equal((await t.send('/api/admin',undefined,normal.token)).status,401);
+  const owner=(await t.login('Owner@Example.com')).data;
+  assert.equal(owner.isAdmin,true);
+  assert.equal(owner.user.email,'owner@example.com');
+  const ownerSession=(await t.send('/api/auth/session',undefined,owner.token)).data;
+  assert.equal(ownerSession.isAdmin,true);
+  const access=(await t.send('/api/access',undefined,owner.token)).data;
+  assert.equal(access.plan,'admin');
+  assert.equal(access.admin,true);
+  assert.equal(access.maxModels,7);
+  assert.equal(access.historyEnabled,true);
+  assert.equal(access.remainingFreeTasks,null);
+  assert.equal((await t.send('/api/admin',undefined,owner.token)).status,200);
+  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:'account:'+'a'.repeat(32),sku:'pack10'},owner.token)).status,200);
+  const members=['openai','mistral','grok','gemini'];
+  assert.equal((await t.send('/api/task/start',{participants:members,rounds:2,mode:'judge'},normal.token)).status,403);
+  const advanced=(await t.send('/api/task/start',{participants:members,rounds:2,mode:'judge'},owner.token));
+  assert.equal(advanced.status,200);
+  assert.equal(advanced.data.historyEnabled,true);
+  assert.equal((await t.send('/api/task/finish',{taskId:advanced.data.taskId},owner.token)).status,200);
+  assert.equal((await t.send('/api/access',undefined,normal.token)).data.admin,false);
+  assert.equal((await t.send('/api/config')).data.catalog.subscription.priceRub,1200);
+ }finally{await t.close();}
+});
+test('an email account is never admin without private allowlist even when password authenticated',async()=>{
+ const t=await setup({QUORUM_ADMIN_EMAILS:'',TELEGRAM_ADMIN_IDS:'1296951270'});
+ try{
+  const email=(await t.login('owner@example.com')).data;
+  assert.equal(email.isAdmin,false);
+  assert.equal((await t.send('/api/access',undefined,email.token)).data.plan,'free');
+  assert.equal((await t.send('/api/admin',undefined,email.token)).status,401);
+  assert.equal((await t.send('/api/admin',undefined,'admin-test-only')).status,200);
+ }finally{await t.close();}
+});
