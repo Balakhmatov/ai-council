@@ -6,7 +6,7 @@ import {verifyTelegramInitData,telegramAdminIds,createTelegramWebhook,telegramAp
 import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
 import {createHistoryStore} from './history.mjs';
-import {groundTask} from './fact-grounding.mjs';
+import {groundTask} from './public/fact-grounding.mjs';
 import {createFxUpdater} from './fx.mjs';
 import {readFile} from 'node:fs/promises';
 import {readFileSync,writeFileSync,renameSync} from 'node:fs';
