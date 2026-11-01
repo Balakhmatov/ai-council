@@ -58,7 +58,7 @@ test('tariff prices have an always-visible entry point and static fallback befor
  assert.match(html,/<button id="pricingOpen"[^>]*>Тарифы<\/button>/);
  assert.match(html,/<dialog id="pricingDialog"[^>]*>/);
  assert.match(html,/id="pricingOffers"/);
- for(const text of ['1 200 ₽','30 ₽','135 ₽','255 ₽','500 заданий','до 7 моделей'])
+ for(const text of ['1 200 ₽','30 ₽','135 ₽','255 ₽','500 заданий','До 7 моделей'])
   assert.ok(html.includes(text),'Static tariff must be visible without server response: '+text);
  assert.match(app,/\$\('pricingOpen'\)\.onclick=/);
  assert.match(app,/\$\('pricingDialog'\)\.showModal\(\)/);
