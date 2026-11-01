@@ -743,7 +743,7 @@ async function request(a,chat,signal,stage={}){
   if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';
   return '[ДЕМО — не ответ модели] '+a.name+': этот пример не вызывает API. Для настоящего результата отключите демо.';
  }
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  return stage.stage==='final'?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
