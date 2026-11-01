@@ -73,8 +73,15 @@ export async function discuss({agents,mode,rounds,words=500,task,judge,request,e
   finalPrompt=`${result}\n${winner?`За основу возьми победивший вариант:\n${winner.text}`:'При равенстве или отсутствии валидных голосов предложи компромисс, явно отметив, что это решение модератора.'}`;
  } else finalPrompt=mode==='judge'?'Вынеси независимый вердикт: оцени аргументы, выбери лучшее решение и объясни выбор.':mode==='brainstorm'?'Собери лучшие идеи в одно практически полезное решение.': 'Собери общий черновик решения. Не заявляй, что участники уже согласны.';
  onProgress({stage:'Итоговый проект',status:'working'});
- const draft=await call(judge,agents.findIndex(a=>a.id===judge.id),'Итоговый проект',`${finalPrompt}\nОтдельно проверь достоверность: утверждения моделей без источников не должны превращаться в факты. Если данных нет, укажи что проверить, без выдуманных чисел.\nПолная дискуссия:\n<discussion>${transcript()}</discussion>\nДай готовый результат для пользователя, затем кратко: причины выбора, разногласия и что проверить.`);
- if(!draft)throw Error('Модератор не смог подготовить итог. Ответы участников сохранены.');
+ const finalTask=`${finalPrompt}\nОтдельно проверь достоверность: утверждения моделей без источников не должны превращаться в факты. Если данных нет, укажи что проверить, без выдуманных чисел.\nПолная дискуссия:\n<discussion>${transcript()}</discussion>\nДай готовый результат для пользователя, затем кратко: причины выбора, разногласия и что проверить.`;
+ const candidates=[judge,...agents.filter(a=>a.id!==judge.id)];
+ let draft=null;
+ for(const candidate of candidates){
+  check();
+  draft=await call(candidate,agents.findIndex(a=>a.id===candidate.id),'Итоговый проект',finalTask);
+  if(draft)break;
+ }
+ if(!draft)throw Error('Ни одна из выбранных моделей не смогла подготовить итог. Ответы участников сохранены.');
  history.push(draft);
  onProgress({stage:'Итоговый проект',status:'done'});
  if(mode==='consensus'){
