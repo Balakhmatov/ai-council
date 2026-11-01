@@ -565,3 +565,12 @@ dialog.history-dialog.history-fullscreen::backdrop{background:rgba(30,20,40,.66)
  .access-panel .access-lead{font-size:15px}
  .legal-footer{width:100%;justify-content:center}
 }
+
+/* Direct SBP checkout; no unverified payments are shown as successful */
+.pricing-dialog .pricing-buy{display:block;align-self:stretch;margin-top:12px;padding:11px 14px;border:0;border-radius:10px;background:#6a419f;color:#fff;font-size:13px;font-weight:750;cursor:pointer}
+.pricing-dialog .pricing-buy:disabled{opacity:.45;cursor:not-allowed}
+.pricing-dialog .pricing-agree{display:flex;gap:10px;align-items:flex-start;margin:16px 0 8px;font-size:12px;line-height:1.55;color:#594864}
+.pricing-dialog .pricing-agree input{margin-top:3px;flex:0 0 auto;width:17px;height:17px}
+.pricing-dialog .pricing-agree a{color:#6944a4;text-decoration:underline}
+.pricing-dialog #pricingRefreshPayment{display:block;margin:10px 0 0;padding:8px 12px;font-size:12px}
+.pricing-dialog #pricingRefreshPayment[hidden]{display:none!important}
