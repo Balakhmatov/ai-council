@@ -32,10 +32,12 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
  // A single NEW_API_KEY enables Qwen and DeepSeek on the DDT OpenAI-compatible endpoint.
  // It must never be forwarded to an official third-party endpoint.
- const keyFor=id=>env[routes[id]?.[1]]||
-  (['qwen','deepseek'].includes(id)&&routes[id]?.[0]==='https://ddtnew.com/v1/chat/completions'?env.NEW_API_KEY:'')||
+ const keyFor=id=>id==='qwen'&&routes.qwen[0]==='https://ddtnew.com/v1/chat/completions'
+  ?(env.QWEN_CHINESE_API_KEY||'')
+  :env[routes[id]?.[1]]||
+  (id==='deepseek'&&routes[id]?.[0]==='https://ddtnew.com/v1/chat/completions'?env.NEW_API_KEY:'')||
   (id==='grok'?env.GROK_API_KEY:'');
- const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,env[id.toUpperCase()+'_MODEL']]));
+ const models=Object.fromEntries(Object.keys(routes).filter(id=>keyFor(id)&&env[id.toUpperCase()+'_MODEL']).map(id=>[id,id==='qwen'&&env.QWEN_MODEL==='qwen3.7-plus'?'qwen3.8-flash':env[id.toUpperCase()+'_MODEL']]));
  const sessions=createSessionStore({env,now}),browserLogin=createTelegramBrowserLogin({now});
  const researchDone=new Map();
  // Owner privileges are granted only for a server-configured identity that
