@@ -26,7 +26,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const configured=env[id.toUpperCase()+'_BASE_URL'];
   const base=(configured||official).replace(/\/$/,'');
   if(![official,'https://ddtnew.com/v1'].includes(base))throw Error(`Invalid ${id} base URL`);
-  routes[id]=[base+(id==='claude'?'/messages':id==='deepseek'&&base===official?'/chat/completions':'/chat/completions'),providers[id][1]];
+  routes[id]=[base+(id==='claude'?'/messages':'/chat/completions'),providers[id][1]];
  }
  const passwordAuth=createPasswordAuth({env,now});
  const allowed=(env.ALLOWED_ORIGINS||'').split(',').map(s=>s.trim()).filter(Boolean);
