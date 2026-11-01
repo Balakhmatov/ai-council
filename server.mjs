@@ -190,7 +190,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
      try{historySaved=!!history.record(visitorHash,info.taskId,info.history);}
      catch(e){return fail(400,e.message);}
     }
-    const closed=economy.finish(info.taskId,visitorHash);
+    const closed=economy.finish(info.taskId,visitorHash,{cancelled:info.cancelled===true});
     return closed?json(200,{...closed,historySaved}):fail(404,'Задача не найдена');
    }
    if(path==='/api/admin/logs'&&req.method==='GET'){
@@ -252,7 +252,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const providerAsset=['openai','grok','mistral','qwen','deepseek','gemini','claude'].find(id=>path==='/assets/models/'+id+'.svg');
   const special=providerAsset?'assets/models/'+providerAsset+'.svg':asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
-  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file=special||{'/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/app.js':'app.js','/engine.js':'engine.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':file.endsWith('.ico')?'image/x-icon':file.endsWith('.webmanifest')?'application/manifest+json':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':file.endsWith('.html')||file.endsWith('.js')?'no-store':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }
