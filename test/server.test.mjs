@@ -668,7 +668,7 @@ test('Telegram and email histories merge only after proving both accounts',async
  const dir=mkdtempSync(join(tmpdir(),'quorum-linked-history-api-'));
  const botToken='test-bot-token';
  const t=await setup({HISTORY_FILE:join(dir,'history.json'),ACCOUNTING_FILE:join(dir,'accounting.json'),
-  TELEGRAM_BOT_TOKEN:botToken,TELEGRAM_APP_URL:'https://cityai.site/quorum/',MISTRAL_API_KEY:'test-mistral'});
+  TELEGRAM_BOT_TOKEN:botToken,TELEGRAM_APP_URL:'https://cityai.site/quorum/',MISTRAL_API_KEY:'test-mistral',MISTRAL_MODEL:'test'});
  const signTelegram=(userId)=>{
   const params=new URLSearchParams({auth_date:String(Math.floor(Date.now()/1000)),user:JSON.stringify({id:userId,first_name:'Test'})});
   const check=[...params].sort(([a],[b])=>a.localeCompare(b)).map(([k,v])=>k+'='+v).join('\n');
