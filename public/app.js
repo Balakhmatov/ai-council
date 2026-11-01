@@ -808,7 +808,7 @@ function readableStoredMessage(m){
  const label=m.stage==='Проверка согласия'
   ?(ballot.vote==='agree'?'Согласна с итогом':'Не согласна с итогом')
   :'Выбрала: '+(agents.find(a=>a.id===ballot.vote)?.name||ballot.vote);
- return '**'+label+'**'+(ballot.reason?'\\n\\n'+ballot.reason:'');
+ return '**'+label+'**'+(ballot.reason?'\n\n'+ballot.reason:'');
 }
 function renderMessage(m){
  const type=agents.find(a=>a.name===m.name)?.id||(m.final?'final':'service');
