@@ -93,3 +93,16 @@ test('research/business Mistral receives stricter unsupported statistics instruc
   mode:'judge',emit:()=>{},request:async(a,m)=>{logs.push({id:a.id,system:m[0].content});return 'OK';}});
  assert.match(logs.find(x=>x.id==='mistral').system,/НЕ называй цифру фактом/);
 });
+
+ test('final answer falls back to next selected model without rerunning discussion',async()=>{
+  const emitted=[],finalCalls=[];
+  await discuss({...base,mode:'judge',judge:base.agents[0],emit:m=>emitted.push(m),request:async(a,m,signal,metadata)=>{
+   if(metadata?.stage==='final'){finalCalls.push(a.id);if(a.id==='a')throw Error('provider unavailable');return 'Fallback final result';}
+   return 'Intermediate '+a.id;
+  }});
+  assert.deepEqual(finalCalls,['a','b']);
+  const final=emitted.find(x=>x.final);
+  assert.equal(final.id,'b');
+  assert.equal(final.text,'Fallback final result');
+  assert.equal(emitted.filter(x=>x.stage==='Первый раунд').length,2);
+ });
