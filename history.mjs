@@ -26,7 +26,7 @@ export function createHistoryStore({file='',now=Date.now}={}){
   if(typeof identity!=='string'||!/^account:[0-9a-f]{32}$/.test(identity))throw Error('История доступна только аккаунту');
   if(!/^[0-9a-f]{48}$/.test(taskId))throw Error('Некорректный идентификатор');
   const prompt=payload?.prompt;
-  if(typeof prompt!=='string'||!prompt.trim()||prompt.length>20000)throw Error('Некорректное задание');
+  if(typeof prompt!=='string'||!prompt.trim()||prompt.length>20000)throw Error('Некорректная задача');
   const profile=typeof payload.profile==='string'?payload.profile.slice(0,60):'';
   const specialization=typeof payload.specialization==='string'?payload.specialization.slice(0,100):'';
   const messages=validateMessages(payload.messages);
