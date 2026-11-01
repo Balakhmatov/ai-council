@@ -62,8 +62,8 @@
 </section>
 <aside id="participantsAside">
 <div class="section-title participants-head">
-  <h2>Участники</h2><span id="count"></span>
-  <button type="button" class="participants-toggle-mobile" id="agentsToggle" aria-expanded="false" aria-controls="agents">Показать</button>
+  <h2>Нейросети</h2><span id="count"></span>
+  <button type="button" class="participants-toggle-mobile" id="agentsToggle" aria-expanded="false" aria-controls="agentsPanel">Выбрать ИИ</button>
 </div>
 <p class="hint participants-desktop-hint">Несколько независимых взглядов на задачу.</p>
 <div id="agentsPanel" class="agents-panel">
@@ -71,7 +71,7 @@
   <label class="judge-label">Кто подготовит итог<select id="judge"></select></label><p class="hint" style="font-size:11px;margin:4px 0 10px">Если выбранная модель недоступна, итог автоматически подготовит другая выбранная модель.</p>
   <p id="budget" class="hint"></p>
 </div>
-<div class="access-panel"><div class="access-title">Бесплатные токены</div><p id="accessInfo">Проверяем доступ…</p><p class="hint">Без подписки — до 3 моделей и без сохранения новых задач. С подпиской — все доступные модели и бессрочная история.</p></div>
+<div class="access-panel"><div class="access-title">Бесплатные токены</div><p id="accessInfo" class="access-lead">Войдите через Telegram или email — 10 бесплатных токенов при регистрации.</p><p class="hint">Без подписки — до 3 моделей и без сохранения новых задач. С подпиской — все доступные модели и бессрочная история.</p></div>
 
 <details class="account-code" id="accountCodeDetails" hidden>
  <summary>Код аккаунта для активации тарифа</summary>
@@ -79,7 +79,7 @@
 </details>
 <div id="demoControls" hidden><label class="demo"><input id="demo" type="checkbox"> Демо без API (для тестирования)</label></div>
 </aside></div>
-<footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span></footer>
+<footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span><nav class="legal-footer" aria-label="Документы"><a href="./terms.html">Условия использования</a><a href="./privacy.html">Конфиденциальность</a><a href="./refunds.html">Оплата и возвраты</a></nav></footer>
 </main>
 <dialog id="pricingDialog" class="pricing-dialog" aria-labelledby="pricingTitle">
  <div class="pricing-modal-head">
@@ -156,4 +156,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=free-once-20261101"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=refund-mobile-pay-20261101"></script></body></html>
