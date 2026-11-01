@@ -3,6 +3,7 @@ import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
 import {loadRememberedSession,rememberSession,forgetSession} from './auth-state.js';
+import {formatTranscript} from './transcript.js';
 
 const $=id=>document.getElementById(id);
 const agents=[
@@ -17,7 +18,7 @@ const agents=[
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
-let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null;
+let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false;
 const chosen=new Set(['openai','grok','mistral']);
 
@@ -373,6 +374,7 @@ async function openHistory(taskId){
  try{
   const item=await api('/api/history/'+encodeURIComponent(taskId),{token:await ensureSession()});
   const box=$('historyBody');box.replaceChildren();
+  $('historyCopyAll').onclick=()=>copyText(formatTranscript(item),$('historyCopyAll'));
   const prompt=document.createElement('section');prompt.className='history-prompt';
   const heading=document.createElement('h3');heading.textContent=item.title;
   const meta=document.createElement('p');meta.className='hint';meta.textContent=new Date(item.createdAt).toLocaleString('ru-RU')+' · '+(item.profile||'Задача');
@@ -648,21 +650,78 @@ function renderProgress(){
  }));
 }
 function progress(event){events.push(event);renderProgress();}
+const COPY_SVG='<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"></path></svg>';
+function copyIcon(button){
+ button.insertAdjacentHTML('afterbegin',COPY_SVG);
+}
+async function writeClipboard(text){
+ if(navigator.clipboard?.writeText){
+  try{await navigator.clipboard.writeText(text);return true;}catch{}
+ }
+ // Telegram WebView / older mobile Safari can deny navigator.clipboard.
+ const el=document.createElement('textarea');
+ el.value=text;el.setAttribute('readonly','');
+ el.style.cssText='position:fixed;left:-9999px;top:0;opacity:0;pointer-events:none';
+ document.body.append(el);
+ const current=document.activeElement;
+ el.focus();el.select();el.setSelectionRange(0,el.value.length);
+ let copied=false;
+ try{copied=document.execCommand('copy');}catch{}
+ el.remove();
+ if(current&&typeof current.focus==='function')current.focus({preventScroll:true});
+ return copied;
+}
+async function copyText(text,button){
+ if(!text)return;
+ const old=button.title;
+ try{
+  if(!await writeClipboard(text))throw Error('Копирование недоступно');
+  button.title='Скопировано';
+  button.classList.add('copied');
+  $('status').textContent='Текст скопирован.';
+  setTimeout(()=>{button.title=old;button.classList.remove('copied');},1600);
+ }catch{
+  $('status').textContent='Не удалось скопировать. Выделите текст долгим нажатием.';
+ }
+}
+function taskTranscript(){
+ const details=lastTaskContext||{prompt:$('task').value};
+ return formatTranscript({...details,messages});
+}
+$('copyAll').insertAdjacentHTML('afterbegin',COPY_SVG);
+$('copyAll').onclick=()=>copyText(taskTranscript(),$('copyAll'));
+$('historyCopyAll').insertAdjacentHTML('afterbegin',COPY_SVG);
 function renderMessage(m){
  const card=document.createElement('article');card.className='message'+(m.final?' final':'')+(m.error?' error':'');
  const head=document.createElement('div');head.className='message-head';
  const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
- const stage=document.createElement('small');stage.textContent=m.final?'Можно копировать и использовать':m.stage;
- head.append(name,stage);
- const p=document.createElement('p');p.textContent=m.text;card.append(head,p);return card;
+ const stage=document.createElement('small');stage.textContent=m.final?'Итоговый ответ':m.stage;
+ const copy=document.createElement('button');
+ copy.type='button';copy.className='copy-action copy-single';
+ copy.title='Скопировать ответ';copy.setAttribute('aria-label','Скопировать '+(m.final?'итоговый результат':'ответ '+m.name+' · '+m.stage));
+ copyIcon(copy);
+ copy.onclick=()=>copyText(m.text,copy);
+ head.append(name,stage,copy);
+ const p=document.createElement('p');p.className='message-text';p.textContent=m.text;
+ card.append(head,p);return card;
+}
+function syncResultActions(){
+ $('copyAll').disabled=messages.length===0;
+ $('export').disabled=!messages.some(m=>m.final);
 }
 function renderMessages(){
  const visible=$('showDiscussion').checked?messages:messages.filter(m=>m.final);
- if(!visible.length){$('feed').replaceChildren();return;}
- $('feed').replaceChildren(...visible.map(renderMessage));$('export').disabled=!messages.some(m=>m.final);
+ $('feed').replaceChildren(...visible.map(renderMessage));
+ syncResultActions();
 }
 $('showDiscussion').onchange=renderMessages;
-function emit(m){messages.push(m);renderMessages();}
+function emit(m){
+ messages.push(m);
+ // Append instead of rebuilding the entire feed: preserving iOS/Android touch selections
+ // while further AI responses arrive.
+ if($('showDiscussion').checked||m.final)$('feed').append(renderMessage(m));
+ syncResultActions();
+}
 async function request(a,chat,signal,stage={}){
  if($('demo').checked){
   await new Promise((resolve,reject)=>{const t=setTimeout(resolve,400);signal?.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Остановлено','AbortError'));},{once:true});});
@@ -679,9 +738,12 @@ $('start').onclick=async()=>{
  if(!access&&!$('demo').checked){$('loginOpen').click();return;}
  const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
  const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
- running=true;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
- $('feed').replaceChildren();$('export').disabled=true;$('progress').hidden=true;
- $('stop').hidden=false;document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=true);
+ running=true;stopRequested=false;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
+ const {profile:currentProfile,task:currentSubtask}=resolveProfile(profileId,taskId);
+ lastTaskContext={prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
+ $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;
+ $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
+ document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#demo,#rounds,#length').forEach(e=>e.disabled=true);
  update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
  try{
   if(!$('demo').checked){
@@ -703,7 +765,7 @@ $('start').onclick=async()=>{
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
   if(e.status===402&&access){access={...access,remainingFreeTasks:0};renderAccess();}
-  $('status').textContent=e.name==='AbortError'?'Остановлено. Уже полученные результаты сохранены в текущей вкладке.':e.message;
+  $('status').textContent=e.name==='AbortError'?'Задача остановлена. Квота не возвращается; полученные ответы можно скопировать.':e.message;
  }finally{
   if(activeTask){
    const {profile,task:subtask}=resolveProfile(profileId,taskId);
@@ -712,22 +774,26 @@ $('start').onclick=async()=>{
     specialization:subtask?.[1]||'',messages:messages.map(({name,stage,text,final,error})=>({name,stage,text,final:!!final,error:!!error}))
    };
    try{await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
-    taskId:activeTask.taskId,...(activeTask.historyEnabled?{history:historyPayload}:{})
+    taskId:activeTask.taskId,cancelled:stopRequested,...(activeTask.historyEnabled?{history:historyPayload}:{})
    }});}catch(e){$('status').textContent+=' Не удалось сохранить задачу: '+e.message;}
    activeTask=null;
   }
   if(!$('demo').checked)await refreshAccess().catch(()=>{});
-  running=false;telegramContext?.app.disableClosingConfirmation?.();$('stop').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#showDiscussion').forEach(e=>e.disabled=false);
+  running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
+  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length').forEach(e=>e.disabled=false);
   update();
  }
 };
-$('stop').onclick=()=>controller?.abort();
+$('stop').onclick=()=>{
+ if(!running||stopRequested)return;
+ stopRequested=true;
+ $('stop').disabled=true;$('stop').textContent='Останавливаем…';
+ $('status').textContent='Останавливаем задачу. Квота не возвращается.';
+ controller?.abort();
+};
 $('export').onclick=()=>{
- const result=messages.findLast(m=>m.final);if(!result)return;
- const {profile,task:subtask}=resolveProfile(profileId,taskId);
- const output='# Кворум — '+profile.name+(subtask?' / '+subtask[1]:'')+'\n\n## Задача\n'+$('task').value+'\n\n## Готовый результат\n'+result.text+
- ($('showDiscussion').checked?'\n\n## Обсуждение\n'+messages.filter(m=>!m.final).map(m=>'### '+m.name+' — '+m.stage+'\n'+m.text).join('\n\n'):'');
+ if(!messages.some(m=>m.final))return;
+ const output=taskTranscript();
  const url=URL.createObjectURL(new Blob([output],{type:'text/markdown;charset=utf-8'}));
  const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
