@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=moderator42/);
+ assert.match(html,/app\.js\?v=history-layout43/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -37,7 +37,7 @@ test('iOS fields use 16px text to prevent WebView focus zoom without disabling u
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=copy-stop41/);
+ assert.match(html,/style\.css\?v=history-layout43/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
 });
 
@@ -125,7 +125,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=moderator42/);
+ assert.match(html,/app\.js\?v=history-layout43/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -169,5 +169,32 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=moderator42/);
+ assert.match(html,/app\.js\?v=history-layout43/);
+});
+
+test('round and named response length selectors appear under task input, separate from modes',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const modesStart=html.indexOf('<details class="advanced">'),controls=html.indexOf('class="response-controls"'),prompt=html.indexOf('id="task"');
+ assert.ok(prompt<controls&&controls<modesStart,'Both controls must be visible below prompt before the collapsible modes');
+ for(const label of ['Раунды обсуждения','Длина промежуточных ответов','Коротко','Средне','Подробно'])assert.ok(html.includes(label),label);
+ assert.match(html,/<option value="short" selected>Коротко/);
+ assert.match(app,/wordsForPreset\(\$\('length'\)\.value\)/);
+ assert.match(app,/limitIntermediate\(result.text/);
+ assert.match(app,/maxWords:wordsForPreset/);
+ assert.match(app,/renderMarkdown\(m.text\)/);
+ assert.match(app,/Первый раунд/);
+});
+test('history viewer is fullscreen and searchable on all stored tasks, using server-side API',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ assert.match(html,/id="historySearch"/);
+ assert.match(html,/history-fullscreen/);
+ assert.match(app,/search='\+encodeURIComponent\(query\)/);
+ assert.match(app,/\$\('historySearch'\)\.addEventListener\('input'/);
+ assert.match(css,/dialog\.history-dialog\.history-fullscreen\[open\]/);
+ assert.match(css,/max-height:100dvh/);
+ assert.match(css,/\.rendered-markdown \.md-table-scroll/);
+ assert.match(css,/-webkit-overflow-scrolling:touch/);
 });
