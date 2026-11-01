@@ -121,6 +121,7 @@ $('agentsToggle')?.addEventListener('click',()=>{
   if(window.matchMedia('(min-width:881px)').matches)return;
   const open=body.classList.toggle('is-open');
   btn.setAttribute('aria-expanded',String(open));
+  btn.textContent=open?'Свернуть':'Выбрать ИИ';
 });
 window.matchMedia('(max-width:880px)').addEventListener('change',()=>{
   const body=$('agentsPanel');
@@ -128,10 +129,10 @@ window.matchMedia('(max-width:880px)').addEventListener('change',()=>{
   if(!body||!btn)return;
   if(window.matchMedia('(min-width:881px)').matches){
     body.classList.add('is-open');
-    btn.setAttribute('aria-expanded','true');
+    btn.setAttribute('aria-expanded','true');btn.textContent='Свернуть';
   }else{
     body.classList.remove('is-open');
-    btn.setAttribute('aria-expanded','false');
+    btn.setAttribute('aria-expanded','false');btn.textContent='Выбрать ИИ';
   }
 });
 if(window.matchMedia('(min-width:881px)').matches){
