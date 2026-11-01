@@ -12,7 +12,7 @@ async function setup(overrides={},options={}){
   const r=await fetch(base+path,{method:body===undefined?'GET':'POST',headers:{...(body===undefined?{}:{'Content-Type':'application/json'}),...(token?{Authorization:'Bearer '+token}:{}),...extra},body:body===undefined?undefined:JSON.stringify(body)});
   return {status:r.status,data:await r.json()};
  };
- return {calls,env,send,login:async(email='user@example.com')=>{await send('/api/email/request',{email});return send('/api/email/verify',{email,code:emailCode});},close:()=>new Promise(r=>s.close(r))};
+ return {calls,env,send,asset:async path=>{const response=await fetch(base+path);return {status:response.status,type:response.headers.get('content-type'),body:await response.text()};},login:async(email='user@example.com')=>{await send('/api/email/request',{email});return send('/api/email/verify',{email,code:emailCode});},close:()=>new Promise(r=>s.close(r))};
 }
 const body={provider:'openai',model:'client-expensive-model',messages:[{role:'user',content:'hello'}]};
 test('public config omits secrets; admin requires real authentication',async()=>{const t=await setup();try{const c=await t.send('/api/config');assert.deepEqual(c.data.providers,['openai']);assert.equal(c.data.authRequired,true);assert.equal(c.data.catalog.subscription.tasks,500);assert.equal(c.data.catalog.pack100.priceRub,255);assert.equal(c.data.telegramUrl,null);assert.equal((await t.send('/api/admin')).status,401);const admin=await t.send('/api/admin',undefined,'admin-test-only');assert.equal(admin.status,200);assert.equal(admin.data.providers[0].model,'server-pinned-model');assert(!JSON.stringify(admin.data).includes('private-test-key'));assert.equal((await t.send('/api/chat',body)).status,401);assert.equal((await t.send('/api/session',{},undefined,{Origin:'https://evil.example'})).status,403);}finally{await t.close();}});
@@ -280,4 +280,19 @@ test('subscription-only history is isolated, retained after expiry and requires 
   const pack=await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'pack100'},'admin-test-only');
   assert.equal(pack.data.access.purchasedTasks,100);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+test('public Quorum serves its enhanced UI stylesheet rather than returning 404',async()=>{
+ const t=await setup();
+ try{
+  const css=await t.asset('/uiux32.css?v=pricing-fix37');
+  assert.equal(css.status,200);
+  assert.equal(css.type,'text/css');
+  assert.match(css.body,/\.pricing-dialog \.pricing-offers/);
+  assert.match(css.body,/\.pricing-offer-sub/);
+  const html=await t.asset('/');
+  assert.equal(html.status,200);
+  assert.match(html.body,/uiux32\.css\?v=pricing-fix37/);
+  assert.match(html.body,/id="pricingDialog"/);
+ }finally{await t.close();}
 });
