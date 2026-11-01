@@ -15,7 +15,7 @@ async function setup(overrides={},options={}){
  return {calls,env,send,asset:async path=>{const response=await fetch(base+path);return {status:response.status,type:response.headers.get('content-type'),body:await response.text()};},login:async(email='user@example.com')=>{await send('/api/email/request',{email});return send('/api/email/verify',{email,code:emailCode});},close:()=>new Promise(r=>s.close(r))};
 }
 const body={provider:'openai',model:'client-expensive-model',messages:[{role:'user',content:'hello'}]};
-test('public config omits secrets; admin requires real authentication',async()=>{const t=await setup();try{const c=await t.send('/api/config');assert.deepEqual(c.data.providers,['openai']);assert.equal(c.data.authRequired,true);assert.equal(c.data.catalog.subscription.tasks,500);assert.equal(c.data.catalog.pack100.priceRub,255);assert.equal(c.data.telegramUrl,null);assert.equal((await t.send('/api/admin')).status,401);const admin=await t.send('/api/admin',undefined,'admin-test-only');assert.equal(admin.status,200);assert.equal(admin.data.providers[0].model,'server-pinned-model');assert(!JSON.stringify(admin.data).includes('private-test-key'));assert.equal((await t.send('/api/chat',body)).status,401);assert.equal((await t.send('/api/session',{},undefined,{Origin:'https://evil.example'})).status,403);}finally{await t.close();}});
+test('public config omits secrets; admin requires real authentication',async()=>{const t=await setup();try{const c=await t.send('/api/config');assert.deepEqual(c.data.providers,['openai']);assert.equal(c.data.authRequired,true);assert.equal(c.data.catalog.subscription.tasks,300);assert.equal(c.data.catalog.pack100.priceRub,425);assert.equal(c.data.telegramUrl,null);assert.equal((await t.send('/api/admin')).status,401);const admin=await t.send('/api/admin',undefined,'admin-test-only');assert.equal(admin.status,200);assert.equal(admin.data.providers[0].model,'server-pinned-model');assert(!JSON.stringify(admin.data).includes('private-test-key'));assert.equal((await t.send('/api/chat',body)).status,401);assert.equal((await t.send('/api/session',{},undefined,{Origin:'https://evil.example'})).status,403);}finally{await t.close();}});
 test('authenticated account has shared pinned model and call limit across sessions',async()=>{
  const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
  try{
@@ -24,7 +24,7 @@ test('authenticated account has shared pinned model and call limit across sessio
   for(const token of [a.data.token,b.data.token])assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},token)).status,200);
   assert.equal(JSON.parse(t.calls[0].options.body).model,'server-pinned-model');
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},a.data.token)).status,429);
-  assert.equal((await t.send('/api/access',undefined,b.data.token)).data.remainingFreeTasks,9);
+  assert.equal((await t.send('/api/access',undefined,b.data.token)).data.remainingFreeTasks,8);
  }finally{await t.close();}
 });
 test('unavailable providers and malformed bodies never call upstream',async()=>{const t=await setup();try{for(const b of [null,{...body,provider:'qwen'},{...body,provider:'__proto__'},{...body,messages:[null]}])assert.equal((await t.send('/api/chat',b,'admin-test-only')).status,400);assert.equal(t.calls.length,0);}finally{await t.close();}});
@@ -38,7 +38,7 @@ test('monthly account quota survives server restart',async()=>{
   await t.send('/api/chat',{...body,taskId:task.taskId},login.data.token);
   await t.send('/api/task/finish',{taskId:task.taskId},login.data.token);
   await t.close();t=await setup(env);
-  const again=await t.login();assert.equal((await t.send('/api/access',undefined,again.data.token)).data.remainingFreeTasks,9);
+  const again=await t.login();assert.equal((await t.send('/api/access',undefined,again.data.token)).data.remainingFreeTasks,8);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
 
@@ -82,7 +82,7 @@ test('public users require a tracked task before provider calls; failed task is 
   assert.equal((await t.send('/api/chat',body,session.token)).status,403);
   assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,2);
   const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'consensus'},session.token)).data;
-  assert.equal(task.remainingFreeTasks,1);
+  assert.equal(task.remainingFreeTasks,0);
   assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},session.token)).data.refunded,true);
   assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,2);
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},session.token)).status,403);
@@ -202,10 +202,10 @@ test('email verification creates non-admin monthly identity; re-login does not r
   assert.equal((await t.send('/api/access',undefined,login.token)).data.remainingFreeTasks,10);
   assert.equal((await t.send('/api/admin',undefined,login.token)).status,401);
   const started=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},login.token)).data;
-  assert.equal(started.remainingFreeTasks,9);
+  assert.equal(started.remainingFreeTasks,8);
   await t.send('/api/email/request',{email:'A@example.com'});
   const again=(await t.send('/api/email/verify',{email:'A@example.com',code})).data;
-  assert.equal((await t.send('/api/access',undefined,again.token)).data.remainingFreeTasks,9);
+  assert.equal((await t.send('/api/access',undefined,again.token)).data.remainingFreeTasks,8);
   await t.send('/api/logout',{},again.token);
   assert.equal((await t.send('/api/access',undefined,again.token)).status,401);
   assert.equal((await t.send('/api/email/verify',{email:'A@example.com',code})).status,400);
@@ -226,7 +226,7 @@ test('account sessions and tasks work across networks',async()=>{
  try{
   const login=await t.login();const token=login.data.token;
   const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'judge'},token,{'X-Real-IP':'192.0.2.1'})).data;
-  assert.equal(task.remainingFreeTasks,9);
+  assert.equal(task.remainingFreeTasks,8);
   assert.equal((await t.send('/api/chat',{...body,taskId:task.taskId},token,{'X-Real-IP':'192.0.2.2'})).status,200);
   assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},token)).status,200);
  }finally{await t.close();}
@@ -254,7 +254,7 @@ test('subscription-only history is isolated, retained after expiry and requires 
   assert.equal((await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'subscription'},a.token)).status,403);
   const grant=await t.send('/api/admin/billing/grant',{accountRef:aAccess.accountRef,sku:'subscription'},'admin-test-only');
   assert.equal(grant.status,200);
-  assert.equal(grant.data.access.subscriptionRemaining,500);
+  assert.equal(grant.data.access.subscriptionRemaining,300);
   const subStart=(await t.send('/api/task/start',{participants:['openai','mistral','grok','gemini'],rounds:2,mode:'judge'},a.token)).data;
   assert.equal(subStart.historyEnabled,true);
   const call=await t.send('/api/chat',{provider:'openai',taskId:subStart.taskId,messages:[{role:'user',content:'test'}]},a.token);
@@ -353,7 +353,7 @@ test('configured, verified owner email gets admin UI/session, 7 models and billi
   assert.equal(access.historyEnabled,true);
   assert.equal(access.remainingFreeTasks,null);
   assert.equal((await t.send('/api/admin',undefined,owner.token)).status,200);
-  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:'account:'+'a'.repeat(32),sku:'pack10'},owner.token)).status,200);
+  assert.equal((await t.send('/api/admin/billing/grant',{accountRef:'account:'+'a'.repeat(32),sku:'pack5'},owner.token)).status,200);
   const members=['openai','mistral','grok','gemini'];
   assert.equal((await t.send('/api/task/start',{participants:members,rounds:2,mode:'judge'},normal.token)).status,403);
   const advanced=(await t.send('/api/task/start',{participants:members,rounds:2,mode:'judge'},owner.token));
@@ -443,15 +443,15 @@ test('explicit stop via API does not refund a free task without any successful m
   assert.equal(done.status,200);
   assert.equal(done.data.cancelled,true);
   assert.equal(done.data.refunded,false);
-  assert.equal(done.data.remainingFreeTasks,1);
-  assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,1);
+  assert.equal(done.data.remainingFreeTasks,0);
+  assert.equal((await t.send('/api/access',undefined,session.token)).data.remainingFreeTasks,0);
   assert.equal((await t.send('/api/task/finish',{taskId:start.taskId,cancelled:true},session.token)).status,404);
   const log=(await t.send('/api/admin',undefined,'admin-test-only')).data;
   assert.equal(log.accounting.discussions.find(x=>x.taskId===start.taskId).status,'cancelled');
  }finally{await t.close();}
 });
 test('stop with partial successful result remains charged; a non-stopped empty task still refunds',async()=>{
- const t=await setup({ACCOUNT_MONTHLY_TASKS:'3',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
+ const t=await setup({ACCOUNT_MONTHLY_TASKS:'4',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'test'});
  try{
   const user=(await t.login('interrupted@example.com')).data;
   const args={participants:['openai','mistral'],rounds:2,mode:'judge'};
