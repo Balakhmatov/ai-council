@@ -145,7 +145,7 @@ function showLoginMethods(){
 }
 $('loginOpen').onclick=async()=>{
  showLoginMethods();if(!$('emailDialog').open)$('emailDialog').showModal();
- try{const config=await api('/api/email/config');$('emailOpen').disabled=!config.enabled;if(!config.enabled)$('emailStatus').textContent='Вход по email пока недоступен. Выберите Telegram.';}
+ try{const config=await api('/api/email/config');$('emailOpen').disabled=!config.passwordLogin&&!config.enabled;$('emailRecoveryOpen').disabled=!config.enabled;}
  catch(error){$('emailStatus').textContent=error.message;}
 };
 $('authBack').onclick=showLoginMethods;
