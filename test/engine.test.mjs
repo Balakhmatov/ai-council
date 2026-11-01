@@ -14,8 +14,8 @@ test('grounding happens before any model, and findings are shared with every par
  await discuss({...base,mode:'judge',researchProvider:async()=>{order.push('research');return research;},
  onResearch:r=>order.push('sources:'+r.status),emit:m=>out.push(m),request:async(a,m)=>{
   order.push(a.id);
-  assert.match(m[0].content,/Official report dated 2026/);
-  assert.match(m[0].content,/https:\/\/official.example\/report/);
+  assert.match(m[1].content,/Official report dated 2026/);
+  assert.match(m[1].content,/https:\/\/official.example\/report/);
   return 'Предположительно число заказов увеличилось на 70% в этом городе';
  }});
  assert.deepEqual(order.slice(0,2),['research','sources:grounded']);
@@ -28,7 +28,7 @@ test('source failure never upgrades unverified model numbers to facts',async()=>
  const out=[],calls=[];
  await discuss({...base,mode:'judge',researchProvider:async()=>({status:'unavailable',reason:'Не настроено'}),
   emit:m=>out.push(m),request:async(a,m)=>{
-   calls.push(m[0].content);
+   calls.push(m[1].content);
    return 'Согласно данным, до 70% заказов приходят через сайт';
   }});
  assert.ok(calls[0].includes('НЕТ подтверждённых внешних фактов'));
@@ -46,4 +46,16 @@ test('consensus reflects current approvals and explicitly separates decision agr
  assert.equal(final.stage,'Консенсус по решению');
  assert.match(final.text,/Поддержка проекта: 2 из 2/);
  assert.match(final.text,/не проверка достоверности фактов/);
+});
+
+test('untrusted model claims remain in user data and are never elevated into system instructions',async()=>{
+ const inputs=[];
+ await discuss({...base,mode:'judge',researchProvider:async()=>({status:'unavailable',reason:'No sources'}),
+  emit:()=>{},request:async(a,m)=>{
+   inputs.push(m);
+   assert.doesNotMatch(m[0].content,/external_evidence_untrusted/);
+   if(m[1].content.includes('Раунд 2'))assert.match(m[1].content,/external_evidence_untrusted/);
+   return 'Рынок вырос на 78% по оценке модели';
+  }});
+ assert.ok(inputs.length>2);
 });
