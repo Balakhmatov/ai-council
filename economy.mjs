@@ -161,7 +161,7 @@ export function createEconomy({env,now=Date.now}){
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,historyEnabled:!!identity&&(isAdmin||!!sub)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:periodFor(identity),source,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
@@ -172,8 +172,8 @@ export function createEconomy({env,now=Date.now}){
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
   if(!task||task.identity!==identity||!task.allowed.has(provider)||task.calls>=task.maxCalls||now()-task.createdAt>7200000)return false;
-  if(stage==='final'&&task.finalCalls>=task.allowed.size)return false;
-  if(stage==='final')task.finalCalls++;
+  if(stage==='final'&&(task.finalCalls>=task.allowed.size||task.finalProviders.has(provider)))return false;
+  if(stage==='final'){task.finalCalls++;task.finalProviders.add(provider);}
   task.calls++;return true;
  }
  function success(id){const task=tasks.get(id);if(task)task.successful++;}
