@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=tasks39/);
+ assert.match(html,/app\.js\?v=role-refresh40/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -113,4 +113,17 @@ test('customer-facing Quorum consistently calls units tasks, not assignments',()
  }
  assert.match(app,/function taskCount\(value\)/);
  assert.match(app,/taskCount\(access\.remainingFreeTasks\)/);
+});
+
+test('owner role is refreshed from live session and unlocks administration without a new login',()=>{
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(js,/async function refreshAccess\(\)/);
+ assert.match(js,/api\/auth\/session/);
+ assert.match(js,/\$\('settingsOpen'\)\.hidden=!access\.admin/);
+ assert.match(js,/\$\('demoControls'\)\.hidden=!access\.admin/);
+ assert.match(js,/window\.addEventListener\('focus'/);
+ assert.match(js,/document\.addEventListener\('visibilitychange'/);
+ assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
+ assert.match(html,/app\.js\?v=role-refresh40/);
 });
