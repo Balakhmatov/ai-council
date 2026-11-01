@@ -114,7 +114,7 @@ export function createEconomy({env,now=Date.now}){
  }
  function activeTaskAccess(id,identity){
   const task=tasks.get(id);
-  return task&&task.identity===identity?{historyEnabled:!!task.historyEnabled,successful:task.successful,taskId:id}:null;
+  return task&&task.identity===identity?{historyEnabled:!!task.historyEnabled,detailedEnabled:!!task.isAdmin||!!subscription(identity),successful:task.successful,taskId:id}:null;
  }
  function exchangeRates(){return state.fx||null;}
  function updateExchangeRates(rates){
