@@ -87,13 +87,14 @@ test('password sign-in and first-time code verification retain Telegram login an
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
- for(const id of ['emailPasswordLogin','loginPasswordEmail','loginPassword','emailRecoveryOpen','emailRecovery','emailRequest','emailVerify','emailPasswordSetup','emailNewPassword','emailRepeatPassword','telegramOpen']){
+ for(const id of ['passwordSettings','emailPasswordLogin','loginPasswordEmail','loginPassword','emailRecoveryOpen','emailRecovery','emailRequest','emailVerify','emailPasswordSetup','emailNewPassword','emailRepeatPassword','telegramOpen']){
   assert.ok(html.includes('id="'+id+'"'),id+' missing');
  }
  assert.match(html,/autocomplete="current-password"/);
  assert.match(html,/autocomplete="new-password"/);
  assert.match(app,/api\/email\/password\/login/);
  assert.match(app,/api\/email\/password\/set/);
+ assert.match(app,/\$\('passwordSettings'\)\.onclick=/);
  assert.match(app,/api\/auth\/session/);
  assert.match(app,/api\/telegram\/auth/);
  assert.match(css,/\.auth-password-form/);
