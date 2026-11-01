@@ -292,7 +292,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=password38/);
+  assert.match(html.body,/uiux32\.css\?v=copy-stop41/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
