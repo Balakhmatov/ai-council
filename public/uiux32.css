@@ -718,3 +718,55 @@ body{background:#fff}
  .pricing-dialog .pricing-offers{gap:7px!important}
  .pricing-dialog .pricing-offer-pack{padding:11px!important}
 }
+
+/* Product analytics: flat editorial dashboard, intentionally distinct from API call logs. */
+#settings{width:min(1060px,calc(100vw - 30px));max-width:calc(100vw - 30px);
+ max-height:92dvh;overflow-x:hidden;box-sizing:border-box;padding:24px}
+#settings #adminPanel{width:100%;min-width:0}
+.admin-tabs{display:flex;gap:20px;min-width:0;overflow-x:auto;padding:6px 0 0;
+ border-bottom:1px solid #e9e3ec;margin:18px 0 19px}
+.admin-tab{display:inline-flex;align-items:center;justify-content:center;white-space:nowrap;
+ background:none!important;border:0!important;border-radius:0!important;padding:10px 1px 13px;
+ color:#82778d;font-weight:700;font-size:14px;box-shadow:none!important}
+.admin-tab.active{color:#643f9e;border-bottom:2px solid #7045bd!important}
+.admin-tab:focus-visible{outline:2px solid #b694e5;outline-offset:-4px}
+#adminProductAnalytics{max-width:100%;min-width:0}
+.product-analytics-head{display:flex;align-items:end;justify-content:space-between;gap:18px;flex-wrap:wrap;margin:0 0 20px}
+.product-analytics-head h3{margin:0 0 5px;font-size:21px;letter-spacing:-.4px}
+.product-analytics-head p{margin:0}
+.product-analytics-head label{display:flex;flex-direction:column;margin:0;gap:4px;font-size:12px;font-weight:650}
+.product-analytics-head select{display:block;width:140px;min-height:40px;margin:0;font-size:14px}
+.product-caveat{margin:15px 0;padding:10px 12px;border-left:2px solid #a47acb;
+ background:#faf8fc;color:#756a7b;font-size:12px;line-height:1.55}
+.product-report-section{min-width:0;border-top:1px solid #eae5eb;margin:27px 0 0;padding-top:19px}
+.product-report-section h4{font-size:17px;font-weight:800;letter-spacing:-.25px;margin:0 0 8px;color:#342b3d}
+.product-report-section>.hint{margin:2px 0 13px;font-size:12px}
+.product-metric-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 13px;margin:15px 0 6px}
+.product-metric{display:flex;flex-direction:column;gap:5px;min-width:0;padding:5px 0 11px;border-bottom:1px solid #eee8ee}
+.product-metric small{font-size:11px;line-height:1.35;color:#817687}
+.product-metric strong{font-size:clamp(19px,2.4vw,28px);font-weight:800;line-height:1.18;letter-spacing:-.65px;
+ overflow-wrap:anywhere;color:#39303e}
+.product-metric span{font-size:10px;line-height:1.35;color:#958b99}
+.product-report-columns{display:grid;grid-template-columns:1.15fr 1fr;align-items:start;gap:28px;margin:14px 0}
+.product-report-columns>.product-report-section{margin-top:14px}
+.product-bars{display:grid;gap:8px;margin:14px 0 9px}
+.product-bar-row{display:grid;grid-template-columns:45px minmax(0,1fr) 72px;align-items:center;gap:10px;min-width:0;font-size:11px;color:#84778d}
+.product-bar-row b{text-align:right;font-size:11px;color:#5f506c;white-space:nowrap}
+.product-bar-rail{background:#f2eff5;height:7px;border-radius:999px;min-width:0;overflow:hidden}
+.product-bar-fill{height:100%;border-radius:999px;background:#8054b5;min-width:1px}
+.product-ranked-list{display:flex;flex-direction:column;margin:10px 0}
+.product-ranked-row{display:flex;justify-content:space-between;gap:15px;padding:11px 0;border-bottom:1px solid #eee9f0;font-size:12px}
+.product-ranked-row span{overflow-wrap:anywhere;color:#6a606f}
+.product-ranked-row strong{white-space:nowrap;color:#372e40}
+#adminLogout{margin-top:25px;padding:10px 0}
+@media(max-width:700px){
+ #settings{box-sizing:border-box;padding:19px 15px;width:calc(100vw - 16px);max-width:calc(100vw - 16px);max-height:90dvh}
+ .product-metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+ .product-report-columns{grid-template-columns:1fr;gap:6px}
+ .admin-tabs{gap:15px}
+ .admin-tab{font-size:12px}
+ .product-analytics-head{align-items:start;gap:12px}
+ .product-analytics-head h3{font-size:18px}
+ .product-bar-row{grid-template-columns:40px minmax(0,1fr) 60px;gap:7px}
+ .product-report-section h4{font-size:15px}
+}
