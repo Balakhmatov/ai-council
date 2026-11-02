@@ -61,12 +61,18 @@ jobs:
           for i in 1 2 3 4 5 6 7 8; do
             code=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.html --write-out '%{http_code}' 'https://cityai.site/quorum/' || true)
             bytes=$(wc -c < /tmp/quorum-live.html 2>/dev/null || echo 0)
-            echo "Attempt $i: HTTP=$code bytes=$bytes"
-            if [ "$code" = "200" ] && grep -qF 'app.js?v=landing57' /tmp/quorum-live.html && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html; then
-              echo "PASS: Live VPS now serves landing57 with inline WebP images."
+            csscode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.css --write-out '%{http_code}' 'https://cityai.site/quorum/uiux32.css?v=landing58' || true)
+            echo "Attempt $i: HTML=$code CSS=$csscode bytes=$bytes"
+            if [ "$code" = "200" ] && [ "$csscode" = "200" ] \
+              && grep -qF 'app.js?v=landing57' /tmp/quorum-live.html \
+              && grep -qF 'uiux32.css?v=landing58' /tmp/quorum-live.html \
+              && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html \
+              && grep -qF 'html:has(body.landing-visible){height:100%' /tmp/quorum-live.css \
+              && grep -qF 'body.landing-visible{position:fixed;inset:0' /tmp/quorum-live.css; then
+              echo "PASS: Live VPS serves landing58: inline WebP + fixed stable Safari viewport."
               exit 0
             fi
-            grep -oE 'app.js\?v=[A-Za-z0-9_-]+' /tmp/quorum-live.html | head -1 || true
+            grep -oE 'uiux32.css\?v=[A-Za-z0-9_-]+' /tmp/quorum-live.html | head -1 || true
             sleep 15
           done
           echo "::error::Live VPS has not picked up the new landing page. Inspect quorum-deploy.timer, quorum-deploy.service and /var/lib/quorum/failed-revision."
