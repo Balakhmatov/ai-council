@@ -36,7 +36,7 @@ try{
   localStorage.setItem('quorum-visitor-v1',analyticsVisitorId);
  }
 }catch{analyticsVisitorId=crypto.randomUUID();}
-function trackVisit(){return api('/api/analytics/visit',{method:'POST',body:{visitorId:analyticsVisitorId},token:publicSession?.token}).catch(()=>{});}
+function trackVisit(pageView=false){return api('/api/analytics/visit',{method:'POST',body:{visitorId:analyticsVisitorId,pageView},token:publicSession?.token}).catch(()=>{});}
 
 function renderProfiles(){
  $('profiles').replaceChildren(...profiles.map(p=>{
@@ -839,12 +839,22 @@ function productBars(rows,field,formatter=num){
 }
 function renderProductAnalytics(data){
  const target=$('adminProductBody');target.replaceChildren();
- const a=data.audience,t=data.tasks,b=data.billing;
+ const a=data.audience,t=data.tasks,b=data.billing,site=data.site;
  target.append(node('p','Начало учёта событий: '+new Date(data.since).toLocaleDateString('ru-RU')+
   '. До этой даты активность пользователей и категории задач неизвестны. Подтверждённые старые платежи включены.','product-caveat'));
- const audience=productSection('Пользователи','Посетители считаются по браузерам, аккаунты — после входа. Администратор исключён.');
+ const traffic=productSection('Посещения страницы','Посетитель — уникальный браузер, открытие — каждая загрузка страницы. Вход и регистрация не нужны.');
+ traffic.append(productTiles([
+  ['Открытия страницы',num(site.pageViews),'Все загрузки страницы'],
+  ['Уникальные посетители',num(site.uniqueVisitors),'Браузеры, а не гарантированно люди'],
+  ['Без входа в аккаунт',num(site.unregisteredVisitors),'Браузеры, не связанные с аккаунтом'],
+  ['Гостевые открытия',num(site.guestPageViews),'Открытия без авторизации']
+ ]));
+ if(site.pageViewsSince)traffic.append(node('p','Открытия считаются с '+new Date(site.pageViewsSince).toLocaleString('ru-RU')+'. Более ранние открытия восстановить нельзя.','hint'));
+ const trafficDaily=productSection('Открытия по дням');trafficDaily.append(productBars(data.daily,'pageViews'));
+ traffic.append(trafficDaily);target.append(traffic);
+ const audience=productSection('Пользователи','Регистрации, активность и удержание после входа в аккаунт. Администратор исключён.');
  audience.append(productTiles([
-  ['Посетители',num(a.visitors)],['Новые аккаунты',num(a.newAccounts)],
+  ['Новые аккаунты',num(a.newAccounts)],
   ['Активные пользователи',num(a.active)],['Всего учтено',num(a.observedAccounts)],
   ['DAU / WAU / MAU',num(a.dau)+' / '+num(a.wau)+' / '+num(a.mau)],
   ['Вернулись к задачам',num(a.returning)],
@@ -944,7 +954,7 @@ $('adminLogout').onclick=()=>{
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
 
 loadConfig();
-trackVisit();
+trackVisit(true);
 let lastRoleRefresh=0;
 window.addEventListener('focus',()=>{
  if(!publicSession||running||Date.now()-lastRoleRefresh<15000)return;
