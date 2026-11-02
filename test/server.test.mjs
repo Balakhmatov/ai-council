@@ -709,3 +709,31 @@ test('Telegram and email histories merge only after proving both accounts',async
   assert.equal((await t.send('/api/history/link',{initData:'forged'},outsider.token)).status,400);
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
+
+test('product analytics admin route reports real authenticated users and completed tasks only',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-product-route-'));
+ const t=await setup({ANALYTICS_FILE:join(dir,'analytics.json'),ACCOUNTING_FILE:join(dir,'accounting.json'),
+  MISTRAL_API_KEY:'test-mistral',MISTRAL_MODEL:'test'});
+ try{
+  const anon='11111111-1111-4111-8111-111111111111';
+  assert.equal((await t.send('/api/analytics/visit',{visitorId:anon})).status,200);
+  assert.equal((await t.send('/api/analytics/visit',{visitorId:'fake'})).status,400);
+  const login=(await t.login('dashboard-user@example.com')).data;
+  assert.equal((await t.send('/api/analytics/visit',{visitorId:anon},login.token)).status,200);
+  const start=await t.send('/api/task/start',{participants:['openai','mistral'],rounds:2,mode:'consensus',profile:'smm',subtask:'posts'},login.token);
+  assert.equal(start.status,200);
+  assert.equal((await t.send('/api/chat',{...body,taskId:start.data.taskId},login.token)).status,200);
+  assert.equal((await t.send('/api/task/finish',{taskId:start.data.taskId},login.token)).status,200);
+  assert.equal((await t.send('/api/admin/product-analytics')).status,403);
+  assert.equal((await t.send('/api/admin/product-analytics?days=21',undefined,'admin-test-only')).status,400);
+  const report=await t.send('/api/admin/product-analytics?days=7',undefined,'admin-test-only');
+  assert.equal(report.status,200);
+  assert.equal(report.data.audience.visitors,1);
+  assert.equal(report.data.audience.observedAccounts,1);
+  assert.equal(report.data.tasks.started,1);
+  assert.equal(report.data.tasks.completed,1);
+  assert.deepEqual(report.data.tasks.byProfile[0],{name:'smm',count:1});
+  assert.equal(report.data.billing.revenueRub,0);
+  assert(!JSON.stringify(report.data).includes('dashboard-user@example.com'));
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
