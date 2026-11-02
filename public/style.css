@@ -112,7 +112,7 @@ aside{position:sticky;top:18px;padding:0 0 0 24px;border-left:1px solid #f0e5ec}
 .access-title{font-size:13px;font-weight:800;color:#7c4e9b}
 .access-panel p{font-size:12px;line-height:1.6;margin:8px 0}
 .access-panel .hint{font-size:10px}
-#demoControls{margin-top:14px}.demo{display:flex;align-items:center;gap:8px}
+
 footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:32px 0;color:#aa9ca9;font-size:10px}
 .footer-brand{display:inline-flex;align-items:center;gap:8px;color:inherit;text-decoration:none}
 footer img{max-width:100%;object-fit:contain}
