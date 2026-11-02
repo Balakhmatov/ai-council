@@ -822,12 +822,18 @@ function productTiles(items){
  return box;
 }
 function productBars(rows,field,formatter=num){
- const wrap=node('div',null,'product-bars');const max=Math.max(1,...rows.map(r=>Number(r[field]||0)));
- for(const d of rows){
+ const grouped=rows.length>30?rows.reduce((out,d,i)=>{
+  const index=Math.floor(i/7);
+  if(!out[index])out[index]={day:d.day,end:d.day,[field]:0};
+  out[index][field]+=Number(d[field]||0);out[index].end=d.day;return out;
+ },[]):rows;
+ const wrap=node('div',null,'product-bars'),max=Math.max(1,...grouped.map(r=>Number(r[field]||0)));
+ for(const d of grouped){
   const line=node('div',null,'product-bar-row');
   const rail=node('div',null,'product-bar-rail'),bar=node('div',null,'product-bar-fill');
   bar.style.width=Number(d[field]||0)/max*100+'%';rail.append(bar);
-  line.append(node('span',d.day.slice(5).split('-').reverse().join('.')),rail,node('b',formatter(d[field])));wrap.append(line);
+  const label=d.end?'нед. '+d.day.slice(5).split('-').reverse().join('.'):d.day.slice(5).split('-').reverse().join('.');
+  line.append(node('span',label),rail,node('b',formatter(d[field])));wrap.append(line);
  }
  return wrap;
 }
