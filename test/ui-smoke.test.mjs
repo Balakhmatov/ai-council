@@ -284,3 +284,19 @@ test('mobile pricing consent is grouped, archive visible and account code remove
  assert.match(css,/\[data-profile="marketing"\]/);
  assert.match(css,/\.participants-toggle-mobile\{/);
 });
+
+test('marketing landing opens guest workspace without sign-up, with an optional real email login',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ assert.match(html,/id="landingTry"[^>]*>Попробовать бесплатно/);
+ assert.match(html,/id="landingEmail"[^>]*>Войти по email/);
+ assert.match(html,/quorum-landing-desktop\.webp/);
+ assert.match(html,/quorum-landing-mobile\.webp/);
+ assert.match(js,/landingExploring=true;syncLanding\(\)/);
+ assert.match(js,/\$\('loginOpen'\)\.click\(\);\$\('emailOpen'\)\.click\(\)/);
+ assert.match(js,/function showSignedOut\(\)\{\s*access=null;syncLanding\(\)/);
+ assert.match(js,/if\(!access\)\{\$\('loginOpen'\)\.click\(\);return;\}/);
+ assert.match(css,/body\.landing-visible>header,body\.landing-visible>main/);
+ assert.match(css,/landing-asset-missing/);
+});
