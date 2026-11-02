@@ -771,60 +771,69 @@ body{background:#fff}
  .product-report-section h4{font-size:15px}
 }
 
-/* Intro landing: approved WebP compositions are art only; CTAs are interactive elements. */
-body.landing-visible{background:#faf5fd}
-body.landing-visible>header,body.landing-visible>main{display:none!important}
-.quorum-landing{display:none;position:relative;width:100%;max-width:100%;min-height:100svh;
- padding:0 0 14px;background:radial-gradient(ellipse at 80% 10%,#f1d9fa,#fff8fb 60%,#fff)}
-body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-items:center;justify-content:center}
-.quorum-landing-frame{position:relative;width:min(100%,1672px);margin:auto auto 0;overflow:hidden;
- aspect-ratio:1672/941}
-.quorum-landing-art,.quorum-landing-art img{display:block;width:100%;height:100%}
-.quorum-landing-art img{object-fit:contain}
-.quorum-landing-actions{position:absolute;z-index:2;left:5.05%;top:66.9%;width:36.6%;height:16.7%;
- display:flex;flex-direction:column;gap:10%;max-width:none}
-.quorum-landing-actions button{display:flex;align-items:center;justify-content:center;flex:1;min-width:0;
- width:100%;min-height:0;margin:0;border-radius:999px;box-shadow:none;
- font-size:clamp(12px,1.7vw,27px);font-weight:800;letter-spacing:-.02em;white-space:nowrap}
-.quorum-landing-try{border:1px solid #7927d4!important;color:#fff!important;
- background:linear-gradient(105deg,#ac47ed,#7425d5)!important}
-.quorum-landing-try:hover:not(:disabled){filter:brightness(1.09);background:linear-gradient(105deg,#ac47ed,#7425d5)!important}
-.quorum-landing-email{border:1.5px solid #a54bf5!important;color:#702bc2!important;
- background:#fffaff!important}
-.quorum-landing-email:hover:not(:disabled){background:#f4e6ff!important}
-.quorum-landing-legal{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;padding:8px 18px 4px}
-.quorum-landing-legal a{font-size:11px;color:#8d7e9c;text-decoration:none}
-.quorum-landing-legal a:hover{text-decoration:underline}
-@media(max-width:700px){
- .quorum-landing{min-height:100svh;justify-content:start}
- .quorum-landing-frame{width:min(100%,530px);aspect-ratio:941/1672;flex:none;margin:0 auto}
- .quorum-landing-actions{left:11.65%;top:77%;width:74.9%;height:11.85%;gap:12%}
- .quorum-landing-actions button{font-size:clamp(11px,3.25vw,18px);line-height:1.1}
- .quorum-landing-legal{margin:auto 0 0;padding:5px 12px 15px}
-}
-@media(prefers-reduced-motion:reduce){.quorum-landing-actions button{transition:none}}
 
-/* Illustrated-background failure gracefully falls back to actual readable HTML. */
-.quorum-landing-fallback{display:none;position:absolute;inset:0;overflow:hidden;
- background:radial-gradient(ellipse at 80% 40%,#dec0fa 0%,transparent 51%),linear-gradient(120deg,#fffcff,#fceeff)}
-.quorum-landing-fallback:after{content:'';position:absolute;z-index:0;right:2%;top:10%;width:42%;
- aspect-ratio:1/1;border-radius:48% 52% 38% 62%;transform:rotate(-13deg);
- background:linear-gradient(120deg,#ecb4ff,#7a38d0);opacity:.38;filter:blur(4px)}
-.landing-fallback-copy{position:relative;z-index:1;max-width:64%;padding:4% 0 0 6%}
-.landing-fallback-brand{display:flex;align-items:center;gap:11px;color:#201a2d;font-size:clamp(19px,2.7vw,40px);font-weight:900}
-.landing-fallback-headline{font-weight:850;font-size:clamp(25px,4.3vw,72px);letter-spacing:-.06em;
- line-height:1.09;margin:5% 0 2%}
-.landing-fallback-headline em{font-style:normal;color:#7626d4}
-.landing-fallback-copy p{font-size:clamp(11px,1.6vw,23px);color:#595061;margin:2% 0}
-.landing-fallback-claim{display:inline-block;max-width:77%;margin:4% 0 0;padding:2% 3%;
- border-radius:22px;background:#e8d0f6;color:#271939;font-size:clamp(12px,1.9vw,28px);font-weight:800}
+/* Landing: images are illustration only; controls and legal links are real HTML.
+   Artwork scales to the actual viewport instead of displaying a fake phone frame. */
+body.landing-visible{background:#f7eefc}
+body.landing-visible>header,body.landing-visible>main{display:none!important}
+.quorum-landing{display:none;box-sizing:border-box;width:100%;min-height:100svh;max-width:100%;
+ padding:6px 14px max(9px,env(safe-area-inset-bottom,9px));background:linear-gradient(165deg,#fffbff,#f1dafa 85%)}
+body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.quorum-landing-frame{position:relative;display:flex;flex-direction:column;align-items:stretch;
+ width:min(100%,1400px,calc((100svh - 161px)*1672/941));margin:auto auto 0;min-width:0}
+.quorum-landing-art{display:block;width:100%;max-width:100%;height:auto;flex:none}
+.quorum-landing-art source{display:none}
+.quorum-landing-art img{display:block;width:100%;height:auto;object-fit:contain}
+.quorum-landing-actions{position:relative;z-index:2;display:flex;flex-direction:row;
+ width:min(680px,75%);height:auto;gap:12px;align-self:flex-start;margin:-2px 0 10px 4.7%;min-width:0}
+.quorum-landing-actions button{position:relative;display:flex;align-items:center;justify-content:center;
+ width:100%;min-width:0;min-height:50px;height:auto;flex:1;padding:11px 14px;
+ margin:0;border-radius:999px;font-weight:800;font-size:clamp(12px,1.18vw,17px);
+ line-height:1.2;letter-spacing:-.02em;white-space:nowrap;box-shadow:none;box-sizing:border-box}
+.quorum-landing-try{border:1px solid #7927d4!important;color:#fff!important;
+ background:linear-gradient(105deg,#ae49ee,#7624d6)!important}
+.quorum-landing-try:hover:not(:disabled){filter:brightness(1.08)}
+.quorum-landing-email{border:1.6px solid #a748e9!important;color:#6c29c3!important;
+ background:#fffaff!important}
+.quorum-landing-email:hover:not(:disabled){background:#f4e7ff!important}
+.quorum-landing-topics{display:flex;align-items:center;justify-content:flex-start;gap:8px;
+ flex-wrap:wrap;margin:0 0 0 4.7%;font-size:clamp(11px,1vw,14px);color:#593b88}
+.quorum-landing-topics span{background:#e9d7fb;border-radius:999px;padding:6px 13px;white-space:nowrap}
+.quorum-landing-legal{display:flex;justify-content:center;align-items:center;gap:17px;
+ padding:9px 8px 0;margin:0 auto;color:#776c84;font-size:11px;flex-wrap:wrap;
+ background:transparent!important;max-width:100%}
+.quorum-landing-legal a{font-size:11px;color:#776c84;text-decoration:none}
+.quorum-landing-legal a:hover{text-decoration:underline}
+.quorum-landing-fallback{display:none;position:absolute;z-index:0;top:0;left:0;width:100%;
+ aspect-ratio:1672/941;overflow:hidden;
+ background:radial-gradient(ellipse at 80% 40%,#dec0fa,transparent 51%),linear-gradient(120deg,#fffcff,#fceeff)}
+.landing-fallback-copy{padding:5% 4%;max-width:70%;color:#251b32}
+.landing-fallback-brand{display:flex;align-items:center;gap:11px;font-size:clamp(17px,2vw,28px)}
+.landing-fallback-headline{font-size:clamp(20px,4vw,52px);font-weight:800;letter-spacing:-.05em;line-height:1.13;margin:6% 0 3%}
+.landing-fallback-headline em{font-style:normal;color:#752bd1}
+.landing-fallback-copy p{font-size:clamp(11px,1.5vw,20px);line-height:1.35}
+.landing-fallback-claim{background:#e7d1f3;border-radius:17px;padding:12px;max-width:90%;
+ font-size:clamp(12px,1.7vw,22px);font-weight:800}
 .landing-asset-missing .quorum-landing-art{visibility:hidden}
 .landing-asset-missing .quorum-landing-fallback{display:block}
 @media(max-width:700px){
- .landing-fallback-copy{max-width:96%;padding:20% 10% 0}
- .landing-fallback-brand{font-size:clamp(18px,5vw,32px)}
- .landing-fallback-headline{font-size:clamp(25px,7vw,46px);margin:14% 0 6%}
- .landing-fallback-copy p{font-size:clamp(13px,3.4vw,20px);line-height:1.35}
- .landing-fallback-claim{max-width:100%;margin-top:26%;font-size:clamp(15px,4.3vw,24px);padding:7% 6%}
- .quorum-landing-fallback:after{width:85%;top:38%;right:-30%;opacity:.22}
+ .quorum-landing{padding:0 7px max(5px,env(safe-area-inset-bottom,5px))}
+ .quorum-landing-frame{width:min(100%,530px,calc((100svh - 168px)*941/1206));
+  margin:auto auto 0;min-width:0;flex:none}
+ .quorum-landing-actions{width:92%;align-self:center;display:flex;flex-direction:column;
+  gap:8px;margin:1px auto 7px}
+ .quorum-landing-actions button{width:100%;min-height:43px;flex:none;padding:10px 13px;
+  font-size:clamp(12px,3.5vw,17px);box-shadow:none;border-radius:999px}
+ .quorum-landing-topics{gap:5px;justify-content:center;margin:1px auto 0;flex-wrap:nowrap;
+  font-size:clamp(9px,2.5vw,12px);width:100%}
+ .quorum-landing-topics span{padding:5px clamp(6px,1.5vw,12px)}
+ .quorum-landing-legal{gap:15px;padding:6px 6px 0;font-size:10px}
+ .quorum-landing-legal a{font-size:10px}
+ .quorum-landing-fallback{aspect-ratio:941/1206}
+ .landing-fallback-copy{max-width:100%;padding:10% 7%}
+ .landing-fallback-brand{font-size:clamp(17px,4.5vw,26px)}
+ .landing-fallback-headline{font-size:clamp(23px,5.7vw,40px);margin:8% 0 4%}
+ .landing-fallback-copy p{font-size:clamp(12px,3vw,17px)}
+ .landing-fallback-claim{font-size:clamp(13px,3.3vw,20px);margin-top:14%}
 }
+@media(prefers-reduced-motion:reduce){.quorum-landing-actions button{transition:none}}
