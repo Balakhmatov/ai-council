@@ -293,7 +293,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=profile-shapes51/);
+  assert.match(html.body,/uiux32\.css\?v=analytics52/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -486,7 +486,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=remove-demo50/);
+  assert.match(html.body,/app\.js\?v=analytics52/);
  }finally{await t.close();}
 });
 
