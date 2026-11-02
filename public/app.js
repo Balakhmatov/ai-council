@@ -26,6 +26,18 @@ let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,ava
 let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
+let landingExploring=false;
+function syncLanding(){
+ const url=new URLSearchParams(location.search);
+ const skip=!!access||landingExploring||!!telegramContext||!!adminToken||url.has('admin')||url.has('payment');
+ document.body.classList.toggle('landing-visible',!skip);
+}
+$('landingTry').onclick=()=>{
+ landingExploring=true;syncLanding();window.scrollTo({top:0,behavior:'instant'});
+};
+$('landingEmail').onclick=()=>{
+ landingExploring=true;syncLanding();$('loginOpen').click();$('emailOpen').click();
+};
 let moderatorChosenByUser=false;
 // First-party, random per-browser identifier. Persistent analytics stores only its HMAC.
 let analyticsVisitorId;
@@ -278,7 +290,7 @@ $('telegramOpen').onclick=async()=>{
 };
 window.addEventListener('focus',()=>{if(pendingLogin){clearTimeout(pollTimer);pollTelegramLogin();}});
 $('emailLogout').onclick=async()=>{
- try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;showSignedOut();}
+ try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();landingExploring=false;$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;showSignedOut();}
  catch(error){$('status').textContent=error.message;}
 };
 async function ensureSession(){
@@ -288,7 +300,7 @@ async function ensureSession(){
  return null;
 }
 function showSignedOut(){
- access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
+ access=null;syncLanding();$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
  $('settingsOpen').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных токенов при регистрации.';
  $('historySection').hidden=true;$('historyJump').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
@@ -358,6 +370,7 @@ async function refreshAccess(){
   if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток токенов. '+error.message;update();throw error;}
   clearIdentity();showSignedOut();return;
  }
+ syncLanding();
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
  $('historyJump').hidden=false;
  $('passwordSettings').hidden=!publicSession?.user?.email;
@@ -591,7 +604,7 @@ async function loadConfig(){
   for(const id of defaultParticipants(available))chosen.add(id);
   moderatorChosenByUser=false;
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
-  await refreshAccess();if(access?.admin)await showAdmin();
+  await refreshAccess();syncLanding();if(access?.admin)await showAdmin();
   $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks<chosen.size?'Недостаточно токенов для выбранных моделей.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
