@@ -89,7 +89,7 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
   for(const task of allTasks){const key=canonical(task.account),date=task.startedAt;
    if(key&&(!firstTasks.has(key)||firstTasks.get(key)>date))firstTasks.set(key,date);}
   const payingOrders=orders.filter(o=>o?.status==='succeeded'&&o?.applied===true&&
-   Number.isFinite(o.amountRub)&&o.amountRub>=0&&grouped.has(canonical(o.identity)));
+   Number.isFinite(o.amountRub)&&o.amountRub>=0&&ACCOUNT.test(o.identity||''));
   const within=payingOrders.filter(o=>inRange(dayOf(o.capturedAt||o.createdAt),from,to));
   const paidAccounts=new Set(within.map(o=>canonical(o.identity)));
   const byProfile={},bySubtask={};
@@ -108,7 +108,7 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
    const key=t.profile+'/'+t.subtask;bySubtask[key]=(bySubtask[key]||0)+1;
   }
   const firstAt=(offset)=>[...grouped.values()].filter(u=>{
-   const cohort=dayOf(Date.parse(u.firstSeen));
+   const cohort=u.firstSeen.slice(0,10);
    return addDays(cohort,offset)<=to;
   });
   const retention=(n)=>{const cohort=firstAt(n);return {eligible:cohort.length,returned:cohort.filter(u=>u.days.includes(addDays(u.firstSeen.slice(0,10),n))).length,percent:percent(cohort.filter(u=>u.days.includes(addDays(u.firstSeen.slice(0,10),n))).length,cohort.length)};};
@@ -135,8 +135,8 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
    billing:{revenueRub:Math.round(within.reduce((sum,o)=>sum+o.amountRub,0)*100)/100,
     successfulPayments:within.length,payingAccounts:paidAccounts.size,paidAccountsAllTime:paidAlltimeAccounts.size,
     subscriptions:within.filter(o=>o.sku==='subscription').length,packs:within.filter(o=>o.sku!=='subscription').length,
-    recent:within.slice().sort((a,b)=>(b.capturedAt||b.createdAt).localeCompare(a.capturedAt||a.createdAt)).slice(0,10)
-      .map(o=>({at:o.capturedAt||new Date(o.createdAt).toISOString(),sku:o.sku,amountRub:o.amountRub}))},
+    recent:within.slice().sort((a,b)=>Date.parse(b.capturedAt||b.createdAt)-Date.parse(a.capturedAt||a.createdAt)).slice(0,10)
+      .map(o=>({at:new Date(o.capturedAt||o.createdAt).toISOString(),sku:o.sku,amountRub:o.amountRub}))},
    funnel:{visitors:visitorsIn.length,authenticated:seenAccounts.size,
     taskUsers:[...seenAccounts].filter(id=>allTasks.some(t=>canonical(t.account)===id)).length,
     buyers:[...seenAccounts].filter(id=>paidAlltimeAccounts.has(id)).length,
