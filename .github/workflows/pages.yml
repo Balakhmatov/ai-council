@@ -50,22 +50,24 @@ jobs:
 
 
   live-site-probe:
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'push'
+    needs: test
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Inspect public Quorum deployment without credentials
+      - name: Verify live VPS serves the actual mobile landing with embedded image
         shell: bash
         run: |
-          set +e
-          echo "Expected currently merged main: ${{ github.event.pull_request.base.sha }}"
-          echo "DNS:"
-          getent ahostsv4 cityai.site | head -3
-          echo "=== Public HTML ==="
-          curl --silent --show-error --location --max-time 20 --write-out '\nHTTP_CODE=%{http_code} FINAL_URL=%{url_effective}\n' -o /tmp/quorum-live.html https://cityai.site/quorum/
-          if test -s /tmp/quorum-live.html; then
-            grep -oE 'app.js\\?v=[A-Za-z0-9_-]+|style.css\\?v=[A-Za-z0-9_-]+|id="pricingOpen"|id="pricingDialog"' /tmp/quorum-live.html | head -20 || true
-            echo "HTML bytes: $(wc -c < /tmp/quorum-live.html)"
-          fi
-          echo "=== VPS health and deployment stamp ==="
-          curl --silent --show-error --location --max-time 20 --write-out '\nHTTP_CODE=%{http_code}\n' https://cityai.site/quorum/healthz
-          echo
+          for i in 1 2 3 4 5 6 7 8; do
+            code=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.html --write-out '%{http_code}' 'https://cityai.site/quorum/' || true)
+            bytes=$(wc -c < /tmp/quorum-live.html 2>/dev/null || echo 0)
+            echo "Attempt $i: HTTP=$code bytes=$bytes"
+            if [ "$code" = "200" ] && grep -qF 'app.js?v=landing55' /tmp/quorum-live.html && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html; then
+              echo "PASS: Live VPS now serves landing55 with inline WebP images."
+              exit 0
+            fi
+            grep -oE 'app.js\?v=[A-Za-z0-9_-]+' /tmp/quorum-live.html | head -1 || true
+            sleep 15
+          done
+          echo "::error::Live VPS has not picked up the new landing page. Inspect quorum-deploy.timer, quorum-deploy.service and /var/lib/quorum/failed-revision."
+          exit 1
