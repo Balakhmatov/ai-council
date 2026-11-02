@@ -104,9 +104,9 @@ function update(){
  if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
  const enough=access?.admin||access?.remainingFreeTasks>=chosen.size;
  $('start').textContent=access?'Получить результат':'Войти и начать';
- $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||(!connected&&!$('demo').checked)||(!!access&&!enough&&!$('demo').checked);
+ $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||!connected||(!!access&&!enough);
  document.querySelectorAll('.agent').forEach((label,i)=>{
-  const a=agents[i],ok=$('demo').checked||available.has(a.id),input=label.querySelector('input');
+  const a=agents[i],ok=available.has(a.id),input=label.querySelector('input');
   input.disabled=running||!ok;label.classList.toggle('unavailable',!ok);
   label.querySelector('small').textContent=ok?a.sub:'Скоро';
  });
@@ -268,7 +268,7 @@ $('telegramOpen').onclick=async()=>{
 };
 window.addEventListener('focus',()=>{if(pendingLogin){clearTimeout(pollTimer);pollTelegramLogin();}});
 $('emailLogout').onclick=async()=>{
- try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;$('demoControls').hidden=true;showSignedOut();}
+ try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;showSignedOut();}
  catch(error){$('status').textContent=error.message;}
 };
 async function ensureSession(){
@@ -279,7 +279,7 @@ async function ensureSession(){
 }
 function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
- $('settingsOpen').hidden=true;$('demoControls').hidden=true;
+ $('settingsOpen').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных токенов при регистрации.';
  $('historySection').hidden=true;$('historyJump').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('historyLinkBox').hidden=true;$('historyLinkPanel').hidden=true;
@@ -353,7 +353,7 @@ async function refreshAccess(){
  $('passwordSettings').hidden=!publicSession?.user?.email;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
  $('settingsOpen').hidden=!access.admin;
- $('demoControls').hidden=!access.admin;
+ 
  const cap=access.maxModels??3;
  if(chosen.size>cap){
   for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
@@ -797,7 +797,7 @@ $('adminGrantForm').onsubmit=async event=>{
 };
 async function showAdmin(){
  const config=await api('/api/admin',{token:adminToken});
- $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;$('demoControls').hidden=false;
+ $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;
  $('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;}));
  $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит вызовов на аккаунт: '+config.usage.perAccountDailyLimit+'.';
  renderAccounting(config.accounting);$('adminStatus').textContent='';
@@ -810,12 +810,11 @@ $('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').v
 $('adminLogout').onclick=()=>{
  api('/api/logout',{method:'POST',token:adminToken}).catch(()=>{});
  clearIdentity();access=null;
- $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;$('demoControls').hidden=true;
+ $('adminPanel').hidden=true;$('adminLogin').hidden=false;$('settingsOpen').hidden=true;
  $('settings').close();history.replaceState(null,'',location.pathname);refreshAccess().catch(()=>{});
 };
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
 
-$('demo').onchange=()=>{if(!$('demo').checked){for(const id of Array.from(chosen))if(!available.has(id))chosen.delete(id);document.querySelectorAll('.agent input').forEach((input,i)=>input.checked=chosen.has(agents[i].id));}update();};
 loadConfig();
 let lastRoleRefresh=0;
 window.addEventListener('focus',()=>{
@@ -910,7 +909,6 @@ function showResearch(research){
  }
 }
 async function verifyTaskSources(task,signal){
- if($('demo').checked)return {status:'unavailable',reason:'В демонстрации веб-поиск не выполняется',sources:[],facts:[]};
  const result=await api('/api/research',{method:'POST',token:await ensureSession(),
   body:{taskId:activeTask?.taskId,prompt:task.slice(0,1500)},signal:AbortSignal.any([signal,AbortSignal.timeout(90000)])});
  return result.status==='grounded'?result:{...result,reason:'Проверка открытых источников сейчас недоступна'};
@@ -963,13 +961,6 @@ function emit(m){
  syncResultActions();
 }
 async function request(a,chat,signal,stage={}){
- if($('demo').checked){
-  await new Promise((resolve,reject)=>{const t=setTimeout(resolve,400);signal?.addEventListener('abort',()=>{clearTimeout(t);reject(new DOMException('Остановлено','AbortError'));},{once:true});});
-  const prompt=chat[1].content;
-  if(prompt.includes('Допустимые идентификаторы:'))return JSON.stringify({vote:agents.find(x=>chosen.has(x.id)).id,reason:'Демонстрационный голос'});
-  if(prompt.includes('"agree" или'))return '{"vote":"agree","reason":"Демонстрационное согласие"}';
-  return '[ДЕМО — не ответ модели] '+a.name+': этот пример не вызывает API. Для настоящего результата отключите демо.';
- }
  const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  // JSON ballots are a control protocol, not a prose response. Never truncate them.
@@ -977,7 +968,7 @@ async function request(a,chat,signal,stage={}){
   ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{
- if(!access&&!$('demo').checked){$('loginOpen').click();return;}
+ if(!access){$('loginOpen').click();return;}
  const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
  const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
  running=true;stopRequested=false;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
@@ -985,11 +976,10 @@ $('start').onclick=async()=>{
  lastTaskContext={prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
  $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;$('researchPanel').hidden=true;$('researchSources').replaceChildren();$('researchSearchWidget').replaceChildren();
  $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
- document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#demo,#rounds,#length,#factCheck').forEach(e=>e.disabled=true);
- update();$('status').textContent=$('demo').checked?'Демонстрация без API.':'Нейросети работают над вашей задачей.';
+ document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#rounds,#length,#factCheck').forEach(e=>e.disabled=true);
+ update();$('status').textContent='Нейросети работают над вашей задачей.';
  try{
-  if(!$('demo').checked){
-   let token=await ensureSession();
+  let token=await ensureSession();
    const startBody={participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode};
    try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
    catch(error){
@@ -999,11 +989,10 @@ $('start').onclick=async()=>{
     token=await ensureSession();
     activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});
    }
-   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
-  }
+  access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
   await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
-   researchProvider:$('factCheck').checked&&needsSources(task)&&!$('demo').checked?verifyTaskSources:null,onResearch:showResearch});
+   researchProvider:$('factCheck').checked&&needsSources(task)?verifyTaskSources:null,onResearch:showResearch});
   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
@@ -1021,9 +1010,9 @@ $('start').onclick=async()=>{
     }});if(finished.refundedTokens>0)$('status').textContent+=' Возвращено '+finished.refundedTokens+' '+taskCount(finished.refundedTokens)+' за ошибки ИИ.';}catch(e){$('status').textContent+=' Не удалось завершить задачу: '+e.message;}
    activeTask=null;
   }
-  if(!$('demo').checked)await refreshAccess().catch(()=>{});
+  await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#demo,#rounds,#length,#factCheck').forEach(e=>e.disabled=false);
+  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#rounds,#length,#factCheck').forEach(e=>e.disabled=false);
   update();
  }
 };
