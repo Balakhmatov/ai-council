@@ -35,9 +35,11 @@ heroImage.addEventListener('load',()=>{
 if(heroImage.complete&&!heroImage.naturalWidth)document.body.classList.add('landing-asset-missing');
 
 function syncLanding(){
+ // The landing is the home page for everyone, even returning users and Telegram Mini App.
+ // Only an explicit click to explore (or a deep link to admin/payment) opens the workspace.
  const url=new URLSearchParams(location.search);
- const skip=!!access||landingExploring||!!telegramContext||!!adminToken||url.has('admin')||url.has('payment');
- document.body.classList.toggle('landing-visible',!skip);
+ const openWorkspace=landingExploring||url.has('admin')||url.has('payment');
+ document.body.classList.toggle('landing-visible',!openWorkspace);
 }
 $('landingTry').onclick=()=>{
  landingExploring=true;syncLanding();window.scrollTo({top:0,behavior:'instant'});
