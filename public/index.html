@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <link rel="stylesheet" href="./style.css?v=mobile-polish49">
-<link rel="stylesheet" href="./uiux32.css?v=profile-shapes51">
+<link rel="stylesheet" href="./uiux32.css?v=analytics52">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -149,7 +149,18 @@
 <p id="emailStatus" role="status" aria-live="polite"></p></dialog>
 <dialog id="settings"><form method="dialog"><div class="section-title"><h2 class="admin-brand"><img src="./assets/quorum-icon-192-v2.png" width="32" height="32" alt="">Администрирование</h2><button aria-label="Закрыть">✕</button></div></form>
 <div id="adminLogin"><p class="hint">Вход для владельца приложения.</p><form id="adminForm"><label>Код администратора<input id="adminCode" type="password" autocomplete="current-password" required></label><button class="primary" type="submit">Войти</button></form></div>
-<div id="adminPanel" hidden><p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><section class="admin-grants">
+<div id="adminPanel" hidden>
+ <div class="admin-tabs" role="tablist" aria-label="Разделы администрирования">
+  <button type="button" id="adminProductTab" class="admin-tab active" role="tab" aria-selected="true" aria-controls="adminProductAnalytics">Аналитика продукта</button>
+  <button type="button" id="adminTechnicalTab" class="admin-tab" role="tab" aria-selected="false" aria-controls="adminTechnicalAnalytics">Технический мониторинг</button>
+ </div>
+ <section id="adminProductAnalytics" role="tabpanel" aria-labelledby="adminProductTab">
+  <div class="product-analytics-head"><div><h3>Аналитика Кворума</h3><p class="hint">Аудитория, использование, конверсия и подтверждённая выручка.</p></div>
+  <label for="analyticsPeriod">Период<select id="analyticsPeriod"><option value="7">7 дней</option><option value="30" selected>30 дней</option><option value="90">90 дней</option></select></label></div>
+  <div id="adminProductBody" aria-live="polite"><p class="hint">Загружаем показатели…</p></div>
+ </section>
+ <section id="adminTechnicalAnalytics" role="tabpanel" aria-labelledby="adminTechnicalTab" hidden>
+ <p class="hint">Ключи подключены на сервере и не передаются пользователям.</p><div id="adminProviders"></div><p id="adminUsage" class="hint"></p><section class="admin-grants">
  <h3>Начислить подписку или пакет вручную</h3>
  <p class="hint">Только для владельца. Оплата пока не подключена.</p>
  <form id="adminGrantForm">
@@ -164,6 +175,6 @@
  </form>
  <p id="adminGrantStatus" class="hint"></p>
 </section>
-<div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
+<div id="adminAccounting"></div></section><button type="button" id="adminLogout" class="quiet">Выйти из админки</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=remove-demo50"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=analytics52"></script></body></html>
