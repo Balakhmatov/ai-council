@@ -112,7 +112,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     let payload;try{payload=await readBody(500);}catch{return fail(400,'Некорректный визит');}
     // A raw administrator token has no end-user account and must not enter the visitor funnel.
     if(isAdmin&&!validSession)return json(200,{ok:true});
-    try{if(!analytics.visit(payload?.visitorId,visitorHash,{owner:isAdmin}))return fail(400,'Некорректный визит');}
+    try{if(!analytics.visit(payload?.visitorId,visitorHash,{owner:isAdmin,pageView:payload?.pageView===true}))return fail(400,'Некорректный визит');}
     catch(error){console.error('Analytics visit logging failed',error);return fail(503,'Аналитика временно недоступна');}
     return json(200,{ok:true});
    }
