@@ -770,3 +770,36 @@ body{background:#fff}
  .product-bar-row{grid-template-columns:40px minmax(0,1fr) 60px;gap:7px}
  .product-report-section h4{font-size:15px}
 }
+
+/* Intro landing: approved WebP compositions are art only; CTAs are interactive elements. */
+body.landing-visible{background:#faf5fd}
+body.landing-visible>header,body.landing-visible>main{display:none!important}
+.quorum-landing{display:none;position:relative;width:100%;max-width:100%;min-height:100svh;
+ padding:0 0 14px;background:radial-gradient(ellipse at 80% 10%,#f1d9fa,#fff8fb 60%,#fff)}
+body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-items:center;justify-content:center}
+.quorum-landing-frame{position:relative;width:min(100%,1672px);margin:auto auto 0;overflow:hidden;
+ aspect-ratio:1672/941}
+.quorum-landing-art,.quorum-landing-art img{display:block;width:100%;height:100%}
+.quorum-landing-art img{object-fit:contain}
+.quorum-landing-actions{position:absolute;z-index:2;left:5.05%;top:66.9%;width:36.6%;height:16.7%;
+ display:flex;flex-direction:column;gap:10%;max-width:none}
+.quorum-landing-actions button{display:flex;align-items:center;justify-content:center;flex:1;min-width:0;
+ width:100%;min-height:0;margin:0;border-radius:999px;box-shadow:none;
+ font-size:clamp(12px,1.7vw,27px);font-weight:800;letter-spacing:-.02em;white-space:nowrap}
+.quorum-landing-try{border:1px solid #7927d4!important;color:#fff!important;
+ background:linear-gradient(105deg,#ac47ed,#7425d5)!important}
+.quorum-landing-try:hover:not(:disabled){filter:brightness(1.09);background:linear-gradient(105deg,#ac47ed,#7425d5)!important}
+.quorum-landing-email{border:1.5px solid #a54bf5!important;color:#702bc2!important;
+ background:#fffaff!important}
+.quorum-landing-email:hover:not(:disabled){background:#f4e6ff!important}
+.quorum-landing-legal{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;padding:8px 18px 4px}
+.quorum-landing-legal a{font-size:11px;color:#8d7e9c;text-decoration:none}
+.quorum-landing-legal a:hover{text-decoration:underline}
+@media(max-width:700px){
+ .quorum-landing{min-height:100svh;justify-content:start}
+ .quorum-landing-frame{width:min(100%,530px);aspect-ratio:941/1672;flex:none;margin:0 auto}
+ .quorum-landing-actions{left:11.65%;top:76%;width:74.9%;height:11.85%;gap:12%}
+ .quorum-landing-actions button{font-size:clamp(11px,3.25vw,18px);line-height:1.1}
+ .quorum-landing-legal{margin:auto 0 0;padding:5px 12px 15px}
+}
+@media(prefers-reduced-motion:reduce){.quorum-landing-actions button{transition:none}}
