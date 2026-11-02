@@ -806,13 +806,124 @@ $('adminGrantForm').onsubmit=async event=>{
  }catch(e){$('adminGrantStatus').textContent='Не удалось начислить: '+e.message;}
  finally{submit.disabled=false;}
 };
+
+const PRODUCT_NAMES={smm:'SMM',marketing:'Маркетинг',advertising:'Реклама',copywriting:'Копирайтинг',blogging:'Блогинг',unspecified:'Не указано'};
+const asPercent=value=>value==null?'—':String(value).replace('.',',')+'%';
+function productSection(title,sub=''){
+ const box=node('section',null,'product-report-section');box.append(node('h4',title));
+ if(sub)box.append(node('p',sub,'hint'));return box;
+}
+function productTiles(items){
+ const box=node('div',null,'product-metric-grid');
+ for(const [label,value,note]of items){
+  const tile=node('div',null,'product-metric');tile.append(node('small',label),node('strong',String(value)));
+  if(note)tile.append(node('span',note));box.append(tile);
+ }
+ return box;
+}
+function productBars(rows,field,formatter=num){
+ const wrap=node('div',null,'product-bars');const max=Math.max(1,...rows.map(r=>Number(r[field]||0)));
+ for(const d of rows){
+  const line=node('div',null,'product-bar-row');
+  const rail=node('div',null,'product-bar-rail'),bar=node('div',null,'product-bar-fill');
+  bar.style.width=Number(d[field]||0)/max*100+'%';rail.append(bar);
+  line.append(node('span',d.day.slice(5).split('-').reverse().join('.')),rail,node('b',formatter(d[field])));wrap.append(line);
+ }
+ return wrap;
+}
+function renderProductAnalytics(data){
+ const target=$('adminProductBody');target.replaceChildren();
+ const a=data.audience,t=data.tasks,b=data.billing;
+ target.append(node('p','Начало учёта событий: '+new Date(data.since).toLocaleDateString('ru-RU')+
+  '. До этой даты активность пользователей и категории задач неизвестны. Подтверждённые старые платежи включены.','product-caveat'));
+ const audience=productSection('Пользователи','Посетители считаются по браузерам, аккаунты — после входа. Администратор исключён.');
+ audience.append(productTiles([
+  ['Посетители',num(a.visitors)],['Новые аккаунты',num(a.newAccounts)],
+  ['Активные пользователи',num(a.active)],['Всего учтено',num(a.observedAccounts)],
+  ['DAU / WAU / MAU',num(a.dau)+' / '+num(a.wau)+' / '+num(a.mau)],
+  ['Вернулись к задачам',num(a.returning)],
+  ['Удержание D1',asPercent(a.retentionD1.percent),a.retentionD1.eligible+' аккаунтов в расчёте'],
+  ['Удержание D7',asPercent(a.retentionD7.percent),a.retentionD7.eligible+' аккаунтов в расчёте']
+ ]));target.append(audience);
+ const tasks=productSection('Задачи');
+ tasks.append(productTiles([
+  ['Запущено',num(t.started)],['Завершено',num(t.completed)],
+  ['С ошибкой',num(t.failed)],['Отменено',num(t.cancelled)],
+  ['Уникальные авторы',num(t.uniqueAccounts)],['Повторные пользователи',num(t.repeatedAccounts)]
+ ]));
+ const taskColumns=node('div',null,'product-report-columns');
+ const daily=productSection('Задачи по дням');daily.append(productBars(data.daily,'tasks'));
+ const directions=productSection('Направления');
+ const ranking=node('div',null,'product-ranked-list');
+ for(const item of t.byProfile)ranking.append(productRank(PRODUCT_NAMES[item.name]||item.name,num(item.count)));
+ if(!ranking.childElementCount)ranking.append(node('p','Пока нет задач','hint'));
+ directions.append(ranking);
+ directions.append(node('p','Популярные типы: '+(t.bySubtask.slice(0,5).map(x=>x.name+' · '+num(x.count)).join('; ')||'пока нет'),'hint'));
+ taskColumns.append(daily,directions);tasks.append(taskColumns);target.append(tasks);
+ const income=productSection('Деньги','Считаются только подтверждённые реальные оплаты ЮKassa, ручные начисления исключены.');
+ income.append(productTiles([
+  ['Выручка',rub(b.revenueRub)],['Успешные платежи',num(b.successfulPayments)],
+  ['Покупатели',num(b.payingAccounts)],['Подписки / пакеты',num(b.subscriptions)+' / '+num(b.packs)],
+  ['Затраты API',b.costComplete?rub(b.apiCostRub):'От '+rub(b.apiCostRub)],
+  ['Маржа до комиссий',b.marginRub==null?'Недостаточно данных':rub(b.marginRub)]
+ ]));
+ if(!b.costComplete)income.append(node('p','Полный расчёт маржи невозможен: неполный журнал затрат или '+num(b.unknownCostCalls)+' запросов без цены.','product-caveat'));
+ const sales=productSection('Выручка по дням');sales.append(productBars(data.daily,'revenue',rub));income.append(sales);
+ const recent=productSection('Последние оплаты');const rows=node('div',null,'product-ranked-list');
+ for(const payment of b.recent)rows.append(productRank(new Date(payment.at).toLocaleDateString('ru-RU')+' · '+(payment.sku==='subscription'?'Подписка':payment.sku),rub(payment.amountRub)));
+ if(!rows.childElementCount)rows.append(node('p','За период оплат не было.','hint'));
+ recent.append(rows);income.append(recent);target.append(income);
+ const funnel=productSection('Путь пользователя','Не строгая когортная воронка: учитываются действия этих посетителей, в том числе после выбранного периода.');
+ funnel.append(productTiles([
+  ['Уникальные посетители',num(data.funnel.visitors)],
+  ['Вошли в аккаунт',num(data.funnel.authenticated)],
+  ['Запускали задачи',num(data.funnel.taskUsers)],
+  ['Покупали',num(data.funnel.buyers)]
+ ]));target.append(funnel);
+}
+function productRank(label,value){
+ const line=node('div',null,'product-ranked-row');
+ line.append(node('span',label),node('strong',value));return line;
+}
+let analyticsRenderVersion=0,adminTechnicalLoaded=false;
+async function loadProductAnalytics(){
+ const version=++analyticsRenderVersion;
+ $('adminProductBody').replaceChildren(node('p','Считаем показатели…','hint'));
+ try{
+  const days=$('analyticsPeriod').value;
+  const data=await api('/api/admin/product-analytics?days='+encodeURIComponent(days),{token:adminToken});
+  if(version===analyticsRenderVersion)renderProductAnalytics(data);
+ }catch(error){if(version===analyticsRenderVersion)$('adminProductBody').replaceChildren(node('p','Ошибка аналитики: '+error.message,'product-caveat'));}
+}
+async function loadTechnicalMonitor(){
+ const config=await api('/api/admin',{token:adminToken});
+ $('adminProviders').replaceChildren(...config.providers.map(p=>{
+  const row=document.createElement('p');
+  row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;
+ }));
+ $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+
+  '. Лимит вызовов на аккаунт: '+config.usage.perAccountDailyLimit+'.';
+ renderAccounting(config.accounting);
+}
+function showAdminTab(isProduct){
+ $('adminProductAnalytics').hidden=!isProduct;$('adminTechnicalAnalytics').hidden=isProduct;
+ for(const [id,active]of [['adminProductTab',isProduct],['adminTechnicalTab',!isProduct]]){
+  $(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));
+ }
+ if(!isProduct&&!adminTechnicalLoaded){
+  adminTechnicalLoaded=true;loadTechnicalMonitor().catch(e=>{$('adminStatus').textContent=e.message;});
+ }
+}
+$('adminProductTab').onclick=()=>showAdminTab(true);
+$('adminTechnicalTab').onclick=()=>showAdminTab(false);
+$('analyticsPeriod').onchange=loadProductAnalytics;
 async function showAdmin(){
  const config=await api('/api/admin',{token:adminToken});
  $('adminLogin').hidden=true;$('adminPanel').hidden=false;$('settingsOpen').hidden=false;
- $('adminProviders').replaceChildren(...config.providers.map(p=>{const row=document.createElement('p');row.textContent=(agents.find(a=>a.id===p.id)?.name||p.id)+': '+(p.configured?'подключён · '+p.model:'не подключён');return row;}));
- $('adminUsage').textContent='Запросов сегодня: '+config.usage.requestsToday+' / '+config.usage.dailyLimit+'. Лимит вызовов на аккаунт: '+config.usage.perAccountDailyLimit+'.';
- renderAccounting(config.accounting);$('adminStatus').textContent='';
+ adminTechnicalLoaded=false;showAdminTab(true);$('adminStatus').textContent='';
+ await loadProductAnalytics();
 }
+
 $('settingsOpen').onclick=async()=>{$('settings').showModal();try{await showAdmin();}catch(e){$('adminStatus').textContent=e.message;}};
 $('adminForm').onsubmit=async e=>{e.preventDefault();adminToken=$('adminCode').value.trim();$('adminStatus').textContent='Проверяем доступ…';
  try{await showAdmin();sessionStorage.setItem('quorum-admin',adminToken);$('adminCode').value='';await refreshAccess();}
