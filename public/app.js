@@ -27,6 +27,16 @@ let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],event
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let moderatorChosenByUser=false;
+// First-party, random per-browser identifier. Persistent analytics stores only its HMAC.
+let analyticsVisitorId;
+try{
+ analyticsVisitorId=localStorage.getItem('quorum-visitor-v1');
+ if(!/^[a-f0-9-]{36}$/i.test(analyticsVisitorId||'')){
+  analyticsVisitorId=crypto.randomUUID();
+  localStorage.setItem('quorum-visitor-v1',analyticsVisitorId);
+ }
+}catch{analyticsVisitorId=crypto.randomUUID();}
+function trackVisit(){return api('/api/analytics/visit',{method:'POST',body:{visitorId:analyticsVisitorId},token:publicSession?.token}).catch(()=>{});}
 
 function renderProfiles(){
  $('profiles').replaceChildren(...profiles.map(p=>{
@@ -359,6 +369,7 @@ async function refreshAccess(){
   for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
  }
+ trackVisit();
  renderAccess();refreshHistory(true).catch(e=>{$('status').textContent='Не удалось загрузить историю: '+e.message;});
  refreshHistoryLinkState().catch(()=>{$('historyLinkBox').hidden=true;});
  if(new URLSearchParams(location.search).has('payment'))checkPayment().catch(()=>{});
@@ -816,6 +827,7 @@ $('adminLogout').onclick=()=>{
 if(new URLSearchParams(location.search).has('admin'))$('settings').showModal();
 
 loadConfig();
+trackVisit();
 let lastRoleRefresh=0;
 window.addEventListener('focus',()=>{
  if(!publicSession||running||Date.now()-lastRoleRefresh<15000)return;
@@ -980,7 +992,7 @@ $('start').onclick=async()=>{
  update();$('status').textContent='Нейросети работают над вашей задачей.';
  try{
   let token=await ensureSession();
-   const startBody={participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode};
+   const startBody={participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode,profile:profileId,subtask:taskId||'unspecified'};
    try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
    catch(error){
     if(error.status!==401||adminToken)throw error;
