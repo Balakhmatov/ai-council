@@ -19,8 +19,15 @@
  <div class="quorum-landing-frame">
   <picture class="quorum-landing-art" aria-hidden="true">
    <source media="(max-width: 700px)" srcset="./assets/quorum-landing-mobile.webp">
-   <img src="./assets/quorum-landing-desktop.webp" width="1200" height="675" decoding="async" fetchpriority="high" alt="">
+   <img id="landingHeroImage" src="./assets/quorum-landing-desktop.webp" width="1200" height="675" decoding="async" fetchpriority="high" alt="">
   </picture>
+  <div class="quorum-landing-fallback" aria-hidden="true">
+   <div class="landing-fallback-copy"><div class="landing-fallback-brand"><img src="./assets/quorum-icon-192-v2.png" alt="" width="48" height="48"> <strong>КВОРУМ</strong></div>
+   <div class="landing-fallback-headline">Пятый вариант поста<br><em>опять похож на первый?</em></div>
+   <p>Хватит выпрашивать креатив у одной нейросети.</p>
+   <div class="landing-fallback-claim">В Кворуме ИИ спорят между собой — а ты забираешь готовую идею.</div>
+   </div>
+  </div>
   <div class="quorum-landing-actions">
    <button id="landingTry" class="quorum-landing-try" type="button">Попробовать бесплатно</button>
    <button id="landingEmail" class="quorum-landing-email" type="button">Войти по email</button>
