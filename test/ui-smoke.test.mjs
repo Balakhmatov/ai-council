@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=landing54/);
+ assert.match(html,/app\.js\?v=landing55/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -126,7 +126,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=landing54/);
+ assert.match(html,/app\.js\?v=landing55/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -170,7 +170,7 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=landing54/);
+ assert.match(html,/app\.js\?v=landing55/);
 });
 
 test('round and named response length selectors appear under task input, separate from modes',()=>{
@@ -206,8 +206,8 @@ test('research UI is selective, source-based and never silently claims every mod
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/app\.js\?v=landing54/);
- assert.match(html,/uiux32\.css\?v=landing53/);
+ assert.match(html,/app\.js\?v=landing55/);
+ assert.match(html,/uiux32\.css\?v=landing55/);
  assert.match(app,/needsSources\(task\)/);
  assert.match(app,/api\/research/);
  assert.match(app,/onResearch:showResearch/);
@@ -258,8 +258,8 @@ test('choosing a fourth model on free plan shows an anchored tooltip, not a remo
  assert.match(app,/if\(cap===3\)showModelLimitTooltip\(label\)/);
  assert.match(css,/\.model-limit-tooltip\{/);
  assert.match(css,/pointer-events:none/);
- assert.match(html,/app\.js\?v=landing54/);
- assert.match(html,/uiux32\.css\?v=landing53/);
+ assert.match(html,/app\.js\?v=landing55/);
+ assert.match(html,/uiux32\.css\?v=landing55/);
 });
 test('Qwen and DeepSeek models are available in the selection UI when configured',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
@@ -291,8 +291,8 @@ test('marketing landing opens guest workspace without sign-up, with an optional 
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  assert.match(html,/id="landingTry"[^>]*>Попробовать бесплатно/);
  assert.match(html,/id="landingEmail"[^>]*>Войти по email/);
- assert.match(html,/quorum-landing-desktop\.webp/);
- assert.match(html,/quorum-landing-mobile\.webp/);
+ assert.match(html, /<img[^>]+src="data:image\/webp;base64,UklGR/);
+ assert.match(html, /<source[^>]+srcset="data:image\/webp;base64,UklGR/);
  assert.match(js,/landingExploring=true;syncLanding\(\)/);
  assert.match(js,/\$\('loginOpen'\)\.click\(\);\$\('emailOpen'\)\.click\(\)/);
  assert.match(js,/function showSignedOut\(\)\{\s*access=null;syncLanding\(\)/);
@@ -308,5 +308,5 @@ test('homepage is visible to signed-in and Telegram users until they click explo
  assert.match(sync,/openWorkspace=landingExploring\|\|url\.has\('admin'\)\|\|url\.has\('payment'\)/);
  assert.doesNotMatch(sync,/!!access|!!telegramContext|!!adminToken/);
  assert.match(html,/<body class="landing-visible">/);
- assert.match(html,/app\.js\?v=landing54/);
+ assert.match(html,/app\.js\?v=landing55/);
 });
