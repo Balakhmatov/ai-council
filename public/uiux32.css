@@ -803,3 +803,28 @@ body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-it
  .quorum-landing-legal{margin:auto 0 0;padding:5px 12px 15px}
 }
 @media(prefers-reduced-motion:reduce){.quorum-landing-actions button{transition:none}}
+
+/* Illustrated-background failure gracefully falls back to actual readable HTML. */
+.quorum-landing-fallback{display:none;position:absolute;inset:0;overflow:hidden;
+ background:radial-gradient(ellipse at 80% 40%,#dec0fa 0%,transparent 51%),linear-gradient(120deg,#fffcff,#fceeff)}
+.quorum-landing-fallback:after{content:'';position:absolute;z-index:0;right:2%;top:10%;width:42%;
+ aspect-ratio:1/1;border-radius:48% 52% 38% 62%;transform:rotate(-13deg);
+ background:linear-gradient(120deg,#ecb4ff,#7a38d0);opacity:.38;filter:blur(4px)}
+.landing-fallback-copy{position:relative;z-index:1;max-width:64%;padding:4% 0 0 6%}
+.landing-fallback-brand{display:flex;align-items:center;gap:11px;color:#201a2d;font-size:clamp(19px,2.7vw,40px);font-weight:900}
+.landing-fallback-headline{font-weight:850;font-size:clamp(25px,4.3vw,72px);letter-spacing:-.06em;
+ line-height:1.09;margin:5% 0 2%}
+.landing-fallback-headline em{font-style:normal;color:#7626d4}
+.landing-fallback-copy p{font-size:clamp(11px,1.6vw,23px);color:#595061;margin:2% 0}
+.landing-fallback-claim{display:inline-block;max-width:77%;margin:4% 0 0;padding:2% 3%;
+ border-radius:22px;background:#e8d0f6;color:#271939;font-size:clamp(12px,1.9vw,28px);font-weight:800}
+.landing-asset-missing .quorum-landing-art{visibility:hidden}
+.landing-asset-missing .quorum-landing-fallback{display:block}
+@media(max-width:700px){
+ .landing-fallback-copy{max-width:96%;padding:20% 10% 0}
+ .landing-fallback-brand{font-size:clamp(18px,5vw,32px)}
+ .landing-fallback-headline{font-size:clamp(25px,7vw,46px);margin:14% 0 6%}
+ .landing-fallback-copy p{font-size:clamp(13px,3.4vw,20px);line-height:1.35}
+ .landing-fallback-claim{max-width:100%;margin-top:26%;font-size:clamp(15px,4.3vw,24px);padding:7% 6%}
+ .quorum-landing-fallback:after{width:85%;top:38%;right:-30%;opacity:.22}
+}
