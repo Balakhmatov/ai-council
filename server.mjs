@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import {createEconomy} from './economy.mjs';
 import {createPayments} from './payments.mjs';
 import {createHistoryStore} from './history.mjs';
+import {createAnalytics} from './analytics.mjs';
 import {groundTask} from './public/fact-grounding.mjs';
 import {createFxUpdater} from './fx.mjs';
 import {readFile} from 'node:fs/promises';
@@ -19,6 +20,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
  const economy=createEconomy({env,now});
  const payments=createPayments({env,economy,fetchImpl:paymentFetchImpl,now});
  const history=createHistoryStore({file:env.HISTORY_FILE||'',now});
+ const analytics=createAnalytics({file:env.ANALYTICS_FILE||(env.ACCOUNTING_FILE?env.ACCOUNTING_FILE+'.analytics.json':''),secret:adminToken,now});
  const fx=createFxUpdater({fetchImpl:fxFetchImpl,now,load:economy.exchangeRates,save:economy.updateExchangeRates});
  const grokBase=(env.XAI_BASE_URL||'https://api.x.ai/v1').replace(/\/$/,'');
  if(!['https://api.x.ai/v1','https://ddtnew.com/v1'].includes(grokBase))throw Error('Invalid Grok base URL');
@@ -101,9 +103,17 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    const isAdmin=tokenEquals(bearer)||(validSession&&isOwnerAccount(session));
    const sessionCookie=(token,expires)=>res.setHeader('Set-Cookie','quorum_session='+token+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+Math.max(0,Math.floor((expires-now())/1000))+(String(env.TELEGRAM_APP_URL||'').startsWith('https:')?'; Secure':''));
    const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser,isAdmin:isOwnerAccount(value)});
-   const issueSession=value=>{sessions.prune();if(sessions.size>=10000)throw Object.assign(Error('Слишком много подключений. Повторите позже.'),{status:429});const token=crypto.randomBytes(32).toString('hex');value.expires=now()+SESSION_LIFETIME;sessions.set(token,value);sessionCookie(token,value.expires);return sessionIdentity(value,token);};
+   const issueSession=value=>{sessions.prune();if(sessions.size>=10000)throw Object.assign(Error('Слишком много подключений. Повторите позже.'),{status:429});const token=crypto.randomBytes(32).toString('hex');value.expires=now()+SESSION_LIFETIME;sessions.set(token,value);sessionCookie(token,value.expires);
+    try{analytics.login(value.telegramUser?accountHash('telegram',value.telegramUser.id):accountHash('email',value.emailUser.id),{method:value.telegramUser?'telegram':'email',owner:isOwnerAccount(value)});}catch(e){console.error('Analytics login logging failed',e);}
+    return sessionIdentity(value,token);};
    const accountHash=(type,id)=>'account:'+crypto.createHmac('sha256',adminToken).update(type+':'+id).digest('hex').slice(0,32);
    const visitorHash=validSession?(session.telegramUser?accountHash('telegram',session.telegramUser.id):accountHash('email',session.emailUser.id)):null;
+   if(path==='/api/analytics/visit'&&req.method==='POST'){
+    let payload;try{payload=await readBody(500);}catch{return fail(400,'Некорректный визит');}
+    try{if(!analytics.visit(payload?.visitorId,visitorHash,{owner:isAdmin}))return fail(400,'Некорректный визит');}
+    catch(error){console.error('Analytics visit logging failed',error);return fail(503,'Аналитика временно недоступна');}
+    return json(200,{ok:true});
+   }
    if(path==='/api/auth/session'&&req.method==='GET'){
     if(!validSession)return fail(401,'Войдите в аккаунт.');
     return json(200,sessionIdentity(session));
@@ -149,6 +159,20 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    }
    if(path==='/api/logout'&&req.method==='POST'){try{sessions.delete(bearer);sessionCookie('',now());return json(200,{ok:true});}catch{return fail(503,'Не удалось завершить выход. Попробуйте ещё раз.');}}
    if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,catalog:economy.catalog(),paymentsAvailable:payments.ready,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
+   if(path==='/api/admin/product-analytics'&&req.method==='GET'){
+    if(!isAdmin)return fail(403,'Доступ запрещён');
+    const days=Number(new URL(req.url,'http://localhost').searchParams.get('days')||30);
+    if(![7,30,90].includes(days))return fail(400,'Период должен быть 7, 30 или 90 дней');
+    const report=analytics.report({days,orders:payments.adminOrders(),linkedMembers:history.members});
+    const api= economy.periodCosts(days);
+    const marginKnown=api.complete&&api.unknownCalls===0;
+    report.billing.apiCostRub=api.costRub;
+    report.billing.marginRub=marginKnown?Math.round((report.billing.revenueRub-api.costRub)*100)/100:null;
+    report.billing.costComplete=marginKnown;
+    report.billing.unknownCostCalls=api.unknownCalls;
+    report.billing.expenseDaily=api.byDay;
+    return json(200,report);
+   }
    if(path==='/api/admin'&&req.method==='GET'){
     const entry=authFailures.get('admin');if(entry&&entry.until>now()&&entry.count>=10)return fail(429,'Слишком много попыток входа. Повторите через 15 минут.');
     if(!isAdmin){authFailures.set('admin',{count:entry?.until>now()?entry.count+1:1,until:entry?.until>now()?entry.until:now()+900000});return fail(401,'Неверный код администратора');}
@@ -225,6 +249,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(!task)return fail(400,'Некорректные параметры задачи');
     if(task.upgradeRequired)return fail(403,'Больше трёх моделей доступны по подписке.');
     if(task.insufficient)return fail(402,'Недостаточно токенов для выбранного количества моделей. Пополните баланс или уменьшите число моделей.');
+    try{analytics.start(task.taskId,visitorHash,info,isAdmin);}catch(e){console.error('Analytics task-start logging failed',e);}
     return json(200,task);
    }
    if(path==='/api/research'&&req.method==='POST'){
@@ -256,6 +281,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
      catch(e){return fail(400,e.message);}
     }
     const closed=economy.finish(info.taskId,visitorHash,{cancelled:info.cancelled===true});
+    if(closed){try{analytics.finish(info.taskId,info.cancelled===true?'cancelled':entitlement.successful>0?'done':'failed');}catch(e){console.error('Analytics task-finish logging failed',e);}}
     return closed?json(200,{...closed,historySaved}):fail(404,'Задача не найдена');
    }
    if(path==='/api/admin/logs'&&req.method==='GET'){
