@@ -32,12 +32,18 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
   if(!touch(id,{method,owner}))return false;
   save();return true;
  }
- function visit(visitorId,id=null,{owner=false}={}){
+ function visit(visitorId,id=null,{owner=false,pageView=false}={}){
   if(typeof visitorId!=='string'||!UUID.test(visitorId))return false;
   const key='v:'+crypto.createHmac('sha256',secret||'quorum-visitors').update(visitorId.toLowerCase()).digest('hex').slice(0,32);
   const at=new Date(now()).toISOString(),today=at.slice(0,10);
-  const visitor=state.visitors[key]||{firstSeen:at,days:[],account:null,owner:false};
+  const visitor=state.visitors[key]||{firstSeen:at,days:[],account:null,owner:false,views:{},guestViews:{}};
   if(!visitor.days.includes(today))visitor.days.push(today);
+  if(pageView===true){
+   visitor.views??={};visitor.guestViews??={};
+   visitor.views[today]=(visitor.views[today]||0)+1;
+   if(!ACCOUNT.test(id||''))visitor.guestViews[today]=(visitor.guestViews[today]||0)+1;
+   state.pageViewsSince??=at;
+  }
   if(ACCOUNT.test(id||'')){
    visitor.account=id;
    visitor.owner=visitor.owner||!!owner;
@@ -83,6 +89,11 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
   const allTasks=Object.values(state.tasks).filter(task=>grouped.has(canonical(task.account)));
   const visitors=Object.values(state.visitors).filter(v=>!v.owner);
   const visitorsIn=visitors.filter(v=>v.days?.some(d=>inRange(d,from,to)));
+  const pageViewSum=(visitor,field)=>Object.entries(visitor[field]||{}).reduce((n,[day,count])=>
+   n+(inRange(day,from,to)?Number(count)||0:0),0);
+  const anonymousVisitors=visitorsIn.filter(v=>!v.account);
+  const pageViews=visitorsIn.reduce((n,v)=>n+pageViewSum(v,'views'),0);
+  const guestPageViews=visitorsIn.reduce((n,v)=>n+pageViewSum(v,'guestViews'),0);
   const seenAccounts=new Set(visitorsIn.map(v=>canonical(v.account)).filter(id=>grouped.has(id)));
   const activeAccounts=[...grouped].filter(([,u])=>u.days.some(d=>inRange(d,from,to)));
   const taskAccounts=new Set(relevantTasks.map(([,t])=>canonical(t.account)));
@@ -99,6 +110,9 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
    const taskRows=relevantTasks.filter(([,t])=>t.startedAt.startsWith(day));
    const bills=within.filter(o=>dayOf(o.capturedAt||o.createdAt)===day);
    return {day,visitors:visitors.filter(v=>v.days?.includes(day)).length,
+     pageViews:visitors.reduce((n,v)=>n+Number(v.views?.[day]||0),0),
+     guestPageViews:visitors.reduce((n,v)=>n+Number(v.guestViews?.[day]||0),0),
+     unregisteredVisitors:visitors.filter(v=>v.days?.includes(day)&&!v.account).length,
     active:[...grouped.values()].filter(u=>u.days.includes(day)).length,
     newUsers:[...grouped.values()].filter(u=>u.firstSeen.startsWith(day)).length,
     tasks:taskRows.length,completed:taskRows.filter(([,t])=>t.status==='done').length,
@@ -119,6 +133,8 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
   const firstTaskIn=[...firstTasks].filter(([,at])=>inRange(at.slice(0,10),from,to)).length;
   return {
    since:state.since,from,to,days:span,
+    site:{pageViews,uniqueVisitors:visitorsIn.length,unregisteredVisitors:anonymousVisitors.length,
+     guestPageViews,pageViewsSince:state.pageViewsSince||null},
    audience:{visitors:visitorsIn.length,observedAccounts:grouped.size,newAccounts:[...grouped.values()].filter(u=>inRange(u.firstSeen.slice(0,10),from,to)).length,
     authenticatedVisitors:seenAccounts.size,active:activeAccounts.length,
     dau:daily.at(-1)?.active||0,wau:[...grouped.values()].filter(u=>u.days.some(d=>inRange(d,addDays(to,-6),to))).length,
