@@ -49,6 +49,7 @@ function renderSubtasks(){
 function syncTaskHint(){
  // Explain what this section is for; do not replace any user-entered task.
  $('task').placeholder=getTaskHint(profileId,taskId);
+ document.documentElement.dataset.profile=profileId;
 }
 renderProfiles();renderSubtasks();syncTaskHint();
 let modelLimitTooltipTimer=null;
@@ -280,9 +281,9 @@ function showSignedOut(){
  access=null;$('accessChip').hidden=true;$('loginOpen').hidden=false;$('emailLogout').hidden=true;$('accountName').hidden=true;$('passwordSettings').hidden=true;
  $('settingsOpen').hidden=true;$('demoControls').hidden=true;
  $('accessInfo').textContent='Войдите через Telegram или email: 10 бесплатных токенов при регистрации.';
- $('historySection').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
+ $('historySection').hidden=true;$('historyJump').hidden=true;$('historyList').replaceChildren();historyOffset=0;historyTotal=0;
  $('historyLinkBox').hidden=true;$('historyLinkPanel').hidden=true;
- $('accountCodeDetails').hidden=true;
+
  $('status').textContent='Для запуска обсуждения войдите в аккаунт.';update();
 }
 function historyLinkUi(linked){
@@ -348,6 +349,7 @@ async function refreshAccess(){
   clearIdentity();showSignedOut();return;
  }
  $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
+ $('historyJump').hidden=false;
  $('passwordSettings').hidden=!publicSession?.user?.email;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
  $('settingsOpen').hidden=!access.admin;
@@ -373,15 +375,9 @@ function renderAccess(){
  $('accessInfo').textContent=access.admin?'Администратор: задачи без ограничений.':
   plan?'Подписка активна до '+new Date(access.subscriptionExpiresAt).toLocaleDateString('ru-RU')+'. Осталось '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining)+' из 300.':
   'При регистрации — 10 бесплатных токенов. Доступно сейчас: '+access.remainingFreeTasks+' '+taskCount(access.remainingFreeTasks)+(access.purchasedTasks?' (из них куплено '+access.purchasedTasks+')':'')+'.';
- $('accountCodeDetails').hidden=!access.accountRef;
- $('accountCode').textContent=access.accountRef||'';
  renderPricing();
  update();
 }
-$('copyAccountCode').onclick=async()=>{
- try{await navigator.clipboard.writeText($('accountCode').textContent);$('status').textContent='Код аккаунта скопирован.';}
- catch{$('status').textContent='Выделите и скопируйте код аккаунта вручную.';}
-};
 $('pricingOpen').onclick=()=>{if(!$('pricingDialog').open)$('pricingDialog').showModal();};
 $('pricingClose').onclick=()=>$('pricingDialog').close();
 async function checkPayment(){
@@ -464,12 +460,13 @@ async function refreshHistory(reset=false){
    btn.append(title,info);btn.onclick=()=>openHistory(item.taskId);$('historyList').append(btn);
   }
   historyOffset=data.nextOffset??data.total;
-  $('historyCount').textContent=data.total+' '+taskCount(data.total)+' найдено';
+  const n=data.total,lastTwo=n%100,last=n%10;
+  $('historyCount').textContent=n?n+' '+(lastTwo>=11&&lastTwo<=14?'задач':last===1?'задача':last>=2&&last<=4?'задачи':'задач'):'Пока пусто';
   $('historyMore').hidden=data.nextOffset==null;
-  $('historySection').hidden=!access.historyEnabled&&data.total===0;
+  $('historySection').hidden=false;
   if(!data.total){
    const empty=document.createElement('p');empty.className='hint';
-   empty.textContent='Первое обсуждение появится здесь после завершения задачи.';
+   empty.textContent=access.historyEnabled?'Здесь появятся завершённые обсуждения. Пока сохранённых задач нет.':'Сохранённых обсуждений пока нет. Новые задачи сохраняются по подписке.';
    $('historyList').append(empty);
   }
  }catch(error){
@@ -560,6 +557,7 @@ async function openHistory(taskId){
 }
 $('historyClose').onclick=()=>$('historyDialog').close();
 $('historyMore').onclick=()=>refreshHistory().catch(e=>{$('status').textContent=e.message;});
+$('historyJump').onclick=()=>$('historySection').scrollIntoView({behavior:'smooth',block:'start'});
 document.addEventListener('visibilitychange',()=>{
  if(document.visibilityState==='visible'&&access&&!running)refreshHistory(true).catch(e=>{$('status').textContent='Не удалось обновить историю: '+e.message;});
 });
