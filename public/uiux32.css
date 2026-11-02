@@ -798,7 +798,7 @@ body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-it
 @media(max-width:700px){
  .quorum-landing{min-height:100svh;justify-content:start}
  .quorum-landing-frame{width:min(100%,530px);aspect-ratio:941/1672;flex:none;margin:0 auto}
- .quorum-landing-actions{left:11.65%;top:76%;width:74.9%;height:11.85%;gap:12%}
+ .quorum-landing-actions{left:11.65%;top:77%;width:74.9%;height:11.85%;gap:12%}
  .quorum-landing-actions button{font-size:clamp(11px,3.25vw,18px);line-height:1.1}
  .quorum-landing-legal{margin:auto 0 0;padding:5px 12px 15px}
 }
