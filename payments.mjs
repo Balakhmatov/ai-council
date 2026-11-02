@@ -56,6 +56,7 @@ export function createPayments({env=process.env,economy,fetchImpl=globalThis.fet
     throw problem('Платёж не подтверждён.',502);
    economy.grantPayment(o.identity,o.sku,'quorum:'+o.id);
    o.applied=true;
+   o.capturedAt=p.captured_at;
   }
   o.status=p.status;
   o.paymentUrl=['pending','waiting_for_capture'].includes(p.status)?o.paymentUrl:null;
@@ -107,5 +108,10 @@ export function createPayments({env=process.env,economy,fetchImpl=globalThis.fet
    return {ready:true,orders:orders.map(view)};
   });
  }
- return {ready,create,refresh};
+ function adminOrders(){
+  return Object.values(state.orders).map(o=>({identity:o.identity,sku:o.sku,
+   amountRub:o.amountRub,status:o.status,applied:!!o.applied,createdAt:o.createdAt,
+   capturedAt:o.capturedAt||null}));
+ }
+ return {ready,create,refresh,adminOrders};
 }
