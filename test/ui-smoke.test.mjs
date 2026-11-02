@@ -37,7 +37,7 @@ test('iOS fields use 16px text to prevent WebView focus zoom without disabling u
  assert.match(fix,/font-size:\s*max\(16px,\s*1rem\)/);
  assert.match(fix,/@supports\s*\(-webkit-touch-callout:\s*none\)/);
  assert.match(fix,/font-size:\s*16px !important/);
- assert.match(html,/style\.css\?v=history-layout43/);
+ assert.match(html,/style\.css\?v=mobile-polish49/);
  assert.doesNotMatch(html,/user-scalable=no|maximum-scale=1/);
 });
 
