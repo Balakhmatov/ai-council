@@ -71,3 +71,30 @@ test('linked Telegram and email identities are not double-counted in unique user
  assert.equal(report.tasks.uniqueAccounts,1);
  assert.equal(report.tasks.repeatedAccounts,1);
 });
+
+test('anonymous page visits count without sign-up; repeat opens are separate from unique browsers',()=>{
+ const now=()=>Date.parse('2026-11-02T12:00:00Z');
+ const analytics=createAnalytics({now,secret:'visitor-count'});
+ const guest='33333333-3333-4333-8333-333333333333';
+ const signed='44444444-4444-4444-8444-444444444444';
+ const admin='55555555-5555-4555-8555-555555555555';
+ analytics.visit(guest,null,{pageView:true});
+ analytics.visit(guest,null,{pageView:true});
+ analytics.visit(guest,null,{pageView:false}); // session refresh is not another page load
+ analytics.visit(signed,null,{pageView:true}); // unsigned visit before login
+ analytics.login(a,{method:'email'});
+ analytics.visit(signed,a,{pageView:false});  // link login without incrementing load counter
+ analytics.visit(signed,a,{pageView:true});   // subsequent logged-in load
+ analytics.login(owner,{owner:true,method:'telegram'});
+ analytics.visit(admin,owner,{pageView:true,owner:true}); // administrator never enters traffic
+ const report=analytics.report({days:7});
+ assert.equal(report.site.pageViews,4);
+ assert.equal(report.site.uniqueVisitors,2);
+ assert.equal(report.site.unregisteredVisitors,1);
+ assert.equal(report.site.guestPageViews,3);
+ assert.equal(report.audience.observedAccounts,1);
+ assert.equal(report.daily.at(-1).pageViews,4);
+ assert.equal(report.daily.at(-1).unregisteredVisitors,1);
+ assert.equal(report.daily.at(-1).guestPageViews,3);
+ assert.ok(report.site.pageViewsSince);
+});
