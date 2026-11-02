@@ -283,6 +283,19 @@ test('subscription-only history is isolated, retained after expiry and requires 
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
 });
 
+test('landing WebP images are served by the application with the correct content type',async()=>{
+ const t=await setup();
+ try{
+  for(const name of ['quorum-landing-mobile.webp','quorum-landing-desktop.webp']){
+   const response=await t.asset('/assets/'+name);
+   assert.equal(response.status,200,name+' should be publicly accessible');
+   assert.equal(response.type,'image/webp');
+   assert(response.body.length>1000,name+' should contain real image data');
+  }
+  assert.equal((await t.asset('/assets/random-image.webp')).status,404);
+ }finally{await t.close();}
+});
+
 test('public Quorum serves its enhanced UI stylesheet rather than returning 404',async()=>{
  const t=await setup();
  try{
