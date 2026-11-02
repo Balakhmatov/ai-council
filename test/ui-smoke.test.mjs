@@ -121,7 +121,8 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/async function refreshAccess\(\)/);
  assert.match(js,/api\/auth\/session/);
  assert.match(js,/\$\('settingsOpen'\)\.hidden=!access\.admin/);
- assert.match(js,/\$\('demoControls'\)\.hidden=!access\.admin/);
+ assert.doesNotMatch(html,/Демо без API|id="demoControls"|id="demo"/);
+ assert.doesNotMatch(js,/\$\('demo'\)|demoControls|Демонстрация без API/);
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
