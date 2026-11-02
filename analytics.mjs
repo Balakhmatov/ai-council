@@ -36,10 +36,11 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
   if(typeof visitorId!=='string'||!UUID.test(visitorId))return false;
   const key='v:'+crypto.createHmac('sha256',secret||'quorum-visitors').update(visitorId.toLowerCase()).digest('hex').slice(0,32);
   const at=new Date(now()).toISOString(),today=at.slice(0,10);
-  const visitor=state.visitors[key]||{firstSeen:at,days:[],account:null};
+  const visitor=state.visitors[key]||{firstSeen:at,days:[],account:null,owner:false};
   if(!visitor.days.includes(today))visitor.days.push(today);
   if(ACCOUNT.test(id||'')){
    visitor.account=id;
+   visitor.owner=visitor.owner||!!owner;
    touch(id,{owner});
   }
   state.visitors[key]=visitor;save();return true;
@@ -80,7 +81,7 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
   }
   const relevantTasks=Object.entries(state.tasks).filter(([,task])=>task.startedAt?.slice(0,10)>=from&&task.startedAt?.slice(0,10)<=to&&grouped.has(canonical(task.account)));
   const allTasks=Object.values(state.tasks).filter(task=>grouped.has(canonical(task.account)));
-  const visitors=Object.values(state.visitors);
+  const visitors=Object.values(state.visitors).filter(v=>!v.owner);
   const visitorsIn=visitors.filter(v=>v.days?.some(d=>inRange(d,from,to)));
   const seenAccounts=new Set(visitorsIn.map(v=>canonical(v.account)).filter(id=>grouped.has(id)));
   const activeAccounts=[...grouped].filter(([,u])=>u.days.some(d=>inRange(d,from,to)));
@@ -127,7 +128,8 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
    tasks:{started:relevantTasks.length,completed:relevantTasks.filter(([,t])=>t.status==='done').length,
     failed:relevantTasks.filter(([,t])=>t.status==='failed').length,
     cancelled:relevantTasks.filter(([,t])=>t.status==='cancelled').length,
-    running:relevantTasks.filter(([,t])=>t.status==='started').length,
+    running:relevantTasks.filter(([,t])=>t.status==='started'&&now()-Date.parse(t.startedAt)<=7200000).length,
+    interrupted:relevantTasks.filter(([,t])=>t.status==='started'&&now()-Date.parse(t.startedAt)>7200000).length,
     uniqueAccounts:taskAccounts.size,firstTaskUsers:firstTaskIn,
     repeatedAccounts:[...taskAccounts].filter(id=>(repeats.get(id)||0)>=2).length,
     byProfile:Object.entries(byProfile).sort((a,b)=>b[1]-a[1]).map(([name,count])=>({name,count})),
@@ -135,7 +137,7 @@ export function createAnalytics({file='',secret='',now=Date.now}={}){
    billing:{revenueRub:Math.round(within.reduce((sum,o)=>sum+o.amountRub,0)*100)/100,
     successfulPayments:within.length,payingAccounts:paidAccounts.size,paidAccountsAllTime:paidAlltimeAccounts.size,
     subscriptions:within.filter(o=>o.sku==='subscription').length,packs:within.filter(o=>o.sku!=='subscription').length,
-    recent:within.slice().sort((a,b)=>Date.parse(b.capturedAt||b.createdAt)-Date.parse(a.capturedAt||a.createdAt)).slice(0,10)
+    recent:within.slice().sort((a,b)=>new Date(b.capturedAt||b.createdAt).getTime()-new Date(a.capturedAt||a.createdAt).getTime()).slice(0,10)
       .map(o=>({at:new Date(o.capturedAt||o.createdAt).toISOString(),sku:o.sku,amountRub:o.amountRub}))},
    funnel:{visitors:visitorsIn.length,authenticated:seenAccounts.size,
     taskUsers:[...seenAccounts].filter(id=>allTasks.some(t=>canonical(t.account)===id)).length,
