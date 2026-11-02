@@ -311,6 +311,29 @@ export function createEconomy({env,now=Date.now}){
    nextOffset:skip+page.length<matches.length?skip+page.length:null,
    calls:page.map(enrich)};
  }
+ function periodCosts(days=30){
+  const span=[7,30,90].includes(Number(days))?Number(days):30;
+  const today=new Date(now()).toISOString().slice(0,10);
+  const from=new Date(Date.parse(today+'T00:00:00Z')-(span-1)*86400000).toISOString().slice(0,10);
+  let calls=state.recent,complete=false;
+  if(logFile&&existsSync(logFile)){
+   const raw=readFileSync(logFile,'utf8');
+   calls=raw.split('\n').filter(Boolean).map(line=>{try{return JSON.parse(line);}catch{return null;}}).filter(Boolean);
+   complete=true;
+  }
+  let costRub=0,unknownCalls=0,requests=0;
+  const byDay={};
+  for(const call of calls){
+   const day=String(call.at||'').slice(0,10);
+   if(day<from||day>today)continue;
+   requests++;
+   const amount=call.costRub??call.estimatedCostRub;
+   if(amount==null||!Number.isFinite(Number(amount))){unknownCalls++;continue;}
+   costRub+=Number(amount);byDay[day]=(byDay[day]||0)+Number(amount);
+  }
+  return {costRub:Math.round(costRub*100)/100,requests,unknownCalls,
+   complete,byDay};
+ }
  function summary(models={}){
   const fx=exchangeRates();
   const legacyTotals=state.totals||{};
@@ -333,6 +356,6 @@ export function createEconomy({env,now=Date.now}){
    prices:prices(models),fx:fx?{...fx,stale:now()-Date.parse(fx.fetchedAt)>48*3600000}:null,
    legacyCurrencyNotice:Number(legacyTotals.knownCostUsd||0)>0};
  }
- return {access,start,checkCall,success,finish,record,logCall,summary,listCalls,prices,exchangeRates,updateExchangeRates,grant,grantPayment,catalog,activeTaskAccess};
+ return {access,start,checkCall,success,finish,record,logCall,summary,periodCosts,listCalls,prices,exchangeRates,updateExchangeRates,grant,grantPayment,catalog,activeTaskAccess};
 }
 
