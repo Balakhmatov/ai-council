@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=mobile-polish49/);
+ assert.match(html,/app\.js\?v=remove-demo50/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -126,7 +126,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=mobile-polish49/);
+ assert.match(html,/app\.js\?v=remove-demo50/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -170,7 +170,7 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=mobile-polish49/);
+ assert.match(html,/app\.js\?v=remove-demo50/);
 });
 
 test('round and named response length selectors appear under task input, separate from modes',()=>{
@@ -206,7 +206,7 @@ test('research UI is selective, source-based and never silently claims every mod
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/app\.js\?v=mobile-polish49/);
+ assert.match(html,/app\.js\?v=remove-demo50/);
  assert.match(html,/uiux32\.css\?v=mobile-polish49/);
  assert.match(app,/needsSources\(task\)/);
  assert.match(app,/api\/research/);
@@ -258,7 +258,7 @@ test('choosing a fourth model on free plan shows an anchored tooltip, not a remo
  assert.match(app,/if\(cap===3\)showModelLimitTooltip\(label\)/);
  assert.match(css,/\.model-limit-tooltip\{/);
  assert.match(css,/pointer-events:none/);
- assert.match(html,/app\.js\?v=mobile-polish49/);
+ assert.match(html,/app\.js\?v=remove-demo50/);
  assert.match(html,/uiux32\.css\?v=mobile-polish49/);
 });
 test('Qwen and DeepSeek models are available in the selection UI when configured',()=>{
