@@ -780,7 +780,7 @@ body.landing-visible>header,body.landing-visible>main{display:none!important}
  padding:6px 14px max(9px,env(safe-area-inset-bottom,9px));background:linear-gradient(165deg,#fffbff,#f1dafa 85%)}
 body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .quorum-landing-frame{position:relative;display:flex;flex-direction:column;align-items:stretch;
- width:min(100%,1400px,calc((100svh - 161px)*1672/941));margin:auto auto 0;min-width:0}
+ width:min(100%,1400px,calc(177.683svh - 286.07px));margin:auto auto 0;min-width:0}
 .quorum-landing-art{display:block;width:100%;max-width:100%;height:auto;flex:none}
 .quorum-landing-art source{display:none}
 .quorum-landing-art img{display:block;width:100%;height:auto;object-fit:contain}
@@ -818,7 +818,7 @@ body.landing-visible .quorum-landing{display:flex;flex-direction:column;align-it
 .landing-asset-missing .quorum-landing-fallback{display:block}
 @media(max-width:700px){
  .quorum-landing{padding:0 7px max(5px,env(safe-area-inset-bottom,5px))}
- .quorum-landing-frame{width:min(100%,530px,calc((100svh - 168px)*941/1206));
+ .quorum-landing-frame{width:min(100%,530px,calc(78.027svh - 131.085px));
   margin:auto auto 0;min-width:0;flex:none}
  .quorum-landing-actions{width:92%;align-self:center;display:flex;flex-direction:column;
   gap:8px;margin:1px auto 7px}
