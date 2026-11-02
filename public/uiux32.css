@@ -610,10 +610,6 @@ body{background:#fff}
 .profile-option:nth-child(3){--profile-color:#a74791}
 .profile-option:nth-child(4){--profile-color:#367a65}
 .profile-option:nth-child(5){--profile-color:#a06626}
-.profile-option::before,.profile-option:nth-child(2)::before,.profile-option:nth-child(3)::before,
-.profile-option:nth-child(4)::before,.profile-option:nth-child(5)::before{
- background:var(--profile-color);transform:none;border-radius:50%;width:9px;height:9px
-}
 .profile-list .profile-option.active{
  border-bottom-color:var(--profile-color);color:var(--profile-color);box-shadow:none
 }
