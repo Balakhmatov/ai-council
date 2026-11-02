@@ -27,6 +27,13 @@ let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],event
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let landingExploring=false;
+const heroImage=$('landingHeroImage');
+heroImage.addEventListener('error',()=>document.body.classList.add('landing-asset-missing'));
+heroImage.addEventListener('load',()=>{
+ if(heroImage.naturalWidth>0)document.body.classList.remove('landing-asset-missing');
+});
+if(heroImage.complete&&!heroImage.naturalWidth)document.body.classList.add('landing-asset-missing');
+
 function syncLanding(){
  const url=new URLSearchParams(location.search);
  const skip=!!access||landingExploring||!!telegramContext||!!adminToken||url.has('admin')||url.has('payment');
