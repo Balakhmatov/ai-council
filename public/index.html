@@ -12,8 +12,8 @@
 <meta property="og:description" content="Не ограничивайтесь первым ответом ИИ.">
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
-<link rel="stylesheet" href="./style.css?v=history-layout43">
-<link rel="stylesheet" href="./uiux32.css?v=history-sync48">
+<link rel="stylesheet" href="./style.css?v=mobile-polish49">
+<link rel="stylesheet" href="./uiux32.css?v=mobile-polish49">
 </head><body>
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
@@ -47,7 +47,7 @@
  <div id="researchSources" class="research-sources"></div>
  <div id="researchSearchWidget" class="research-search-widget"></div>
 </section>
-<div class="discussion-title"><h2>Результат</h2><div class="result-actions"><button class="copy-action copy-all" id="copyAll" disabled type="button" title="Скопировать задачу, все раунды и итог" aria-label="Скопировать всю задачу">Скопировать всё</button><button class="quiet" id="export" disabled type="button">Скачать .md</button></div></div>
+<div class="discussion-title"><h2>Результат</h2><div class="result-actions"><button class="quiet history-jump" id="historyJump" type="button" hidden>История задач</button><button class="copy-action copy-all" id="copyAll" disabled type="button" title="Скопировать задачу, все раунды и итог" aria-label="Скопировать всю задачу">Скопировать всё</button><button class="quiet" id="export" disabled type="button">Скачать .md</button></div></div>
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 <section id="historySection" class="history-section" hidden>
  <div class="section-title spaced"><h2>История задач</h2><span id="historyCount" class="step-note"></span></div>
@@ -58,6 +58,19 @@
  <p class="hint">Каждое обсуждение сохранено отдельно. Откройте любое, чтобы посмотреть задачу и ответы.</p>
  <div id="historyList" class="history-list"></div>
  <button id="historyMore" class="history-more" type="button" hidden>Показать ещё</button>
+<div class="history-link-box" id="historyLinkBox" hidden>
+ <button type="button" class="quiet history-link-toggle" id="historyLinkToggle" aria-expanded="false">Связать историю Telegram и email</button>
+ <div id="historyLinkPanel" hidden>
+  <p id="historyLinkExplanation" class="hint"></p>
+  <form id="historyLinkEmailForm" class="history-link-form" hidden>
+   <input id="historyLinkEmail" type="email" placeholder="Email вашего аккаунта" autocomplete="email" required>
+   <input id="historyLinkPassword" type="password" placeholder="Пароль от email-аккаунта" autocomplete="current-password" required>
+   <button type="submit" class="primary">Связать историю</button>
+  </form>
+  <button id="historyLinkTelegram" type="button" class="primary" hidden>Подтвердить Telegram</button>
+  <p id="historyLinkStatus" class="hint" role="status"></p>
+ </div>
+</div>
 </section>
 </section>
 <aside id="participantsAside">
@@ -72,24 +85,6 @@
   <p id="budget" class="hint"></p>
 </div>
 <div class="access-panel"><div class="access-title">Бесплатные токены</div><p id="accessInfo" class="access-lead">Войдите через Telegram или email — 10 бесплатных токенов при регистрации.</p><p class="hint">Без подписки — до 3 моделей и без сохранения новых задач. С подпиской — все доступные модели и бессрочная история.</p></div>
-<div class="history-link-box" id="historyLinkBox" hidden>
- <button type="button" class="quiet history-link-toggle" id="historyLinkToggle" aria-expanded="false">Связать историю Telegram и email</button>
- <div id="historyLinkPanel" hidden>
-  <p id="historyLinkExplanation" class="hint"></p>
-  <form id="historyLinkEmailForm" class="history-link-form" hidden>
-   <input id="historyLinkEmail" type="email" placeholder="Email вашего аккаунта" autocomplete="email" required>
-   <input id="historyLinkPassword" type="password" placeholder="Пароль от email-аккаунта" autocomplete="current-password" required>
-   <button type="submit" class="primary">Связать историю</button>
-  </form>
-  <button id="historyLinkTelegram" type="button" class="primary" hidden>Подтвердить Telegram</button>
-  <p id="historyLinkStatus" class="hint" role="status"></p>
- </div>
-</div>
-
-<details class="account-code" id="accountCodeDetails" hidden>
- <summary>Код аккаунта для активации тарифа</summary>
- <code id="accountCode"></code><button class="quiet" type="button" id="copyAccountCode">Скопировать</button>
-</details>
 <div id="demoControls" hidden><label class="demo"><input id="demo" type="checkbox"> Демо без API (для тестирования)</label></div>
 </aside></div>
 <footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span><nav class="legal-footer" aria-label="Документы"><a href="./terms.html">Условия использования</a><a href="./privacy.html">Конфиденциальность</a><a href="./refunds.html">Оплата и возвраты</a></nav></footer>
@@ -114,7 +109,7 @@
   </div>
  </section>
  <p class="pricing-footnote">Без подписки — максимум 3 модели. После её окончания сохранённая история остаётся доступной, новые задачи не сохраняются.</p>
- <label class="pricing-agree"><input id="pricingAgree" type="checkbox"> Согласен с <a href="./terms.html" target="_blank" rel="noopener">офертой и условиями использования</a> и ознакомлен с <a href="./privacy.html" target="_blank" rel="noopener">политикой конфиденциальности</a>.</label>
+ <label class="pricing-agree"><input id="pricingAgree" type="checkbox"><span class="pricing-agree-copy">Согласен с <a href="./terms.html" target="_blank" rel="noopener">офертой и условиями использования</a> и ознакомлен с <a href="./privacy.html" target="_blank" rel="noopener">политикой конфиденциальности</a>.</span></label>
   <p id="pricingPaymentStatus" class="hint pricing-payment-note" role="status">Для оплаты войдите в аккаунт.</p>
   <button id="pricingRefreshPayment" type="button" class="quiet" hidden>Проверить оплату</button>
 </dialog>
@@ -171,4 +166,4 @@
 </section>
 <div id="adminAccounting"></div><button id="adminLogout">Выйти</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=history-sync48"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=mobile-polish49"></script></body></html>
