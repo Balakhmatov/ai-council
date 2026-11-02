@@ -62,8 +62,8 @@ jobs:
             code=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.html --write-out '%{http_code}' 'https://cityai.site/quorum/' || true)
             bytes=$(wc -c < /tmp/quorum-live.html 2>/dev/null || echo 0)
             echo "Attempt $i: HTTP=$code bytes=$bytes"
-            if [ "$code" = "200" ] && grep -qF 'app.js?v=landing56' /tmp/quorum-live.html && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html; then
-              echo "PASS: Live VPS now serves landing56 with inline WebP images."
+            if [ "$code" = "200" ] && grep -qF 'app.js?v=landing57' /tmp/quorum-live.html && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html; then
+              echo "PASS: Live VPS now serves landing57 with inline WebP images."
               exit 0
             fi
             grep -oE 'app.js\?v=[A-Za-z0-9_-]+' /tmp/quorum-live.html | head -1 || true
