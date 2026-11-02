@@ -207,7 +207,7 @@ test('research UI is selective, source-based and never silently claims every mod
  for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
   assert.match(html,new RegExp('id="'+id+'"'));
  assert.match(html,/app\.js\?v=remove-demo50/);
- assert.match(html,/uiux32\.css\?v=mobile-polish49/);
+ assert.match(html,/uiux32\.css\?v=profile-shapes51/);
  assert.match(app,/needsSources\(task\)/);
  assert.match(app,/api\/research/);
  assert.match(app,/onResearch:showResearch/);
@@ -259,7 +259,7 @@ test('choosing a fourth model on free plan shows an anchored tooltip, not a remo
  assert.match(css,/\.model-limit-tooltip\{/);
  assert.match(css,/pointer-events:none/);
  assert.match(html,/app\.js\?v=remove-demo50/);
- assert.match(html,/uiux32\.css\?v=mobile-polish49/);
+ assert.match(html,/uiux32\.css\?v=profile-shapes51/);
 });
 test('Qwen and DeepSeek models are available in the selection UI when configured',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
