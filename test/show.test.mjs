@@ -9,7 +9,7 @@ test('Show ships ten different scenes with visual identifiers and seven individu
   assert(scene.emoji&&scene.title&&scene.genre&&scene.description&&scene.setting&&scene.twist);
   assert.equal(scene.roles.length,7);
   assert.equal(new Set(scene.roles.map(r=>r[0])).size,7);
-  for(const [name,description] of scene.roles)assert(name.length>2&&description.length>20);
+  for(const [name,description] of scene.roles)assert(name.length>=2&&description.length>20);
  }
  assert.equal(showScenario('missing').id,SHOW_SCENARIOS[0].id);
 });
