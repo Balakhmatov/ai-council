@@ -301,13 +301,17 @@ test('marketing landing opens guest workspace without sign-up, with an optional 
  assert.match(css,/landing-asset-missing/);
 });
 
-test('homepage is visible to signed-in and Telegram users until they click explore',()=>{
+test('Show is the first screen for every user, with the obsolete Council and marketing landing hidden',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const sync=app.slice(app.indexOf('function syncLanding(){'),app.indexOf("$('landingTry').onclick"));
  assert.match(sync,/openWorkspace=landingExploring\|\|url\.has\('admin'\)\|\|url\.has\('payment'\)/);
  assert.doesNotMatch(sync,/!!access|!!telegramContext|!!adminToken/);
- assert.match(html,/<body class="landing-visible">/);
+ assert.match(html,/<body data-experience="show">/);
+ assert.match(sync,/document\.body\.classList\.remove\('landing-visible'\)/);
+ assert.match(html,/id="councilPanel" class="council-panel" hidden/);
+ assert.match(html,/id="showPanel" class="show-panel" aria-label="Создать шоу"[^>]*>/);
+ assert.match(app,/setExperience\('show'\);/);
  assert.match(html,/app\.js\?v=show63/);
 });
 
