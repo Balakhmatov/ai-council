@@ -1,70 +1,102 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from '../public/show.js';
+import {SHOW_SCENARIOS,SHOW_TONES,showScenario,showCast,clipShowLine,runShow} from '../public/show.js';
+import {STORY_BIBLE,storyBeat} from '../public/show-stories.js';
 
-test('Show ships ten different scenes with visual identifiers and seven individually described castable roles',()=>{
+const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'grok',name:'Grok'}];
+const scene=showScenario('villains');
+const cast=showCast(scene,{0:'mistral',1:'grok',2:'openai'});
+
+test('ten show worlds have original distinct plot bibles with a concrete truth, consequences, and character motives',()=>{
  assert.equal(SHOW_SCENARIOS.length,10);
  assert.equal(new Set(SHOW_SCENARIOS.map(s=>s.id)).size,10);
- for(const scene of SHOW_SCENARIOS){
-  assert(scene.emoji&&scene.title&&scene.genre&&scene.description&&scene.setting&&scene.twist);
-  assert.equal(scene.roles.length,7);
-  assert.equal(new Set(scene.roles.map(r=>r[0])).size,7);
-  for(const [name,description] of scene.roles)assert(name.length>=2&&description.length>20);
+ for(const s of SHOW_SCENARIOS){
+  assert(s.title&&s.description&&s.setting&&s.genre&&s.emoji);
+  assert.equal(s.roles.length,7);
+  const b=STORY_BIBLE[s.id];
+  assert(b.place.length>45&&b.conflict.length>50&&b.truth.length>50&&b.ending.length>70&&b.stakes.length>50);
+  assert.equal(b.roles.length,7);
+  assert.equal(b.beats.length,5);
+  assert(b.beats.every(a=>a.length===2&&a[1].length>40));
  }
- assert.equal(showScenario('missing').id,SHOW_SCENARIOS[0].id);
+ assert(STORY_BIBLE.villains.truth.includes('Акира'));
+ assert(STORY_BIBLE.villains.ending.includes('общественному совету'));
+ assert.equal(storyBeat('villains',3,3)[0],'Развязка');
+ assert.equal(storyBeat('villains',4,4)[0],'Развязка');
+ assert.equal(storyBeat('villains',5,5)[0],'Развязка');
+ assert.equal(Object.keys(SHOW_TONES).length,5);
 });
-test('one scene can be cast with different models independently of character identity',()=>{
- const s=showScenario('diner');
- const a=showCast(s,{0:'openai',1:'grok',3:'mistral'});
- const b=showCast(s,{0:'grok',1:'openai',3:'mistral'});
- assert.equal(a.length,3);
- assert.equal(a[0].name,'Винс');
- assert.equal(a[0].provider,'openai');
- assert.equal(b[0].name,'Винс');
- assert.equal(b[0].provider,'grok');
- assert(!showCast(s,{}).length);
+test('a fictional role can be played by any model, independent of the role name',()=>{
+ const before=showCast(scene,{0:'openai',1:'grok',2:'mistral'});
+ const after=showCast(scene,{0:'grok',1:'openai',2:'mistral'});
+ assert.equal(before[0].name,'Куро');
+ assert.equal(after[0].name,'Куро');
+ assert.equal(before[0].provider,'openai');
+ assert.equal(after[0].provider,'grok');
+ assert(!showCast(scene,{}).length);
 });
-test('short dialogue clip keeps one reply concise even when an AI ignores the scene instruction',()=>{
- assert.equal(clipShowLine('Привет!'),'Привет!');
- const veryLong='Это очень длинное предложение, которое не останавливается. '.repeat(30);
- assert(clipShowLine(veryLong).length<=360);
- assert(!clipShowLine(veryLong).includes('Ответ сокращён до'));
+test('one reply stays compact without adding administrative truncation notices',()=>{
+ assert.equal(clipShowLine('Ничего не трогай.'),'Ничего не трогай.');
+ assert(clipShowLine('Это длинное предложение. '.repeat(100)).length<=360);
+ assert(!clipShowLine('abc '.repeat(100)).includes('Ответ сокращён'));
 });
-const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'grok',name:'Grok'}];
-const cast=showCast(showScenario('diner'),{0:'mistral',1:'grok',2:'openai'});
-test('Show runs exactly two sequential turns for every selected real model, sharing only last four short replies',async()=>{
+test('Show alternates speakers between scenes and does not do a fixed full roster round',async()=>{
  const calls=[],emitted=[];
- const request=async(a,chat,signal,stage)=>{
-  calls.push({provider:a.id,chat,stage});
-  return 'Я '+a.name+'. Это моя короткая реакция на предыдущую реплику!';
- };
- const out=await runShow({agents:actors,scenario:showScenario('diner'),cast,turns:2,extra:'Пустой чемодан',request,emit:x=>emitted.push(x)});
- assert.equal(calls.length,6);
- assert.deepEqual(calls.map(c=>c.provider),['mistral','grok','openai','mistral','grok','openai']);
- assert(calls.every(c=>c.stage.format==='show'&&c.stage.maxWords===45));
+ const out=await runShow({agents:actors,scenario:scene,cast,scenes:3,tonality:'brutal',extra:'Контроль над куполом',
+  request:async(a,chat,signal,stage)=>{calls.push({id:a.id,chat,stage});return 'Кай, предъяви ключ. Я хочу увидеть доказательства.';},
+  emit:m=>emitted.push(m)});
+ assert.equal(calls.length,10,'3 scenes x 3 actors + epilogue');
+ assert.equal(calls.filter(c=>c.stage.stage==='intermediate').length,9);
+ assert.equal(calls.filter(c=>c.stage.stage==='final').length,1);
+ assert.equal(out.filter(m=>m.narrator).length,3);
+ assert.equal(out.filter(m=>m.final).length,1);
+ assert(out.at(-1).text.includes('Акира'));
+ assert(out.at(-1).text.includes('общественному совету'));
  assert(calls.every(c=>c.chat.length===2));
- assert(calls.every(c=>c.chat[0].content.includes('не более 45 слов')));
- assert(calls.every(c=>c.chat[1].content.length<3000));
- assert(calls[1].chat[1].content.includes('Винс: Я Mistral'));
- assert(calls[5].chat[1].content.includes('Последние реплики:'));
- assert(!calls[0].chat[1].content.includes('Я Mistral'));
- assert.equal(out.length,6);
- assert.equal(emitted.filter(x=>x.final).length,1);
- assert.equal(emitted.at(-1).nickname,'Фрэнк');
- assert.equal(emitted.at(-1).name,'OpenAI');
+ assert(calls.every(c=>c.chat[0].content.length<9500&&c.chat[1].content.length<9500));
+ assert(calls.filter(c=>c.stage.stage==='intermediate').every(c=>c.stage.maxWords===45&&c.stage.format==='show'));
+ assert(calls.some(c=>c.chat[0].content.includes('ЗАПРЕТ ПУСТОГО ПАФОСА')));
+ assert(calls.some(c=>c.chat[1].content.includes('СЕЙЧАС ГОВОРИТ')));
+ assert(calls.some(c=>c.chat[1].content.includes('Последние')||c.chat[1].content.includes('ПРЕДЫДУЩИЕ РЕПЛИКИ')));
+ assert(calls.some(c=>c.chat[0].content.includes('жёсткие решения')));
+ assert(calls.some(c=>c.chat[1].content.includes('Кай:')));
+ assert.equal(emitted.at(-1).stage,'Эпилог');
 });
-test('Show rejects duplicate model casting and allows an abort without calling providers',async()=>{
- await assert.rejects(runShow({agents:actors,scenario:showScenario('diner'),cast:showCast(showScenario('diner'),{0:'openai',1:'openai'}),request:async()=>'',emit:()=>{}}),/Роли/);
- const ctrl=new AbortController();ctrl.abort();let count=0;
- await assert.rejects(runShow({agents:actors,scenario:showScenario('diner'),cast,request:async()=>{count++;return 'ok';},emit:()=>{},signal:ctrl.signal}),e=>e.name==='AbortError');
- assert.equal(count,0);
+test('director notes accept all 5000 characters without silent truncation',async()=>{
+ const extra='А'.repeat(4997)+'!?!',calls=[];
+ await runShow({agents:actors,scenario:scene,cast,scenes:3,extra,request:async(a,chat,signal,stage)=>{calls.push({stage,chat});return 'Вот улика.';},emit:()=>{}});
+ const first=calls.find(c=>c.stage.stage==='intermediate');
+ assert(first.chat[1].content.includes(extra));
+ assert(first.chat[1].content.length<9500);
 });
-test('Show continues when one model fails but does not turn errors into fictional dialogue',async()=>{
+test('silence becomes a cinematic action and later actors can react, never a visible API error',async()=>{
+ const out=[],calls=[];
+ await runShow({agents:actors,scenario:scene,cast,scenes:3,
+  request:async(a,chat,signal,stage)=>{
+   calls.push({a,chat,stage});
+   if(stage.stage==='intermediate'&&a.id==='grok')throw Error('Service unavailable, error 500');
+   return 'Кто-то молчит. Теперь назови причину.';
+  },
+  emit:m=>out.push(m)});
+ const silences=out.filter(m=>m.silent);
+ assert(silences.length>0);
+ assert(silences.every(m=>m.text.includes('молча')&&!m.error));
+ assert(out.every(m=>!m.text.includes('Service unavailable')));
+ assert(out.at(-1).final);
+ assert(out.at(-1).text.includes('купол'));
+ assert(calls.some(c=>c.chat[1].content.includes('МОЛЧАНИЕ:')));
+});
+test('when all actors fail, the story still resolves and returns an authored epilogue',async()=>{
  const out=[];
- await runShow({agents:actors,scenario:showScenario('diner'),cast,turns:2,
-  request:async(a)=>{if(a.id==='grok')throw Error('Провайдер не ответил');return 'Есть другая версия';},
-  emit:x=>out.push(x)});
- assert.equal(out.filter(x=>x.error).length,2);
- assert(out.some(x=>x.final));
- assert(out.every(x=>x.text.length<361));
+ await runShow({agents:actors,scenario:scene,cast,scenes:3,request:async()=>{throw Error('provider down')},emit:m=>out.push(m)});
+ assert(out.at(-1).final);
+ assert(out.at(-1).text.includes('Зеро передаёт ключ'));
+ assert(out.filter(m=>m.silent).length===9);
+});
+test('Show stops cleanly on abort and rejects unfinished casting',async()=>{
+ const bad=showCast(scene,{0:'openai',1:'openai'});
+ await assert.rejects(runShow({agents:actors,scenario:scene,cast:bad,request:async()=>'',emit:()=>{}}),/Роли/);
+ const controller=new AbortController();controller.abort();let count=0;
+ await assert.rejects(runShow({agents:actors,scenario:scene,cast,request:async()=>{count++;return 'ok'},emit:()=>{},signal:controller.signal}),e=>e.name==='AbortError');
+ assert.equal(count,0);
 });
