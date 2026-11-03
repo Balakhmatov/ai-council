@@ -1,4 +1,5 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -23,7 +24,7 @@ const agents=MODEL_PRIORITY.map(id=>({id,...agentDetails[id]}));
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
-let mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
+let experience='council',showScenarioId='diner',showAssigned={},mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let landingExploring=false;
@@ -119,6 +120,119 @@ for(const [id,[title,description]] of Object.entries(modes)){
 for(const [id,scene] of Object.entries(ambiences))$('ambience').add(new Option(scene.label,id));
 $('ambience').value=ambience;
 $('ambience').onchange=()=>{ambience=$('ambience').value;if(ambience!=='none')$('showDiscussion').checked=true;update();};
+
+function createShowCard(scene){
+ const b=document.createElement('button');b.type='button';b.className='show-scenario show-palette-'+scene.palette;b.dataset.scenario=scene.id;
+ b.setAttribute('aria-pressed',String(scene.id===showScenarioId));
+ const poster=document.createElement('span');poster.className='show-poster';poster.setAttribute('aria-hidden','true');
+ const glyph=document.createElement('span');glyph.className='show-poster-glyph';glyph.textContent=scene.emoji;poster.append(glyph);
+ const body=document.createElement('span');body.className='show-scenario-body';
+ const genre=document.createElement('small');genre.textContent=scene.genre;
+ const title=document.createElement('strong');title.textContent=scene.title;
+ const desc=document.createElement('span');desc.textContent=scene.description;
+ body.append(genre,title,desc);b.append(poster,body);
+ b.onclick=()=>{if(running)return;showScenarioId=scene.id;showAssigned={};randomShowCast();renderShowScenarios();renderShowCast();};
+ return b;
+}
+function renderShowScenarios(){
+ $('showScenarioCards').replaceChildren(...SHOW_SCENARIOS.map(createShowCard));
+ const scene=showScenario(showScenarioId);
+ const title=document.createElement('strong');title.textContent=scene.emoji+' '+scene.title;
+ const text=document.createElement('p');text.textContent=scene.setting;
+ const twist=document.createElement('small');twist.textContent='Поворот: '+scene.twist;
+ $('showScenarioDetails').replaceChildren(title,text,twist);
+}
+function orderedChosen(){return agents.filter(a=>chosen.has(a.id)&&available.has(a.id));}
+function ensureShowCast(){
+ const scene=showScenario(showScenarioId),picked=orderedChosen().map(a=>a.id),used=new Set();
+ const result={};
+ for(const [slot,provider]of Object.entries(showAssigned)){
+  if(picked.includes(provider)&&!used.has(provider)&&Number(slot)<scene.roles.length){
+   result[slot]=provider;used.add(provider);
+  }
+ }
+ for(const provider of picked){
+  if(used.has(provider))continue;
+  const slot=scene.roles.findIndex((role,i)=>!Object.hasOwn(result,i));
+  if(slot>=0){result[slot]=provider;used.add(provider);}
+ }
+ showAssigned=result;
+}
+function randomShowCast(){
+ const ids=orderedChosen().map(a=>a.id);
+ const slots=showScenario(showScenarioId).roles.map((_,i)=>i);
+ for(let i=slots.length-1;i>0;i--){
+  const values=new Uint32Array(1);crypto.getRandomValues(values);
+  const j=values[0]%(i+1);[slots[i],slots[j]]=[slots[j],slots[i]];
+ }
+ showAssigned=Object.fromEntries(ids.map((id,i)=>[slots[i],id]));
+ $('showCastMode').textContent='Случайное распределение · можно изменить вручную';
+}
+function renderShowCast(){
+ ensureShowCast();
+ const scene=showScenario(showScenarioId),members=orderedChosen();
+ $('showCastCount').textContent=members.length+' из '+scene.roles.length+' ролей';
+ $('showCast').replaceChildren(...scene.roles.map(([name,description],index)=>{
+  const card=document.createElement('div');card.className='show-role'+(showAssigned[index]?' show-role-active':'');
+  const avatar=document.createElement('span');avatar.className='show-role-avatar';avatar.textContent=['♠','◆','✦','●','▲','★','✶'][index];
+  const body=document.createElement('div');body.className='show-role-body';
+  const strong=document.createElement('strong');strong.textContent=name;
+  const desc=document.createElement('small');desc.textContent=description;
+  body.append(strong,desc);
+  const label=document.createElement('label');label.className='show-role-model';
+  const title=document.createElement('span');title.textContent='Исполнитель';
+  const select=document.createElement('select');select.dataset.slot=String(index);select.setAttribute('aria-label','Кто играет '+name);
+  select.add(new Option('— Свободная роль —',''));
+  for(const model of members)select.add(new Option(model.name,model.id));
+  select.value=showAssigned[index]||'';
+  select.disabled=running;
+  select.onchange=()=>{
+   const selected=select.value;
+   if(selected){
+    for(const [key,id] of Object.entries(showAssigned))if(id===selected)delete showAssigned[key];
+    showAssigned[index]=selected;
+   }else delete showAssigned[index];
+   $('showCastMode').textContent='Ручной кастинг';
+   renderShowCast();
+  };
+  label.append(title,select);card.append(avatar,body,label);
+  return card;
+ }));
+ $('showRandomCast').disabled=running;
+}
+function setExperience(next){
+ if(running)return;
+ experience=next==='show'?'show':'council';
+ document.body.dataset.experience=experience;
+ $('councilPanel').hidden=experience==='show';
+ $('showPanel').hidden=experience!=='show';
+ $('experienceCouncil').classList.toggle('active',experience==='council');
+ $('experienceShow').classList.toggle('active',experience==='show');
+ for(const id of ['Council','Show'])$('experience'+id).setAttribute('aria-pressed',String(experience===id.toLowerCase()));
+ if(experience==='show'){
+  $('showDiscussion').checked=true;
+  $('showDiscussion').parentElement.hidden=true;
+  $('researchPanel').hidden=true;
+  if(!Object.keys(showAssigned).length)randomShowCast();
+  renderShowScenarios();
+  renderShowCast();
+  $('status').textContent='Выберите сцену и распределите персонажей по нейросетям.';
+  $('feed').replaceChildren();
+  $('feed').append(Object.assign(document.createElement('p'),{textContent:'🎬 Выберите сюжет и запустите шоу. Здесь появятся короткие реплики персонажей.',className:'show-empty'}));
+ }else{
+  $('showDiscussion').parentElement.hidden=false;
+  $('status').textContent='Опишите задачу, и Кворум соберёт решение.';
+  renderMessages();
+ }
+ $('experienceCouncil').disabled=running;
+ $('experienceShow').disabled=running;
+ update();
+}
+$('experienceCouncil').onclick=()=>setExperience('council');
+$('experienceShow').onclick=()=>setExperience('show');
+$('showRandomCast').onclick=()=>{randomShowCast();renderShowCast();};
+renderShowScenarios();
+
 function update(){
  const premium=!!(access?.admin||access?.subscriptionActive);
  const detailed=$('length').querySelector('option[value="detailed"]');
@@ -136,11 +250,11 @@ function update(){
  $('ambienceHint').textContent=ambiences[ambience]?.description||ambiences.none.description;
  $('discussionChoiceLabel').textContent=mode==='roast'?'Показывать токсичную перепалку моделей':'Показывать обсуждение моделей';
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
- $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
+ $('budget').textContent=experience==='show'?chosen.size+' модели · 2 короткие сцены · '+(chosen.size*2)+' API-реплик · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
  const mq=$('mobileQuorumText');
  if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
  const enough=access?.admin||access?.remainingFreeTasks>=chosen.size;
- $('start').textContent=access?'Получить результат':'Войти и начать';
+ $('start').textContent=access?(experience==='show'?'Запустить шоу':'Получить результат'):'Войти и начать';
  $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||!connected||(!!access&&!enough);
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=available.has(a.id),input=label.querySelector('input');
@@ -149,6 +263,8 @@ function update(){
  });
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
  $('ambience').disabled=running;
+ if(experience==='show')renderShowCast();
+ for(const id of ['Council','Show'])$('experience'+id).disabled=running;
 }
 $('rounds').onchange=update;$('length').onchange=update;
 $('judge').onchange=()=>{moderatorChosenByUser=true;update();};
@@ -1094,13 +1210,13 @@ function readableStoredMessage(m){
 }
 function renderMessage(m){
  const type=agents.find(a=>a.name===m.name)?.id||(m.final?'final':'service');
- const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'');
+ const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'')+(m.show?' show-message':'');
  const head=document.createElement('div');head.className='message-head';
  const identity=document.createElement('span');identity.className='model-identity';
  const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
- const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.nickname?m.nickname+' · '+m.name:m.name;
+ const name=document.createElement('strong');name.textContent=m.final&&!m.show?'Готовый результат':m.nickname?m.nickname+' · '+m.name:m.name;
  identity.append(dot,name);
- const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final&&!m.show?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
  const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
@@ -1116,7 +1232,7 @@ function syncResultActions(){
  $('export').disabled=!messages.some(m=>m.final);
 }
 function renderMessages(){
- const visible=$('showDiscussion').checked?messages:messages.filter(m=>m.final);
+ const visible=experience==='show'||$('showDiscussion').checked?messages:messages.filter(m=>m.final);
  $('feed').replaceChildren(...visible.map(renderMessage));
  syncResultActions();
 }
@@ -1125,14 +1241,14 @@ function emit(m){
  messages.push(m);
  // Append instead of rebuilding the entire feed: preserving iOS/Android touch selections
  // while further AI responses arrive.
- if($('showDiscussion').checked||m.final)$('feed').append(renderMessage(m));
+ if(experience==='show'||$('showDiscussion').checked||m.final)$('feed').append(renderMessage(m));
  syncResultActions();
 }
 async function request(a,chat,signal,stage={}){
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,maxWords:stage.format==='show'?45:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  // JSON ballots are a control protocol, not a prose response. Never truncate them.
- return stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
+ return stage.format==='show'?clipShowLine(result.text):stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
   ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{
