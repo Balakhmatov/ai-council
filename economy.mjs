@@ -66,6 +66,17 @@ export function createEconomy({env,now=Date.now}){
  }
  const tasks=new Map();
  function save(){if(file){writeFileSync(file+'.tmp',JSON.stringify(state),{mode:0o600});renameSync(file+'.tmp',file);}}
+ function modelSelection(identity){
+  const stored=state.preferences?.[identity]?.models;
+  return Array.isArray(stored)?stored.slice():null;
+ }
+ function saveModelSelection(identity,models){
+  state.preferences??={};
+  const previous=state.preferences[identity];
+  state.preferences[identity]={...previous,models:models.slice()};
+  try{save();}catch(error){if(previous)state.preferences[identity]=previous;else delete state.preferences[identity];throw error;}
+  return modelSelection(identity);
+ }
  function allowance(identity){
   if(!Object.hasOwn(state.allowances,identity)){
    state.allowances[identity]={remainingFreeTasks:limitFor(identity),limit:limitFor(identity),period:'lifetime',createdAt:new Date(now()).toISOString()};save();
@@ -358,6 +369,6 @@ export function createEconomy({env,now=Date.now}){
    prices:prices(models),fx:fx?{...fx,stale:now()-Date.parse(fx.fetchedAt)>48*3600000}:null,
    legacyCurrencyNotice:Number(legacyTotals.knownCostUsd||0)>0};
  }
- return {access,start,checkCall,success,finish,record,logCall,summary,periodCosts,listCalls,prices,exchangeRates,updateExchangeRates,grant,grantPayment,catalog,activeTaskAccess};
+ return {modelSelection,saveModelSelection,access,start,checkCall,success,finish,record,logCall,summary,periodCosts,listCalls,prices,exchangeRates,updateExchangeRates,grant,grantPayment,catalog,activeTaskAccess};
 }
 

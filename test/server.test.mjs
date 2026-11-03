@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show67/);
+  assert.match(html.body,/app\.js\?v=show68/);
  }finally{await t.close();}
 });
 
@@ -875,7 +875,7 @@ test('Original story canon, show art and compact dialogue scripts are served on 
 test('portrait theme and every illustration atlas are served at versioned browser URLs',async()=>{
  const t=await setup();
  try{
-  const html=await t.asset('/');assert.match(html.body,/noir\.css\?v=history3/);
+  const html=await t.asset('/');assert.match(html.body,/noir\.css\?v=selection4/);
   const css=await t.asset('/noir.css?v=portraits2');assert.equal(css.status,200);assert.equal(css.type,'text/css');
   for(const file of ['show-posters','show-cast-crime','show-cast-worlds','show-cast-stories','show-heist-cast','show-heist-poster']){
    const image=await t.asset('/assets/'+file+'.webp?v=portraits2');
@@ -894,5 +894,27 @@ test('experimental Show turns and epilogues get longer budgets while short lines
    assert.equal(payload.max_tokens||payload.max_completion_tokens,expected);
   }
   const module=await t.asset('/show-live.js?v=drama1');assert.equal(module.status,200);assert.ok(module.body.includes('runLiveShow'));
+ }finally{await t.close();}
+});
+
+test('model selection belongs to the authenticated account and respects tariff limits',async()=>{
+ const t=await setup({QUORUM_ADMIN_EMAILS:'owner@example.com'});
+ try{
+  assert.equal((await t.send('/api/preferences/models')).status,401);
+  assert.equal((await t.send('/api/preferences/models',undefined,'admin-test-only')).status,401);
+  const a=(await t.login('first@example.com')).data.token;
+  const b=(await t.login('second@example.com')).data.token;
+  assert.deepEqual((await t.send('/api/preferences/models',undefined,a)).data,{models:null});
+  assert.equal((await t.send('/api/preferences/models',{models:['claude','grok']},a)).status,200);
+  assert.deepEqual((await t.send('/api/preferences/models',undefined,a)).data.models,['claude','grok']);
+  assert.equal((await t.send('/api/preferences/models',undefined,b)).data.models,null);
+  assert.equal((await t.send('/api/preferences/models',{models:[]},b)).status,200);
+  for(const models of [['claude','claude'],['unknown'],['__proto__'],null])assert.equal((await t.send('/api/preferences/models',{models},a)).status,400);
+  const seven=['claude','openai','mistral','gemini','qwen','deepseek','grok'];
+  assert.equal((await t.send('/api/preferences/models',{models:seven},a)).status,403);
+  assert.deepEqual((await t.send('/api/preferences/models',undefined,a)).data.models,['claude','grok']);
+  const owner=(await t.login('owner@example.com')).data.token;
+  assert.equal((await t.send('/api/preferences/models',{models:seven},owner)).status,200);
+  assert.deepEqual((await t.send('/api/preferences/models',undefined,owner)).data.models,seven);
  }finally{await t.close();}
 });

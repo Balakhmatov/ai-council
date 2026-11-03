@@ -211,3 +211,7 @@ body[data-experience=show] .history-dialog .section-title{background:#1e1914;bor
 body[data-experience=show] .history-prompt{border-color:var(--cinema-line);color:#d9c5a7}
 body[data-experience=show] .history-detail .message{background:transparent;border-color:var(--cinema-line);color:#d9c5a7}
 body[data-experience=show] ::selection{color:#fff0d2;background:#7a392d}
+body[data-experience=show] .all-agents-choice{display:flex;align-items:center;gap:9px;margin:5px 0 3px;padding:9px 0;color:#e0c8a4;font-size:12px;font-weight:600;cursor:pointer}
+body[data-experience=show] #allAgents{width:16px;height:16px;min-width:16px;padding:0;accent-color:#a64c39}
+body[data-experience=show] .all-agents-hint{display:block;color:#a08a6d;font-size:10px;line-height:1.5;margin:0 0 10px}
+body[data-experience=show] .all-agents-hint:empty{display:none}

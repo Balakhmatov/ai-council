@@ -191,6 +191,17 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
     return json(200,{...economy.access(visitorHash,isAdmin),paidPlansAvailable:payments.ready});
    }
+   if(path==='/api/preferences/models'){
+    if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт, чтобы сохранить выбор ИИ.');
+    if(req.method==='GET')return json(200,{models:economy.modelSelection(visitorHash)});
+    if(req.method!=='POST')return fail(405,'Нужен GET или POST');
+    let data;try{data=await readBody(1000);}catch{return fail(400,'Некорректный выбор ИИ');}
+    const ids=data?.models;
+    if(!Array.isArray(ids)||ids.length>7||new Set(ids).size!==ids.length||ids.some(id=>typeof id!=='string'||!Object.hasOwn(providers,id)))return fail(400,'Некорректный выбор ИИ');
+    if(ids.length>economy.access(visitorHash,isAdmin).maxModels)return fail(403,'Число выбранных ИИ превышает лимит тарифа.');
+    try{return json(200,{models:economy.saveModelSelection(visitorHash,ids)});}
+    catch{return fail(503,'Не удалось сохранить выбор ИИ. Попробуйте позже.');}
+   }
    if(path==='/api/payments'&&req.method==='GET'){
     if(!validSession||!visitorHash)return fail(401,'Для оплаты войдите в аккаунт.');
     try{return json(200,{...await payments.refresh(visitorHash),access:{...economy.access(visitorHash,isAdmin),paidPlansAvailable:payments.ready}});}

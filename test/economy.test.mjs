@@ -274,3 +274,20 @@ test('Large 4 uses current Mistral rates without rewriting historical Large 3 ca
  assert.equal(p.cached,0.07*82.5);
  assert.equal(e.summary().totals.unknownCostCalls,0);
 });
+
+test('model preferences persist independently per account and do not alter balances',()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-model-prefs-'));
+ try{
+  const env={ACCOUNTING_FILE:join(dir,'ledger.json')};
+  const first=createEconomy({env});
+  assert.equal(first.modelSelection('account:a'),null);
+  first.saveModelSelection('account:a',['claude','grok']);
+  first.saveModelSelection('account:b',[]);
+  const copy=first.modelSelection('account:a');copy.push('openai');
+  assert.deepEqual(first.modelSelection('account:a'),['claude','grok']);
+  const restored=createEconomy({env});
+  assert.deepEqual(restored.modelSelection('account:a'),['claude','grok']);
+  assert.deepEqual(restored.modelSelection('account:b'),[]);
+  assert.equal(restored.access('account:a').remainingFreeTasks,10);
+ }finally{rmSync(dir,{recursive:true,force:true});}
+});

@@ -29,6 +29,8 @@ let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,ava
 let experience='show',showScenarioId='diner',showAssigned={},mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
+let restoredModelAccount=null,modelSelectionRevision=0,modelSaveQueue=Promise.resolve();
+let modelSelectionWarning='';
 let landingExploring=false;
 const heroImage=$('landingHeroImage');
 heroImage.addEventListener('error',()=>document.body.classList.add('landing-asset-missing'));
@@ -110,9 +112,64 @@ for(const a of agents){
    else $('status').textContent='Выбрано максимальное число моделей.';
    return;
   }
-  input.checked?chosen.add(a.id):chosen.delete(a.id);update();
+  input.checked?chosen.add(a.id):chosen.delete(a.id);update();persistModelSelection();
  };
  label.append(avatar,data,input);$('agents').append(label);
+}
+function modelAccountKey(){
+ const user=publicSession?.user;
+ return user?.email?'email:'+user.email.toLowerCase():user?.id?'telegram:'+user.id:null;
+}
+function replaceModelSelection(ids){
+ chosen.clear();
+ for(const id of ids)if(available.has(id)&&agents.some(a=>a.id===id)&&chosen.size<(access?.maxModels??3))chosen.add(id);
+ for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
+ moderatorChosenByUser=false;update();
+}
+function updateAllAgents(){
+ const availableIds=MODEL_PRIORITY.filter(id=>available.has(id));
+ const limit=Math.min(availableIds.length,access?.maxModels??3);
+ const selected=availableIds.filter(id=>chosen.has(id)).length;
+ $('allAgents').checked=limit>0&&selected===limit;
+ $('allAgents').indeterminate=selected>0&&selected<limit;
+ $('allAgents').disabled=running||!connected||limit===0;
+ $('allAgentsHint').textContent=modelSelectionWarning||(availableIds.length>limit?'По вашему тарифу — до '+limit+' ИИ.':modelAccountKey()?'Ваш выбор сохраняется в аккаунте.':'');
+}
+$('allAgents').onchange=()=>{
+ if(running)return;
+ replaceModelSelection($('allAgents').checked?MODEL_PRIORITY.filter(id=>available.has(id)).slice(0,access?.maxModels??3):[]);
+ persistModelSelection();
+};
+async function restoreModelSelection(){
+ const key=modelAccountKey();
+ if(!key||restoredModelAccount===key)return;
+ restoredModelAccount=key;
+ const revision=modelSelectionRevision;
+ try{
+  const saved=await api('/api/preferences/models',{token:publicSession?.token});
+  if(key!==modelAccountKey()||revision!==modelSelectionRevision)return;
+  if(Array.isArray(saved.models))replaceModelSelection(saved.models);
+  else if(saved.models===null)persistModelSelection();
+  modelSelectionWarning='';updateAllAgents();
+ }catch{
+  if(key!==modelAccountKey())return;
+  restoredModelAccount=null;modelSelectionWarning='Не удалось восстановить выбор ИИ.';updateAllAgents();
+ }
+}
+function persistModelSelection(){
+ const key=modelAccountKey(),revision=++modelSelectionRevision;
+ if(!key)return;
+ const models=[...chosen],token=publicSession?.token;
+ modelSelectionWarning='';
+ modelSaveQueue=modelSaveQueue.catch(()=>{}).then(async()=>{
+  if(key!==modelAccountKey()||revision!==modelSelectionRevision)return;
+  try{
+   await api('/api/preferences/models',{method:'POST',token,body:{models}});
+   if(key===modelAccountKey()&&revision===modelSelectionRevision){modelSelectionWarning='';updateAllAgents();}
+  }catch{
+   if(key===modelAccountKey()&&revision===modelSelectionRevision){modelSelectionWarning='Не удалось сохранить выбор ИИ. Попробуйте изменить его ещё раз.';updateAllAgents();}
+  }
+ });
 }
 for(const [id,[title,description]] of Object.entries(modes)){
  const b=document.createElement('button');b.type='button';b.className='mode'+((id==='judge'||id==='roles')?' mode-secondary':'')+(id==='roast'?' mode-roast':'');b.dataset.id=id;
@@ -311,6 +368,7 @@ function update(){
  $('ambience').disabled=running;
  if(experience==='show')renderShowCast();
  document.querySelectorAll('.show-scenario').forEach(b=>b.disabled=running);
+ updateAllAgents();
  $('showExtra').disabled=running;
  $('showScenes').disabled=running;$('showTone').disabled=running;
  for(const id of ['Council','Show'])$('experience'+id).disabled=running;
@@ -371,6 +429,8 @@ function saveIdentity(identity){
 }
 function clearIdentity(){
  publicSession=null;adminToken='';telegramIdentity=null;
+ restoredModelAccount=null;modelSelectionRevision++;modelSelectionWarning='';
+ replaceModelSelection(defaultParticipants(available));
  sessionStorage.removeItem('quorum-admin');
  try{forgetSession(localStorage);}catch{}
 }
@@ -563,6 +623,7 @@ async function refreshAccess(){
   for(const id of Array.from(chosen).slice(cap))chosen.delete(id);
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
  }
+ await restoreModelSelection();
  trackVisit();
  renderAccess();refreshHistory(true).catch(e=>{$('status').textContent='Не удалось загрузить историю: '+e.message;});
  refreshHistoryLinkState().catch(()=>{$('historyLinkBox').hidden=true;});
