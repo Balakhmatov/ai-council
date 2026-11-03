@@ -6,7 +6,7 @@ export function formatTranscript({prompt='',profile='',specialization='',message
  const discussion=messages.filter(m=>!m.final);
  if(discussion.length){
   sections.push('## Обсуждение\n'+discussion.map(m=>{
-   const title=[m.name||'Участник',m.stage||'Ответ'].join(' — ');
+   const title=[m.nickname?m.nickname+' ('+(m.name||'Участник')+')':(m.name||'Участник'),m.stage||'Ответ'].join(' — ');
    return '### '+title+(m.error?' (ошибка)':'')+'\n'+String(m.text||'');
   }).join('\n\n'));
  }
