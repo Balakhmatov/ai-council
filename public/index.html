@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <link rel="stylesheet" href="./style.css?v=mobile-polish49">
-<link rel="stylesheet" href="./uiux32.css?v=scene61">
+<link rel="stylesheet" href="./uiux32.css?v=show62">
 </head><body class="landing-visible">
 <section id="quorumLanding" class="quorum-landing" aria-labelledby="landingTitle">
  <div class="quorum-landing-frame">
@@ -42,8 +42,10 @@
 <main>
 <section class="intro"><div class="eyebrow">МАРКЕТИНГ · КОНТЕНТ · ИДЕИ</div><h1>Один запрос —<br>несколько сильных <span>ответов.</span></h1>
 <p>Дайте задачу сразу нескольким ИИ. Кворум сравнит подходы и подготовит готовый результат — без длинной переписки.</p></section>
+<nav class="experience-tabs" aria-label="Формат Кворума"><button type="button" id="experienceCouncil" class="experience-tab active" aria-pressed="true">🧠 Совет</button><button type="button" id="experienceShow" class="experience-tab" aria-pressed="false">🎭 Шоу</button></nav>
 <div class="workspace">
 <section class="board">
+<div id="councilPanel" class="council-panel">
 <div class="section-title"><h2>01 / Выберите направление</h2><span class="step-note">Можно выбрать без уточнения задачи</span></div>
 <div id="profiles" class="profile-list" role="group" aria-label="Направление работы"></div>
 <div class="section-title spaced"><h2>Уточните задачу</h2><span class="step-note">Необязательно</span></div>
@@ -62,6 +64,19 @@
 <div class="ambience-setting"><label for="ambience">Антураж обсуждения</label><select id="ambience" aria-describedby="ambienceHint"></select><small id="ambienceHint">Обычный стиль разговора</small></div>
 <p id="roastModeNote" class="roast-mode-note" hidden>🔥 Нейросети ругаются между собой — не с вами. Мат, сарказм и конкретная критика аргументов. Готовый результат остаётся пригодным для работы.</p>
 </details>
+</div>
+<section id="showPanel" class="show-panel" aria-label="Создать шоу" hidden>
+ <div class="section-title"><h2>01 / Выберите сценарий</h2><span class="step-note">10 историй · новые будут добавляться</span></div>
+ <div id="showScenarioCards" class="show-scenarios" role="group" aria-label="Сценарии шоу"></div>
+ <div id="showScenarioDetails" class="show-scene-description" aria-live="polite"></div>
+ <div class="section-title spaced"><h2>02 / Кастинг персонажей</h2><span id="showCastCount" class="step-note"></span></div>
+ <p class="hint">Персонаж — отдельная роль. Любая выбранная нейросеть может его играть.</p>
+ <div class="show-cast-controls"><button type="button" id="showRandomCast" class="quiet">🎲 Случайный кастинг</button><span id="showCastMode">Можно назначать вручную</span></div>
+ <div id="showCast" class="show-cast" role="group" aria-label="Назначение ролей моделям"></div>
+ <label class="show-direction" for="showExtra">Ваш поворот сюжета <span>(необязательно)</span></label>
+ <textarea id="showExtra" maxlength="340" rows="2" placeholder="Например: Один из участников получил тайное сообщение…"></textarea>
+ <div class="show-runtime-note"><strong>🎬 Короткий формат</strong><span>2 сцены · по 1 реплике от каждого персонажа в сцене · до 45 слов на реплику · без длинных рассуждений</span></div>
+</section>
 <div class="launch" id="launchBar"><label class="discussion-choice"><input id="showDiscussion" type="checkbox"> <span id="discussionChoiceLabel">Показывать обсуждение моделей</span></label>
 <button class="primary" id="start" type="button">Получить результат</button><div id="stopAction" class="stop-action" hidden><button id="stop" type="button">Остановить задачу</button><small>При остановке квота не возвращается.</small></div></div>
 <p id="status" role="status">Выберите направление и поставьте задачу.</p>
@@ -201,4 +216,4 @@
 </section>
 <div id="adminAccounting"></div></section><button type="button" id="adminLogout" class="quiet">Выйти из админки</button></div>
 <p id="adminStatus" role="status" class="hint"></p></dialog>
-<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=scene61"></script></body></html>
+<script async src="https://telegram.org/js/telegram-web-app.js"></script><script type="module" src="./app.js?v=show62"></script></body></html>
