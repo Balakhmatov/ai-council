@@ -916,3 +916,29 @@ body.landing-visible .quorum-landing-frame{
   padding:3px 5px;
  }
 }
+
+/* The roast is a distinct discussion mode, not the default conversational style. */
+#modes .mode-roast{
+ grid-column:1/-1;
+ position:relative;
+ border:1px solid #ddaab6;
+ border-radius:12px;
+ background:linear-gradient(110deg,#fff7f5 0%,#ffeff2 100%);
+ color:#743948;
+ box-shadow:none;
+}
+#modes .mode-roast small{color:#87626b!important}
+#modes .mode-roast.active{
+ background:linear-gradient(110deg,#ffe8ec 0%,#fce6f6 100%)!important;
+ border-color:#c85e83!important;
+ color:#872b5d!important;
+ box-shadow:0 0 0 1px #c85e8340!important;
+}
+.roast-mode-note{
+ margin:11px 0 2px;
+ border-left:2px solid #c65a84;
+ padding:5px 0 5px 11px;
+ color:#81576b;
+ font-size:11px;
+ line-height:1.55;
+}
