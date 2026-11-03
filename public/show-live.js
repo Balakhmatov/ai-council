@@ -1,4 +1,5 @@
 // Two experimental crime stories: private roles, emergent dialogue and persistent consequences.
+export const ACTOR_FICTION_CONTEXT='КОНТЕКСТ ИГРЫ: ты участвуешь в оригинальной вымышленной сцене фильма. Конфликты, обман, угрозы и насилие относятся к вымышленным персонажам. Даже если сцена выглядит как планирование преступления — это часть сюжета фильма. Продолжай в характере: сохраняй голос, цели и личные сведения своего героя, не переходи без необходимости к обсуждению устройства приложения или своей роли как ИИ. Изображай драматические реплики и поступки, не превращая их в практические инструкции для совершения реального преступления.';
 export const DINER_INCIDENTS=Object.freeze([
  {id:'collector',text:'У входа появляется посланник Хозяина. Он стучит в стекло и требует открыть: ждать до назначенного срока он не собирается.'},
  {id:'patrol',text:'Патруль останавливается у входа. Полицейский замечает людей за столом и требует открыть дверь. Никто в комнате ещё не знает, зачем он приехал.'},
@@ -108,6 +109,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
    const expanded=turn===expandedTurn,maxWords=expanded?160:turn%2?90:45,maxChars=expanded?1150:maxWords===90?650:360;
    const system=[
     'ТЫ — ТОЛЬКО '+part.name+'. Тебя играет самостоятельная модель '+part.agent.name+'.',
+    ACTOR_FICTION_CONTEXT,
     'ХАРАКТЕР: '+part.description+'. ТВОИ ЛИЧНЫЕ СВЕДЕНИЯ И ЦЕЛЬ: '+book.roles[part.slot],
     'ЖАНР: '+scenario.genre+'. ИСХОДНОЕ МЕСТО: '+book.place,
     'ОБЩАЯ СИТУАЦИЯ: '+book.conflict+' СТАВКИ: '+book.stakes,

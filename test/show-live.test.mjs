@@ -89,3 +89,14 @@ test('every story has varied API-failure directions without injecting raw errors
   assert.ok(!events.some(e=>e.text.includes('provider offline')));
  }
 });
+
+test('all stories explicitly frame actor dialogue as fictional without applying actor rules to the epilogue',async()=>{
+ const {SHOW_SCENARIOS}=await import('../public/show.js');
+ const {ACTOR_FICTION_CONTEXT}=await import('../public/show-live.js');
+ for(const scenario of SHOW_SCENARIOS){
+  const calls=[];
+  await runShow({agents,scenario,cast:showCast(scenario,{0:'openai',1:'mistral',2:'grok'}),scenes:3,random:()=>0,emit:()=>{},request:async(a,m,s,stage)=>{calls.push({m,stage});return stage.stage==='final'?'Разговор завершён без общего решения.':reply();}});
+  assert.ok(calls.filter(c=>c.stage.stage==='intermediate').every(c=>c.m[0].content.includes(ACTOR_FICTION_CONTEXT)));
+  assert.ok(!calls.at(-1).m[0].content.includes(ACTOR_FICTION_CONTEXT));
+ }
+});

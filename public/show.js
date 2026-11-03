@@ -1,4 +1,4 @@
-import {runLiveShow} from './show-live.js?v=drama2';
+import {runLiveShow,ACTOR_FICTION_CONTEXT} from './show-live.js?v=fiction1';
 import {ambiences} from './engine.js';
 import {storyBible,storyBeat} from './show-stories.js';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
@@ -167,6 +167,7 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
    const silence=last.filter(m=>m.silent).map(m=>m.nickname).join(', ');
    const system=[
     'ТЫ — ТОЛЬКО '+part.name+'. Тебя играет самостоятельная модель '+part.agent.name+'.',
+    ACTOR_FICTION_CONTEXT,
     'ХАРАКТЕР: '+part.description+'. ТВОЯ ЛИЧНАЯ ЦЕЛЬ И СЕКРЕТ: '+book.roles[part.slot],
     'ЖАНР: '+scenario.genre+'. МЕСТО: '+book.place,
     'КОНФЛИКТ: '+book.conflict+'. СТАВКИ: '+book.stakes,
