@@ -59,7 +59,7 @@ test('Show alternates speakers between scenes and does not do a fixed full roste
  assert(calls.some(c=>c.chat[1].content.includes('СЕЙЧАС ГОВОРИТ')));
  assert(calls.some(c=>c.chat[1].content.includes('Последние')||c.chat[1].content.includes('ПРЕДЫДУЩИЕ РЕПЛИКИ')));
  assert(calls.some(c=>c.chat[0].content.includes('жёсткие решения')));
- assert(calls.some(c=>c.chat[1].content.includes('Кай:')));
+ assert(calls.some(c=>c.chat[1].content.includes('Куро:')));
  assert.equal(emitted.at(-1).stage,'Эпилог');
 });
 test('director notes accept all 5000 characters without silent truncation',async()=>{
