@@ -123,3 +123,22 @@ test('explicitly linked authenticated identities see both existing histories aft
   assert.equal(store.list(outsider).total,0);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
+
+
+test('subscriber history preserves fictional scene identity alongside real model names',()=>{
+ const store=createHistoryStore();
+ store.record(identity,id(900),{
+  prompt:'Спор о бизнесе',profile:'Маркетинг',ambience:'cinema',
+  messages:[{name:'OpenAI',nickname:'Винс «Контраргумент»',stage:'Первый раунд',text:'Сомнение'},
+   {name:'Mistral',nickname:'Тони «Порох»',stage:'Раунд 2',text:'Возражение'},
+   {name:'Итог',stage:'Готовое решение',text:'План',final:true}]
+ });
+ const item=store.get(identity,id(900));
+ assert.equal(item.ambience,'cinema');
+ assert.deepEqual(item.messages.map(m=>m.nickname),['Винс «Контраргумент»','Тони «Порох»',undefined]);
+ assert.equal(item.messages[0].name,'OpenAI');
+ const unsafe=createHistoryStore();
+ unsafe.record(identity,id(901),{prompt:'Тест',ambience:'bogus',messages:[{name:'Grok',stage:'Первый раунд',nickname:'x'.repeat(900),text:'OK'}]});
+ assert.equal(unsafe.get(identity,id(901)).ambience,'none');
+ assert.equal(unsafe.get(identity,id(901)).messages[0].nickname.length,80);
+});
