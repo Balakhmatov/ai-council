@@ -1,6 +1,6 @@
-import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=finalfix1';
+import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=stakes1';
 import {ambiences} from './engine.js';
-import {storyBible,storyBeat} from './show-stories.js';
+import {storyBible,storyBeat} from './show-stories.js?v=stakes1';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
 export const SHOW_SCENARIOS=[
  {id:'diner',emoji:'🥃',title:'Последний столик',genre:'Криминальная комедия',palette:'wine',

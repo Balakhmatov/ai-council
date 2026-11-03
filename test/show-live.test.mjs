@@ -122,3 +122,26 @@ test('epilogue accepts only the final Russian field and rejects service analysis
  assert.ok(!events.at(-1).text.includes('We need'));
  assert.ok(/[А-Яа-яЁё]/.test(events.at(-1).text));
 });
+
+test('crime stakes include life and prison without revealing the heist mastermind',async()=>{
+ for(const id of ['diner','heist']){
+  assert.ok(/жизн|убийств|убить|смерт/i.test(STORY_BIBLE[id].stakes));
+  assert.ok(/тюрьм/.test(STORY_BIBLE[id].stakes));
+ }
+ assert.ok(!STORY_BIBLE.heist.stakes.includes('Мистер Розовый'));
+ const {calls}=await simulate('heist');
+ assert.ok(calls[0].m[0].content.includes(STORY_BIBLE.heist.stakes));
+});
+
+test('surrender causes lasting detention, removes the actor from dialogue and reaches epilogue',async()=>{
+ let first=true;
+ const {calls,events}=await simulate('heist',{request:(a,m,s,stage)=>{
+  if(stage.stage==='final')return JSON.stringify({epilogue:'Мистер Чёрный остаётся в полиции. Судьба остальных ещё не решена.'});
+  if(first){first=false;return JSON.stringify({speech:'Я ухожу сдаваться полиции.',action:{kind:'surrender',target:''}});}
+  return reply();
+ }});
+ assert.ok(events.some(e=>e.action&&e.text.includes('Мистер Чёрный задержан')));
+ assert.equal(events.filter(e=>e.id==='openai'&&!e.narrator&&!e.final).length,1);
+ assert.ok(calls.at(-1).m[1].content.includes('Мистер Чёрный: задержан полицией; вне сцены'));
+ assert.ok(calls.at(-1).m[0].content.includes('Не выдумывай судебный приговор'));
+});

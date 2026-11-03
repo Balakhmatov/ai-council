@@ -48,12 +48,12 @@ export function parseLiveReply(raw){
  const data=JSON.parse(clean);
  if(typeof data.speech!=='string'||!data.speech.trim())throw Error('Missing speech');
  const a=data.action;
- return {speech:data.speech,action:a&&['hit','bind','kill','release','escape'].includes(a.kind)?{kind:a.kind,target:typeof a.target==='string'?a.target:''}:null};
+ return {speech:data.speech,action:a&&['hit','bind','kill','release','escape','surrender'].includes(a.kind)?{kind:a.kind,target:typeof a.target==='string'?a.target:''}:null};
 }
 function describeState(actors,state){
  return actors.map(a=>{
   const s=state.get(a.name);
-  return a.name+': '+(!s.alive?(feminine(a.name)?'погибла; больше не говорит':'погиб; больше не говорит'):!s.present?(feminine(a.name)?'ушла из сцены':'ушёл из сцены'):[
+  return a.name+': '+(!s.alive?(feminine(a.name)?'погибла; больше не говорит':'погиб; больше не говорит'):s.detained?(feminine(a.name)?'задержана полицией; вне сцены':'задержан полицией; вне сцены'):!s.present?(feminine(a.name)?'ушла из сцены':'ушёл из сцены'):[
    s.injured?(feminine(a.name)?'ранена':'ранен'):(feminine(a.name)?'невредима':'невредим'),s.bound?(feminine(a.name)?'связана; может говорить, но не может нападать':'связан; может говорить, но не может нападать'):(feminine(a.name)?'свободна':'свободен')
   ].join(', '));
  }).join('\n');
@@ -64,6 +64,9 @@ function resolveAction(actor,action,actors,state,random){
  if(!aliveHere(self))return null;
  const target=actors.find(a=>a.name===action.target),other=target&&state.get(target.name);
  if(self.bound&&action.kind!=='release')return {text:actor.name+' пытается действовать, но связанные руки мешают.',target:null};
+ if(action.kind==='surrender'){
+  self.detained=true;self.present=false;return {text:actor.name+' выходит к полиции и сдаётся. '+actor.name+(feminine(actor.name)?' задержана':' задержан')+'; впереди допрос и риск тюремного срока.',target:null};
+ }
  if(action.kind==='escape'){
   self.present=false;return {text:actor.name+' покидает комнату. Остальные остаются с последствиями его ухода.',target:null};
  }
@@ -105,7 +108,7 @@ function nextActor(actors,state,counts,last,pending,history,random){
 }
 export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone,speech,clip,silenceLine,random=Math.random}){
  const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
- const state=new Map(actors.map(a=>[a.name,{alive:true,present:true,injured:false,bound:false}]));
+ const state=new Map(actors.map(a=>[a.name,{alive:true,present:true,injured:false,bound:false,detained:false}]));
  const counts=new Map(),silences=new Map(),failures=new Map(),successes=new Map(),dialogue=[],all=[],facts=[];
  const output=e=>{all.push(e);emit(e);};
  let pending=null,last=null;
@@ -137,9 +140,9 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     'УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; '),
     'МАНЕРА: '+tone,speech,
     'ЖИВОЙ ТЕМП: выбирай длину по ситуации. Резкая реакция может занимать одну фразу, спор или признание — несколько предложений. Не заполняй лимит ради длины. Сейчас допустимо до '+maxWords+' слов, без заголовков и отчётов.',
-    'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение или уйти. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Не обязан применять насилие, но не обнуляй конфликт разговором. Связанный может говорить, раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство и смерть меняют отношения и дальнейшие решения.',
+    'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти или сдаться полиции. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Не обязан применять насилие, но не обнуляй конфликт разговором. Связанный может говорить, раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. В этой криминальной истории возможны убийство и тюрьма; не своди ставки к потере денег. Это возможные исходы, не обязательный финал.',
     'СВОБОДА: можешь врать, блефовать, торговаться, отступать, обвинять и менять цель после событий. Нет обязательного признания или счастливого исхода. Не действуй и не говори за всех. Не объявляй, что твоя атака уже удалась: результат действия подтверждает сцена отдельной ремаркой.',
-    'ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape","target":"точное имя участника"}. Для ухода target пустой. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай.'
+    'ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай.'
    ].filter(Boolean).join('\n');
    const minutesLeft=Math.max(1,(scenario.id==='diner'?18:38)-(round-1)*maxTurns-turn);
    const previous=dialogue.at(-1);
@@ -182,7 +185,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
  let ending='';
  try{
   ending=clip(parseShowEpilogue(await request(narrator.agent,[
-   {role:'system',content:'Ты режиссёр эпилога криминальной драмы. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки. '+EPILOGUE_FORMAT},
+   {role:'system',content:'Ты режиссёр эпилога криминальной драмы. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, арест, угрозу тюремного срока, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Не выдумывай судебный приговор: задержание означает риск тюрьмы, а не уже назначенный срок. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки. '+EPILOGUE_FORMAT},
    {role:'user',content:endingContext+'\nСОСТОЯВШИЙСЯ РАЗГОВОР:\n'+tailWithin(dialogue.filter(e=>!e.silent).map(e=>e.nickname+': '+e.text),Math.max(0,9300-endingContext.length))}
   ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:220,maxChars:1800,liveShow:true,outputSchema:'epilogue'})),1800);
  }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
