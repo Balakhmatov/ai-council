@@ -135,8 +135,8 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
    if(!part)break;
    used.add(part.provider);
    const last=dialogue.slice(-5);
-   const history=last.map(m=>m.name+': '+m.text).join('\n');
-   const silence=last.filter(m=>m.silent).map(m=>m.name).join(', ');
+   const history=last.map(m=>m.nickname+': '+m.text).join('\n');
+   const silence=last.filter(m=>m.silent).map(m=>m.nickname).join(', ');
    const system=[
     'ТЫ — ТОЛЬКО '+part.name+'. Тебя играет самостоятельная модель '+part.agent.name+'.',
     'ХАРАКТЕР: '+part.description+'. ТВОЯ ЛИЧНАЯ ЦЕЛЬ И СЕКРЕТ: '+book.roles[part.slot],
@@ -169,7 +169,7 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
     silent=true;callErrors.set(part.provider,(callErrors.get(part.provider)||0)+1);
     line='('+part.name+' '+(SILENCE_ACTIONS[scenario.id]||SILENCE_ACTIONS.diner)+'.)';
    }
-   const event={id:part.provider,name:part.name,nickname:part.name,model:part.agent.name,stage,text:line,show:true,...(silent?{silent:true}:{})};
+   const event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:line,show:true,...(silent?{silent:true}:{})};
    dialogue.push(event);all.push(event);emit(event);
   }
   onProgress({stage,status:'done'});
@@ -180,7 +180,7 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
  let epilogue='';
  // Prefer a model that actually responded during the story.
  const healthy=actors.slice().sort((a,b)=>(callErrors.get(a.provider)||0)-(callErrors.get(b.provider)||0));
- const narrator=healthy[0],context=dialogue.slice(-8).map(m=>m.name+': '+m.text).join('\n');
+ const narrator=healthy[0],context=dialogue.slice(-8).map(m=>m.nickname+': '+m.text).join('\n');
  if(narrator){
   try{
    const answer=await request(narrator.agent,[
