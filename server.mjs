@@ -333,6 +333,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const showFormat=isShowTask||body.format==='show';
     if(showFormat&&(body.messages.length!==2||body.messages[0].role!=='system'||body.messages[1].role!=='user'||body.messages.some(m=>m.content.length>9500)))return fail(400,'Слишком длинный контекст шоу');
     const longFinal=body.stage==='final'&&!showFormat;
+    const flexibleShowCap=showFormat&&[90,160,220].includes(body.maxWords)?Math.min(2400,body.maxWords*10):0;
     const maxWords=[120,250,500,300,600,1000].includes(body.maxWords)?body.maxWords:300;
     const ballotStage=['Голосование','Проверка согласия'].includes(body.step);
     // Voting is machine-readable: keep it short and never apply discussion word caps.
@@ -344,9 +345,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
     // Show: one short dialogue line, with a HARD output+reasoning token budget.
-    // Unlike Council, the browser sends only recent lines, never the full transcript.
+    // Experimental stories send a bounded dialogue window plus persistent state.
     if(showFormat){
-     const cap=body.provider==='openai'?1600:body.provider==='mistral'?1450:body.provider==='gemini'?1100:body.provider==='grok'?900:600;
+     const cap=Math.max(flexibleShowCap,body.provider==='openai'?1600:body.provider==='mistral'?1450:body.provider==='gemini'?1100:body.provider==='grok'?900:600);
      if(body.provider==='openai'&&model.startsWith('gpt-6')){
       payload.reasoning_effort='low';payload.max_completion_tokens=cap;delete payload.max_tokens;
      }else{payload.max_tokens=cap;if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';}
@@ -354,9 +355,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(body.provider==='mistral'&&model==='mistral-large-4'){
      payload.reasoning_effort=showFormat?'low':ballotStage?'low':'medium';
      // Reasoning tokens may consume the completion budget before user-visible text.
-     payload.max_tokens=showFormat?1450:longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
+     payload.max_tokens=showFormat?Math.max(1450,flexibleShowCap):longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
     }
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:showFormat?600:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:showFormat?Math.max(600,flexibleShowCap):longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){
        let reason='';try{const errorBody=(await upstream.text()).slice(0,4096);const parsed=JSON.parse(errorBody);reason=String(parsed?.error?.message||parsed?.message||parsed?.error?.type||'');}catch{}
@@ -378,7 +379,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
   const asset=assetFiles.find(name=>path==='/assets/'+name);
   const providerAsset=['openai','grok','mistral','qwen','deepseek','gemini','claude'].find(id=>path==='/assets/models/'+id+'.svg');
   const special=providerAsset?'assets/models/'+providerAsset+'.svg':asset?'assets/'+asset:path==='/favicon.ico'?'favicon.ico':path==='/site.webmanifest'?'site.webmanifest':null;
-  const file=special||{'/terms.html':'terms.html','/privacy.html':'privacy.html','/refunds.html':'refunds.html','/legal.css':'legal.css','/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/noir.css':'noir.css','/app.js':'app.js','/engine.js':'engine.js','/show.js':'show.js','/show-art.js':'show-art.js','/show-stories.js':'show-stories.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js','/model-priority.js':'model-priority.js','/markdown-render.js':'markdown-render.js','/response-length.js':'response-length.js','/fact-check.js':'fact-check.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
+  const file=special||{'/terms.html':'terms.html','/privacy.html':'privacy.html','/refunds.html':'refunds.html','/legal.css':'legal.css','/auth-state.js':'auth-state.js','/telegram-bridge.js':'telegram-bridge.js','/':'index.html','/index.html':'index.html','/style.css':'style.css','/uiux32.css':'uiux32.css','/noir.css':'noir.css','/app.js':'app.js','/engine.js':'engine.js','/show.js':'show.js','/show-live.js':'show-live.js','/show-art.js':'show-art.js','/show-stories.js':'show-stories.js','/profiles.js':'profiles.js','/examples.js':'examples.js','/transcript.js':'transcript.js','/model-priority.js':'model-priority.js','/markdown-render.js':'markdown-render.js','/response-length.js':'response-length.js','/fact-check.js':'fact-check.js'}[path];if(!file){res.writeHead(404);return res.end('Not found');}
   try{const data=await readFile(new URL(`./public/${file}`,import.meta.url));res.writeHead(200,{'Content-Type':file.endsWith('.svg')?'image/svg+xml':file.endsWith('.png')?'image/png':file.endsWith('.webp')?'image/webp':file.endsWith('.ico')?'image/x-icon':file.endsWith('.webmanifest')?'application/manifest+json':file.endsWith('.html')?'text/html; charset=utf-8':file.endsWith('.css')?'text/css':'text/javascript','Cache-Control':file.endsWith('.html')||file.endsWith('.js')?'no-store':'no-cache'});res.end(req.method==='HEAD'?undefined:data);}catch{res.writeHead(500);res.end('Read error');}
  });
 }

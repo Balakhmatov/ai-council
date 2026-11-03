@@ -80,7 +80,7 @@ test('silence becomes a cinematic action and later actors can react, never a vis
   emit:m=>out.push(m)});
  const silences=out.filter(m=>m.silent);
  assert(silences.length>0);
- assert(silences.every(m=>m.text.includes('молча')&&!m.error));
+ assert(silences.every(m=>m.text.startsWith('(')&&m.text.includes(m.nickname)&&!m.error));
  assert(out.every(m=>!m.text.includes('Service unavailable')));
  assert(out.at(-1).final);
  assert(out.at(-1).text.includes('купол'));
@@ -133,7 +133,7 @@ test('diner improvisation keeps other roles private and never sends authored plo
   assert.ok(!prompt.includes(book.truth));assert.ok(!prompt.includes(book.ending));
   for(const [,beat]of book.beats)assert.ok(!prompt.includes(beat),'future scene leaked');
  }
- assert.equal(events.filter(e=>e.narrator).length,1,'only the shared opening situation is narrated');
+ assert.equal(events.filter(e=>e.narrator&&!e.incident&&!e.action).length,1,'only the shared opening situation is narrated before emergent events');
  assert.equal(events.at(-1).text,'Участники спорят, но общего решения не приняли.');
 });
 

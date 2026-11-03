@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show66/);
+  assert.match(html.body,/app\.js\?v=show67/);
  }finally{await t.close();}
 });
 
@@ -881,5 +881,18 @@ test('portrait theme and every illustration atlas are served at versioned browse
    const image=await t.asset('/assets/'+file+'.webp?v=portraits2');
    assert.equal(image.status,200,file);assert.equal(image.type,'image/webp',file);assert.ok(image.body.startsWith('RIFF'),file+' must contain actual image bytes');
   }
+ }finally{await t.close();}
+});
+
+test('experimental Show turns and epilogues get longer budgets while short lines keep the original cap',async()=>{
+ const t=await setup({CLAUDE_API_KEY:'test',CLAUDE_MODEL:'test-claude',ACCOUNT_DAILY_CALL_LIMIT:'100'},{upstream:async()=>Response.json({content:[{type:'text',text:'Реплика.'}],choices:[{message:{content:'Реплика.'}}]})});
+ try{
+  for(const [provider,words,expected]of [['claude',45,600],['claude',160,1600],['claude',220,2200],['openai',160,1600],['openai',220,2200]]){
+   const result=await t.send('/api/chat',{provider,stage:words===220?'final':'intermediate',format:'show',maxWords:words,messages:[{role:'system',content:'Роль актёра.'},{role:'user',content:'Твоя реплика.'}]},'admin-test-only');
+   assert.equal(result.status,200);
+   const payload=JSON.parse(t.calls.at(-1).options.body);
+   assert.equal(payload.max_tokens||payload.max_completion_tokens,expected);
+  }
+  const module=await t.asset('/show-live.js?v=drama1');assert.equal(module.status,200);assert.ok(module.body.includes('runLiveShow'));
  }finally{await t.close();}
 });

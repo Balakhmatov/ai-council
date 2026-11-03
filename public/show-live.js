@@ -1,0 +1,170 @@
+// Two experimental crime stories: private roles, emergent dialogue and persistent consequences.
+export const DINER_INCIDENTS=Object.freeze([
+ {id:'collector',text:'У входа появляется посланник Хозяина. Он стучит в стекло и требует открыть: ждать до назначенного срока он не собирается.'},
+ {id:'patrol',text:'Патруль останавливается у входа. Полицейский замечает людей за столом и требует открыть дверь. Никто в комнате ещё не знает, зачем он приехал.'},
+ {id:'blackout',text:'В закусочной гаснет свет. В темноте слышно, как кто-то толкает стол; пустой чемодан падает на пол. Аварийная лампа загорается, но доверия стало ещё меньше.'}
+]);
+const aliveHere=s=>s.alive&&s.present;
+const feminine=name=>name==='Рокси'||name.startsWith('Мисс ');
+function objectName(name){
+ const named={'Винс':'Винса','Фрэнк':'Фрэнка','Док':'Дока','Мистер Ноль':'Мистера Ноля'};
+ if(named[name])return named[name];
+ if(name.startsWith('Мисс '))return name.replace(/ая$/,'ую');
+ if(name.startsWith('Мистер '))return name.replace('Мистер ','Мистера ').replace(/Синий$/,'Синего').replace(/ый$/,'ого');
+ return name;
+}
+const clampRandom=random=>Math.max(0,Math.min(.999999,Number(random())||0));
+function abort(signal){if(signal?.aborted)throw new DOMException('Шоу остановлено','AbortError');}
+function tailWithin(items,budget){
+ const out=[];let size=0;
+ for(let i=items.length-1;i>=0;i--){const line=items[i];if(size+line.length+1>budget)break;out.unshift(line);size+=line.length+1;}
+ return out.join('\n');
+}
+export function parseLiveReply(raw){
+ const text=String(raw||'').trim();
+ if(!text||/points_insufficient|insufficient_quota/.test(text))throw Error('No usable actor reply');
+ const clean=text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+ if(!clean.startsWith('{'))return {speech:text,action:null};
+ const data=JSON.parse(clean);
+ if(typeof data.speech!=='string'||!data.speech.trim())throw Error('Missing speech');
+ const a=data.action;
+ return {speech:data.speech,action:a&&['hit','bind','kill','release','escape'].includes(a.kind)?{kind:a.kind,target:typeof a.target==='string'?a.target:''}:null};
+}
+function describeState(actors,state){
+ return actors.map(a=>{
+  const s=state.get(a.name);
+  return a.name+': '+(!s.alive?(feminine(a.name)?'погибла; больше не говорит':'погиб; больше не говорит'):!s.present?(feminine(a.name)?'ушла из сцены':'ушёл из сцены'):[
+   s.injured?(feminine(a.name)?'ранена':'ранен'):(feminine(a.name)?'невредима':'невредим'),s.bound?(feminine(a.name)?'связана; может говорить, но не может нападать':'связан; может говорить, но не может нападать'):(feminine(a.name)?'свободна':'свободен')
+  ].join(', '));
+ }).join('\n');
+}
+function resolveAction(actor,action,actors,state,random){
+ if(!action)return null;
+ const self=state.get(actor.name);
+ if(!aliveHere(self))return null;
+ const target=actors.find(a=>a.name===action.target),other=target&&state.get(target.name);
+ if(self.bound&&action.kind!=='release')return {text:actor.name+' пытается действовать, но связанные руки мешают.',target:null};
+ if(action.kind==='escape'){
+  self.present=false;return {text:actor.name+' покидает комнату. Остальные остаются с последствиями его ухода.',target:null};
+ }
+ if(!other||!aliveHere(other))return null;
+ if(action.kind==='release'){
+  if(!other.bound)return null;
+  if(target.name===actor.name&&clampRandom(random)<.5)return {text:actor.name+' пытается освободиться, но пока не может разорвать путы.',target:actor.name};
+  other.bound=false;return {text:actor.name+' освобождает '+objectName(target.name)+'.',target:target.name};
+ }
+ if(target.name===actor.name)return null;
+ if(action.kind==='hit'){
+  other.injured=true;return {text:actor.name+' ударяет '+objectName(target.name)+'. '+target.name+(feminine(target.name)?' ранена':' ранен')+'; нападение видят остальные.',target:target.name};
+ }
+ if(action.kind==='bind'){
+  if(other.bound)return null;
+  if(!other.injured&&clampRandom(random)<.35)return {text:actor.name+' пытается связать '+objectName(target.name)+', но тот вырывается.',target:target.name};
+  other.bound=true;return {text:actor.name+' связывает '+objectName(target.name)+'. '+target.name+' остаётся в сознании и может говорить.',target:target.name};
+ }
+ if(action.kind==='kill'){
+  // A lethal attempt can fail. Confirmed outcomes, not the actor's boasts, become shared facts.
+  if(clampRandom(random)<(other.bound?.85:.5)){
+   other.alive=false;return {text:actor.name+' совершает смертельное нападение на '+objectName(target.name)+'. '+target.name+' погибает. Это произошло на глазах остальных.',target:target.name};
+  }
+  other.injured=true;return {text:actor.name+' пытается убить '+objectName(target.name)+', но '+target.name+' выживает и получает ранение.',target:target.name};
+ }
+ return null;
+}
+function nextActor(actors,state,counts,last,pending,history,random){
+ let choices=actors.filter(a=>aliveHere(state.get(a.name)));
+ if(choices.length>1)choices=choices.filter(a=>a.name!==last);
+ const responding=choices.find(a=>a.name===pending);
+ if(responding)return responding;
+ const mentioned=choices.filter(a=>String(history.at(-1)?.text||'').includes(a.name));
+ if(mentioned.length)return mentioned[Math.floor(clampRandom(random)*mentioned.length)];
+ const minimum=Math.min(...choices.map(a=>counts.get(a.name)||0));
+ const leastUsed=choices.filter(a=>(counts.get(a.name)||0)===minimum);
+ return leastUsed[Math.floor(clampRandom(random)*leastUsed.length)];
+}
+export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone,speech,clip,silenceLine,random=Math.random}){
+ const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
+ const state=new Map(actors.map(a=>[a.name,{alive:true,present:true,injured:false,bound:false}]));
+ const counts=new Map(),silences=new Map(),failures=new Map(),dialogue=[],all=[],facts=[];
+ const output=e=>{all.push(e);emit(e);};
+ let pending=null,last=null;
+ const maxTurns=Math.min(4,actors.length),director=String(extra||'').slice(0,5000);
+ // Select one pressure event for diner. The freely improvised heist has no authored incident.
+ const incident=scenario.id==='diner'?DINER_INCIDENTS[Math.floor(clampRandom(random)*DINER_INCIDENTS.length)]:null;
+ for(let round=1;round<=scenes;round++){
+  abort(signal);
+  const stage='Сцена '+round+' · '+(round===1?'Начало':'Продолжение');
+  onProgress({stage,status:'working'});
+  if(round===1){output({id:'narrator',name:'Сцена',nickname:'Начало',stage,text:book.place+' '+book.conflict,show:true,narrator:true});}
+  if(round===2&&incident&&actors.some(a=>aliveHere(state.get(a.name)))){
+   facts.push(incident.text);output({id:'narrator',name:'Сцена',nickname:'Событие',stage,text:incident.text,show:true,narrator:true,incident:incident.id});
+  }
+  const expandedTurn=Math.floor(clampRandom(random)*maxTurns);
+  for(let turn=0;turn<maxTurns;turn++){
+   abort(signal);
+   const part=nextActor(actors,state,counts,last,pending,dialogue,random);
+   if(!part)break;
+   counts.set(part.name,(counts.get(part.name)||0)+1);pending=null;last=part.name;
+   const expanded=turn===expandedTurn,maxWords=expanded?160:turn%2?90:45,maxChars=expanded?1150:maxWords===90?650:360;
+   const system=[
+    'ТЫ — ТОЛЬКО '+part.name+'. Тебя играет самостоятельная модель '+part.agent.name+'.',
+    'ХАРАКТЕР: '+part.description+'. ТВОИ ЛИЧНЫЕ СВЕДЕНИЯ И ЦЕЛЬ: '+book.roles[part.slot],
+    'ЖАНР: '+scenario.genre+'. ИСХОДНОЕ МЕСТО: '+book.place,
+    'ОБЩАЯ СИТУАЦИЯ: '+book.conflict+' СТАВКИ: '+book.stakes,
+    'ГРАНИЦЫ ЗНАНИЯ: знаешь только свою роль, свои личные сведения, общую ситуацию, услышанное и подтверждённые события. Чужие секреты и мысли неизвестны. Утверждения собеседников могут быть ложью. Готового виновника, обязательного поворота и канонического финала тебе не сообщают.',
+    'УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; '),
+    'МАНЕРА: '+tone,speech,
+    'ЖИВОЙ ТЕМП: выбирай длину по ситуации. Резкая реакция может занимать одну фразу, спор или признание — несколько предложений. Не заполняй лимит ради длины. Сейчас допустимо до '+maxWords+' слов, без заголовков и отчётов.',
+    'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение или уйти. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Не обязан применять насилие, но не обнуляй конфликт разговором. Связанный может говорить, раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство и смерть меняют отношения и дальнейшие решения.',
+    'СВОБОДА: можешь врать, блефовать, торговаться, отступать, обвинять и менять цель после событий. Нет обязательного признания или счастливого исхода. Не действуй и не говори за всех. Не объявляй, что твоя атака уже удалась: результат действия подтверждает сцена отдельной ремаркой.',
+    'ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape","target":"точное имя участника"}. Для ухода target пустой. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай.'
+   ].filter(Boolean).join('\n');
+   const minutesLeft=Math.max(1,(scenario.id==='diner'?18:38)-(round-1)*maxTurns-turn);
+   const previous=dialogue.at(-1);
+   const fixed=[
+    'КРУГ '+round+'. '+(scenario.id==='diner'?'До приезда Хозяина':'До закрытия магазина')+' примерно '+minutesLeft+' минут.',
+    'ПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ: '+(director||'Развивай ситуацию из роли и происходящего; конец не задан.'),
+    'ТЕКУЩЕЕ СОСТОЯНИЕ (важнее исходных сведений):\n'+describeState(actors,state),
+    'ПОДТВЕРЖДЁННЫЕ ДЕЙСТВИЯ И СОБЫТИЯ:\n'+(tailWithin(facts,2200)||'Пока нет.'),
+    previous?.silent?'Предыдущий персонаж промолчал. '+(['wild','brutal'].includes(tonality)?'НАЧНИ с жёсткой реакции: потребуй ответа, обвини или используй паузу против него.':'Отреагируй на паузу в своём характере.'):'',
+    'СЕЙЧАС ГОВОРИТ '+part.name+'. Учитывай последствия и отвечай на услышанное.'
+   ].filter(Boolean).join('\n');
+   const history=tailWithin(dialogue.map(e=>e.nickname+': '+e.text),Math.max(0,9400-fixed.length));
+   const user=fixed+'\nПРЕДЫДУЩИЕ РЕПЛИКИ:\n'+(history||'Разговор начинается.');
+   let event;
+   try{
+    const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords,maxChars:2400,liveShow:true});
+    const reply=parseLiveReply(raw);
+    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:clip(reply.speech,maxChars),show:true};
+    output(event);dialogue.push(event);
+    const action=resolveAction(part,reply.action,actors,state,random);
+    if(action){
+     facts.push(action.text);pending=action.target;
+     const consequence={id:'narrator',name:'Сцена',nickname:'Действие',stage,text:action.text,show:true,narrator:true,action:true};
+     output(consequence);dialogue.push(consequence);
+    }
+   }catch(e){
+    if(signal?.aborted||e.name==='AbortError')throw e;
+    const count=silences.get(part.name)||0;silences.set(part.name,count+1);failures.set(part.provider,(failures.get(part.provider)||0)+1);
+    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:state.get(part.name).bound?'('+part.name+' молчит, оставаясь связанным.)':silenceLine(scenario.id,part.name,count),show:true,silent:true};
+    dialogue.push(event);output(event);
+   }
+  }
+  onProgress({stage,status:'done'});
+ }
+ abort(signal);onProgress({stage:'Эпилог',status:'working'});
+ const narrator=actors.slice().sort((a,b)=>(failures.get(a.provider)||0)-(failures.get(b.provider)||0))[0];
+ const stateText=describeState(actors,state);
+ const endingContext='ПОДТВЕРЖДЁННЫЕ СОБЫТИЯ:\n'+(tailWithin(facts,3000)||'Нет.')+'\nСОСТОЯНИЕ ПЕРСОНАЖЕЙ:\n'+stateText;
+ let ending='';
+ try{
+  ending=clip(parseLiveReply(await request(narrator.agent,[
+   {role:'system',content:'Ты режиссёр эпилога криминальной драмы. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки.'},
+   {role:'user',content:endingContext+'\nСОСТОЯВШИЙСЯ РАЗГОВОР:\n'+tailWithin(dialogue.filter(e=>!e.silent).map(e=>e.nickname+': '+e.text),Math.max(0,9300-endingContext.length))}
+  ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:220,maxChars:1800,liveShow:true})).speech,1800);
+ }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
+ if(!ending)ending=!dialogue.some(e=>!e.silent&&!e.narrator)?'Участники не смогли ответить. Разговор не состоялся.':facts.length?facts.join('\n')+'\n\n'+stateText:dialogue.some(e=>!e.silent)?'Разговор оборвался без общей развязки. Состоявшиеся реплики сохранены выше.':'Участники не смогли ответить. Разговор не состоялся.';
+ output({id:narrator.provider,name:narrator.agent.name,nickname:'Эпилог',stage:'Эпилог',show:true,final:true,text:ending});
+ onProgress({stage:'Эпилог',status:'done'});onProgress({stage:'Готово',status:'done'});
+ return all;
+}
