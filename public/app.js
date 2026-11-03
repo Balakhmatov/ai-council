@@ -1,6 +1,6 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
 import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
-import {scenePoster} from './show-art.js';
+import {scenePoster,characterPortrait} from './show-art.js';
 import {STORY_CORE_ROLES,storyBible} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
@@ -123,15 +123,11 @@ for(const [id,scene] of Object.entries(ambiences))$('ambience').add(new Option(s
 $('ambience').value=ambience;
 $('ambience').onchange=()=>{ambience=$('ambience').value;if(ambience!=='none')$('showDiscussion').checked=true;update();};
 
-function portrait(index,color){
- // Original vector portraits: separate silhouettes, hair, glasses and clothing.
- return `<svg viewBox="0 0 160 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="160" height="150" fill="${color}"/><circle cx="125" cy="30" r="65" fill="#fff" opacity=".09"/><path d="M15 150Q20 103 80 104Q140 103 145 150" fill="#20202b"/><path d="M60 105L80 140L100 105" fill="#eee1cb"/><path d="M75 119L85 119L89 150H71Z" fill="${index%2?'#a5373e':'#282833'}"/><rect x="66" y="83" width="28" height="28" rx="10" fill="#bf896a"/><ellipse cx="80" cy="64" rx="30" ry="38" fill="${index%2?'#e5b28c':'#c99573'}"/><path d="M49 60Q39 10 81 19Q122 10 111 64L102 39L${index%2?'58 35':'76 26'}L56 62Z" fill="#25232c"/>${index%3===0?'<path d="M49 56H111L105 73H86L80 63L75 73H55Z" fill="#20202b"/>':'<path d="M60 61H70M90 61H100" stroke="#29232a" stroke-width="4"/>'}<path d="M72 84Q80 88 89 82" fill="none" stroke="#704737" stroke-width="2"/><path d="M28 132L53 111L60 150M132 132L107 111L100 150" fill="none" stroke="#ffffff" opacity=".18" stroke-width="2"/></svg>`;
-}
-
 let sceneDragging=false;
 function createShowCard(scene){
  const b=document.createElement('button');b.type='button';b.className='show-scenario show-palette-'+scene.palette;b.dataset.scenario=scene.id;
  b.setAttribute('aria-pressed',String(scene.id===showScenarioId));
+ if(scene.id===showScenarioId){const selected=document.createElement('span');selected.className='show-selected-tag';selected.textContent='ВЫБРАНО';b.append(selected);}
  const poster=document.createElement('span');poster.className='show-poster';poster.setAttribute('aria-hidden','true');
  poster.innerHTML=scenePoster(scene.id);
  const body=document.createElement('span');body.className='show-scenario-body';
@@ -148,6 +144,7 @@ function renderShowScenarios(){
  $('showScenarioCards').scrollLeft=scroll;
  $('allScenes').replaceChildren(...SHOW_SCENARIOS.map(createShowCard));
  const scene=showScenario(showScenarioId);
+ document.body.dataset.story=scene.id;
  const title=document.createElement('strong');title.textContent=scene.emoji+' '+scene.title;
  const book=storyBible(scene.id);
  const text=document.createElement('p');text.textContent=book.place;
@@ -213,7 +210,7 @@ function renderShowCast(){
  $('showCastCount').textContent=members.length+' из '+scene.roles.length+' ролей';
  $('showCast').replaceChildren(...scene.roles.map(([name,description],index)=>{
   const card=document.createElement('div');card.className='show-role'+(showAssigned[index]?' show-role-active':'');
-  const avatar=document.createElement('span');avatar.className='show-role-avatar';avatar.innerHTML=portrait(index,['#80505a','#867243','#526e83','#765482','#477c7d','#77745a','#5f6680'][SHOW_SCENARIOS.findIndex(s=>s.id===scene.id)%7]);
+  const avatar=document.createElement('span');avatar.className='show-role-avatar';avatar.innerHTML=characterPortrait(scene.id,index);
   const body=document.createElement('div');body.className='show-role-body';
   const strong=document.createElement('strong');strong.textContent=name;
   const desc=document.createElement('small');desc.textContent=description;

@@ -14,6 +14,7 @@
 <meta name="twitter:card" content="summary"><meta name="twitter:image" content="https://cityai.site/quorum/assets/quorum-icon-512-v2.png">
 <link rel="stylesheet" href="./style.css?v=mobile-polish49">
 <link rel="stylesheet" href="./uiux32.css?v=show64">
+<link rel="stylesheet" href="./noir.css?v=cinema1">
 </head><body data-experience="show">
 <section id="quorumLanding" class="quorum-landing" aria-labelledby="landingTitle">
  <div class="quorum-landing-frame">
@@ -37,10 +38,10 @@
  </div>
  <nav class="quorum-landing-legal" aria-label="Документы"><a href="./terms.html">Условия</a><a href="./privacy.html">Конфиденциальность</a></nav>
 </section>
-<header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
+<header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">ШОУ</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
 <main>
-<section class="intro"><div class="eyebrow">КВОРУМ / AI SHOW</div><h1>Твои персонажи.<br>Настоящие <span>нейросети.</span></h1><p>Выбери историю, собери актёрский состав и смотри, как разные ИИ разыграют её по-своему.</p></section>
+<section class="intro"><div class="eyebrow">КВОРУМ / AI SHOW</div><h1>Выберите историю.<br>Соберите <span>свой каст.</span></h1><p>У каждого — своя роль. У каждого — свой секрет.<br>Актёры — нейросети. Чем всё закончится — увидим.</p></section>
 <nav class="experience-tabs" aria-label="Формат Кворума" hidden><button type="button" id="experienceCouncil" class="experience-tab active" aria-pressed="true">🧠 Совет</button><button type="button" id="experienceShow" class="experience-tab" aria-pressed="false">🎭 Шоу</button></nav>
 <div class="workspace">
 <section class="board">
@@ -66,7 +67,7 @@
 </div>
 <section id="showPanel" class="show-panel" aria-label="Создать шоу">
  <div class="section-title"><h2>01 / Выберите сценарий</h2><span class="step-note">10 историй · новые будут добавляться</span></div>
- <div class="scene-heading"><span>Выберите историю</span><button id="scenesAll" type="button" class="quiet">Смотреть все ↗</button></div>
+ <div class="scene-heading"><span>ДЕСЯТЬ ИСТОРИЙ. НИ ОДНОГО ОДИНАКОВОГО ФИНАЛА.</span><button id="scenesAll" type="button" class="quiet">Смотреть все</button></div>
 <div class="scene-navigation"><button id="scenesPrev" type="button" aria-label="Предыдущие сценарии">←</button><div id="showScenarioCards" class="show-scenarios" role="group" aria-label="Сценарии шоу"></div><button id="scenesNext" type="button" aria-label="Следующие сценарии">→</button></div>
 <dialog id="scenesDialog" class="scenes-dialog" aria-labelledby="allScenesTitle"><div class="scene-heading"><h2 id="allScenesTitle">Все сценарии</h2><button id="scenesClose" type="button" class="quiet" aria-label="Закрыть сценарии">✕</button></div><div id="allScenes" class="all-scenes"></div></dialog>
  <div id="showScenarioDetails" class="show-scene-description" aria-live="polite"></div>
@@ -74,8 +75,8 @@
   <label for="showScenes">Количество сцен<select id="showScenes"><option value="3">3 · динамичная история</option><option value="4" selected>4 · полноценный сюжет</option><option value="5">5 · расширенная история</option></select></label>
   <label for="showTone">Манера персонажей<select id="showTone"><option value="wild">🔥 Без тормозов</option><option value="brutal" selected>💥 Жёсткая</option><option value="sharp">😈 Саркастичная</option><option value="cinematic">🎬 Кинематографичная</option><option value="restrained">🕊 Сдержанная</option></select></label>
  </div>
- <div class="section-title spaced"><h2>02 / Кастинг персонажей</h2><span id="showCastCount" class="step-note"></span></div>
- <p class="hint">Персонаж — отдельная роль. Любая выбранная нейросеть может его играть.</p>
+ <div class="section-title spaced"><h2>02 / Кто сыграет в вашей истории?</h2><span id="showCastCount" class="step-note"></span></div>
+ <p class="hint">Семь характеров. Ни одного случайного лица. Выберите, кто выйдет на сцену.</p>
  <div class="show-cast-controls"><button type="button" id="showRandomCast" class="quiet">🎲 Случайный кастинг</button><span id="showCastMode">Можно назначать вручную</span></div>
  <div id="showCast" class="show-cast" role="group" aria-label="Назначение ролей моделям"></div>
  <label class="show-direction" for="showExtra">Ваш поворот сюжета <span>(необязательно)</span></label>
