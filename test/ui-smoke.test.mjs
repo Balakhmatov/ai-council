@@ -22,7 +22,7 @@ test('Telegram frontend loads a versioned hint module and keeps styled category/
  assert.match(app,/renderProfiles\(\);renderSubtasks\(\);syncTaskHint\(\)/);
  assert.match(html,/id="profiles"/);
  assert.match(html,/id="subtasks"/);
- assert.match(html,/app\.js\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
  assert.match(css,/\.profile-option\.active\{background:transparent;/);
  assert.match(css,/\.task-option\{[^}]*border-radius:999px/);
  assert.match(css,/\.task-option\.active\{[^}]*background:#f2ebfc/);
@@ -126,7 +126,7 @@ test('owner role is refreshed from live session and unlocks administration witho
  assert.match(js,/window\.addEventListener\('focus'/);
  assert.match(js,/document\.addEventListener\('visibilitychange'/);
  assert.match(js,/Object\.hasOwn\(identity,'token'\)/);
- assert.match(html,/app\.js\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
 });
 
 test('stop button clearly discloses that user cancellation does not refund quota',()=>{
@@ -170,7 +170,7 @@ test('Quorum defaults to Claude for the final answer and never silently prioriti
  assert.match(app,/for\(const id of defaultParticipants\(available\)\)chosen\.add\(id\)/);
  assert.match(app,/\$\('judge'\)\.onchange=\(\)=>\{moderatorChosenByUser=true/);
  assert.doesNotMatch(app,/chosen\.has\('grok'\)\?'grok'/);
- assert.match(html,/app\.js\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
 });
 
 test('round and named response length selectors appear under task input, separate from modes',()=>{
@@ -206,8 +206,8 @@ test('research UI is selective, source-based and never silently claims every mod
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  for(const id of ['factCheck','researchPanel','researchState','researchSources','researchSearchWidget'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/app\.js\?v=roast60/);
- assert.match(html,/uiux32\.css\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
+ assert.match(html,/uiux32\.css\?v=scene61/);
  assert.match(app,/needsSources\(task\)/);
  assert.match(app,/api\/research/);
  assert.match(app,/onResearch:showResearch/);
@@ -258,8 +258,8 @@ test('choosing a fourth model on free plan shows an anchored tooltip, not a remo
  assert.match(app,/if\(cap===3\)showModelLimitTooltip\(label\)/);
  assert.match(css,/\.model-limit-tooltip\{/);
  assert.match(css,/pointer-events:none/);
- assert.match(html,/app\.js\?v=roast60/);
- assert.match(html,/uiux32\.css\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
+ assert.match(html,/uiux32\.css\?v=scene61/);
 });
 test('Qwen and DeepSeek models are available in the selection UI when configured',()=>{
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
@@ -308,7 +308,7 @@ test('homepage is visible to signed-in and Telegram users until they click explo
  assert.match(sync,/openWorkspace=landingExploring\|\|url\.has\('admin'\)\|\|url\.has\('payment'\)/);
  assert.doesNotMatch(sync,/!!access|!!telegramContext|!!adminToken/);
  assert.match(html,/<body class="landing-visible">/);
- assert.match(html,/app\.js\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
 });
 
 test('landing artwork contains no painted CTA; interactive actions, category chips and legal links follow image',()=>{
@@ -328,7 +328,7 @@ test('landing artwork contains no painted CTA; interactive actions, category chi
 test('mobile marketing screen stays inside stable Safari viewport without white overscroll gaps',()=>{
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
- assert.match(html,/uiux32\.css\?v=roast60/);
+ assert.match(html,/uiux32\.css\?v=scene61/);
  assert.match(css,/html:has\(body\.landing-visible\)\{height:100%;background:#f4e1fa!important;/);
  assert.match(css,/body\.landing-visible\{position:fixed;inset:0;width:100%;height:100svh;min-height:0;/);
  assert.match(css,/body\.landing-visible .quorum-landing\{display:flex;flex-direction:column;/);
@@ -346,7 +346,7 @@ test('mobile marketing screen stays inside stable Safari viewport without white 
 test('landing image fills mobile viewport without surrounding white gutters',()=>{
  const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
- assert.match(html,/uiux32\.css\?v=roast60/);
+ assert.match(html,/uiux32\.css\?v=scene61/);
  assert.match(css,/body\.landing-visible \.quorum-landing\{\s*padding:0!important;/);
  assert.match(css,/background:linear-gradient\(180deg,#f9efff 0%,#f4e4fe 48%,#eddcfe 100%\)!important/);
  assert.match(css,/width:min\(100vw,530px,calc\(78\.027svh - 110px\)\)!important/);
@@ -362,11 +362,31 @@ test('roast battle has distinct selector, displays the transcript by default, an
  assert.match(engine,/roast: \['🔥 Токсичный баттл'/);
  assert.match(html,/id="roastModeNote"[^>]*hidden/);
  assert.match(html,/id="discussionChoiceLabel"/);
- assert.match(html,/app\.js\?v=roast60/);
- assert.match(html,/uiux32\.css\?v=roast60/);
+ assert.match(html,/app\.js\?v=scene61/);
+ assert.match(html,/uiux32\.css\?v=scene61/);
  assert.match(app,/if\(mode==='roast'\)\$\('showDiscussion'\)\.checked=true/);
  assert.match(app,/\$\('roastModeNote'\)\.hidden=mode!=='roast'/);
  assert.match(app,/\$\('discussionChoiceLabel'\)\.textContent=mode==='roast'/);
  assert.match(css,/#modes \.mode-roast\.active/);
  assert.match(css,/\.roast-mode-note\{/);
+});
+
+test('discussion ambience is a separate live setting with scene nicknames and true model names',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const engine=readFileSync(new URL('../public/engine.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ assert.match(html,/id="ambience"/);
+ assert.match(html,/id="ambienceHint"/);
+ assert.match(html,/app\.js\?v=scene61/);
+ assert.match(html,/uiux32\.css\?v=scene61/);
+ assert.match(engine,/label:'🎬 Тарантино'/);
+ assert.match(engine,/label:'🕶️ Гангстеры'/);
+ assert.match(engine,/label:'🧢 Блатной двор'/);
+ assert.match(engine,/label:'⚡ Аниме'/);
+ assert.match(app,/Object\.entries\(ambiences\)/);
+ assert.match(app,/ambience:'none'|let mode='consensus',ambience='none'/);
+ assert.match(app,/ambience,rounds:Number\(\$\('rounds'\)\.value\)/);
+ assert.match(app,/m\.nickname\?m\.nickname\+' · '\+m\.name:m\.name/);
+ assert.match(css,/\.ambience-setting\{/);
 });
