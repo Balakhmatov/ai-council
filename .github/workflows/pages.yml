@@ -55,31 +55,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Verify live Quorum VPS serves the new AI roast mode and mobile landing
+      - name: Verify live Quorum VPS serves all scene presets and cinematic AI characters
         shell: bash
         run: |
           for i in 1 2 3 4 5 6 7 8; do
             code=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.html --write-out '%{http_code}' 'https://cityai.site/quorum/' || true)
             bytes=$(wc -c < /tmp/quorum-live.html 2>/dev/null || echo 0)
-            csscode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.css --write-out '%{http_code}' 'https://cityai.site/quorum/uiux32.css?v=roast60' || true)
+            csscode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.css --write-out '%{http_code}' 'https://cityai.site/quorum/uiux32.css?v=scene61' || true)
             enginecode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-engine.js --write-out '%{http_code}' 'https://cityai.site/quorum/engine.js' || true)
-            appcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-app.js --write-out '%{http_code}' 'https://cityai.site/quorum/app.js?v=roast60' || true)
+            appcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-app.js --write-out '%{http_code}' 'https://cityai.site/quorum/app.js?v=scene61' || true)
             echo "Attempt $i: HTML=$code CSS=$csscode ENGINE=$enginecode APP=$appcode bytes=$bytes"
             if [ "$code" = "200" ] && [ "$csscode" = "200" ] && [ "$enginecode" = "200" ] && [ "$appcode" = "200" ] \
-              && grep -qF 'app.js?v=roast60' /tmp/quorum-live.html \
-              && grep -qF 'uiux32.css?v=roast60' /tmp/quorum-live.html \
+              && grep -qF 'app.js?v=scene61' /tmp/quorum-live.html \
+              && grep -qF 'uiux32.css?v=scene61' /tmp/quorum-live.html \
               && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html \
               && grep -qF 'html:has(body.landing-visible){height:100%' /tmp/quorum-live.css \
               && grep -qF 'body.landing-visible{position:fixed;inset:0' /tmp/quorum-live.css \
               && grep -qF 'width:min(100vw,530px,calc(78.027svh - 110px))!important' /tmp/quorum-live.css \
               && grep -qF 'roastRules' /tmp/quorum-engine.js \
+              && grep -qF "label:'🎬 Тарантино'" /tmp/quorum-engine.js \
+              && grep -qF 'id="ambience"' /tmp/quorum-live.html \
+              && grep -qF 'Object.entries(ambiences)' /tmp/quorum-app.js \
               && grep -qF 'roastModeNote' /tmp/quorum-app.js \
               && grep -qF '#modes .mode-roast.active' /tmp/quorum-live.css; then
-              echo "PASS: Live VPS serves roast60: AI battle prompts, interactive mode selector, and stable Safari landing."
+              echo "PASS: Live VPS serves scene61: cinematic scenes, Tarantino preset, real provider names, and stable Safari landing."
               exit 0
             fi
             grep -oE 'uiux32.css\?v=[A-Za-z0-9_-]+' /tmp/quorum-live.html | head -1 || true
             sleep 15
           done
-          echo "::error::Live VPS has not picked up roast60. Inspect quorum-deploy.timer and quorum-deploy.service."
+          echo "::error::Live VPS has not picked up scene61. Inspect quorum-deploy.timer and quorum-deploy.service."
           exit 1
