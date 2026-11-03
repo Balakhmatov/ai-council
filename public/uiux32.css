@@ -1037,3 +1037,38 @@ body[data-experience=show] .judge-label,body[data-experience=show] .participants
 .show-poster{padding:0!important;overflow:hidden}
 .show-poster-art{display:block;width:100%;height:100%;object-fit:cover;flex:none}
 .show-poster::before,.show-poster::after{display:none}
+
+
+/* Quorum is now a Show-first product: the old Council and marketing landing remain offscreen,
+   so history/account compatibility is preserved without exposing obsolete marketing UI. */
+.experience-tabs,#councilPanel,#quorumLanding,.quorum-landing{display:none!important}
+body[data-experience=show] .intro{padding-top:8px;margin-bottom:14px}
+body[data-experience=show] .intro .eyebrow{color:#9563bb;letter-spacing:1.7px}
+body[data-experience=show] .intro h1{font-size:clamp(27px,4.5vw,44px);line-height:1.16}
+body[data-experience=show] .intro p{max-width:630px;font-size:13px}
+body[data-experience=show] .discussion-title{margin-top:27px}
+.show-style-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin:15px 0 19px}
+.show-style-controls label{display:flex;flex-direction:column;gap:7px;font-size:12px;font-weight:750;color:#6a5677;min-width:0}
+.show-style-controls select{width:100%;margin:0;min-height:43px;padding:10px 11px;border:1px solid #dfcfe8;border-radius:11px;background:#fff;color:#473254;font-size:12px;font-weight:650}
+.show-role{position:relative;grid-template-columns:36px minmax(0,1fr);transition:box-shadow .18s,border-color .18s}
+.show-role.show-role-active{border-color:#a988d0;box-shadow:inset 0 0 0 1px #9d7dc332}
+.show-role-choice{grid-column:1/-1;width:100%;margin-top:3px;min-height:32px;padding:6px 8px;border:1px solid #c9a5e1;border-radius:9px;background:#f7effb;color:#7949a4;font-size:11px;font-weight:780;cursor:pointer}
+.show-role-choice:disabled{cursor:default;background:#f1e9f8;color:#70518c}
+.show-role-model{margin-top:2px}
+.show-role-avatar{font-weight:800}
+#showExtra{min-height:114px;max-height:280px;resize:vertical;line-height:1.55;padding:12px 13px;font-size:16px}
+.show-extra-counter{text-align:right;font-size:11px;color:#8f7a99;margin:5px 0 18px;font-variant-numeric:tabular-nums}
+.show-runtime-note{display:none!important}
+#feed .show-message.narrator{background:transparent;border:0;border-left:3px solid #b994da;padding:7px 10px;margin:13px 0;color:#6a5979}
+#feed .show-message.silent{background:#f9f7f9;border-style:dashed;color:#94859b}
+#feed .show-message.final{margin-top:17px;border:1px solid #ac8ccb;background:#f7f0fd;padding:16px}
+body[data-experience=show] .participants-head h2::after{content:' · актёрский состав';font-weight:500;color:#927baa}
+@media(max-width:650px){
+ body[data-experience=show] .intro{padding:0 2px 3px}
+ body[data-experience=show] .intro h1{font-size:28px}
+ .show-style-controls{grid-template-columns:minmax(0,1fr);gap:9px}
+ .show-scenarios{gap:9px}
+ .show-scenario-body{min-height:100px}
+ #showExtra{min-height:130px}
+ .show-role-choice{min-height:36px}
+}
