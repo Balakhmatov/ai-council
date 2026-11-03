@@ -306,7 +306,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=scene61/);
+  assert.match(html.body,/uiux32\.css\?v=show62/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=scene61/);
+  assert.match(html.body,/app\.js\?v=show62/);
  }finally{await t.close();}
 });
 
@@ -822,7 +822,7 @@ test('Mistral Large 4 accepts mixed thinking/text chunks, prices calls, and choo
 
 
 test('Show requests enforce short budgets on the server and reject excessive context',async()=>{
- const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4'});
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4',ACCOUNT_DAILY_CALL_LIMIT:'10'});
  try{
   const user=(await t.login('show-test@example.com')).data;
   const task=await t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:2},user.token);
