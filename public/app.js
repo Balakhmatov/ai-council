@@ -1,4 +1,4 @@
-import {modes,discuss,parseBallotDetail} from './engine.js';
+import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -23,7 +23,7 @@ const agents=MODEL_PRIORITY.map(id=>({id,...agentDetails[id]}));
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
-let mode='consensus',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
+let mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let landingExploring=false;
@@ -116,6 +116,9 @@ for(const [id,[title,description]] of Object.entries(modes)){
  const name=document.createElement('span');name.textContent=title;const small=document.createElement('small');small.textContent=description;
  b.append(name,small);b.onclick=()=>{mode=id;if(mode==='roast')$('showDiscussion').checked=true;update();};$('modes').append(b);
 }
+for(const [id,scene] of Object.entries(ambiences))$('ambience').add(new Option(scene.label,id));
+$('ambience').value=ambience;
+$('ambience').onchange=()=>{ambience=$('ambience').value;if(ambience!=='none')$('showDiscussion').checked=true;update();};
 function update(){
  const premium=!!(access?.admin||access?.subscriptionActive);
  const detailed=$('length').querySelector('option[value="detailed"]');
@@ -130,6 +133,7 @@ function update(){
  if(preferred)$('judge').value=preferred;
  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
  $('roastModeNote').hidden=mode!=='roast';
+ $('ambienceHint').textContent=ambiences[ambience]?.description||ambiences.none.description;
  $('discussionChoiceLabel').textContent=mode==='roast'?'Показывать токсичную перепалку моделей':'Показывать обсуждение моделей';
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
  $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
@@ -144,6 +148,7 @@ function update(){
   label.querySelector('small').textContent=ok?a.sub:'Скоро';
  });
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
+ $('ambience').disabled=running;
 }
 $('rounds').onchange=update;$('length').onchange=update;
 $('judge').onchange=()=>{moderatorChosenByUser=true;update();};
@@ -1093,9 +1098,9 @@ function renderMessage(m){
  const head=document.createElement('div');head.className='message-head';
  const identity=document.createElement('span');identity.className='model-identity';
  const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
- const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.name;
+ const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.nickname?m.nickname+' · '+m.name:m.name;
  identity.append(dot,name);
- const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ · '+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
  const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
@@ -1139,7 +1144,7 @@ $('start').onclick=async()=>{
  lastTaskContext={prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
  $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;$('researchPanel').hidden=true;$('researchSources').replaceChildren();$('researchSearchWidget').replaceChildren();
  $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
- document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#rounds,#length,#factCheck').forEach(e=>e.disabled=true);
+ document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
  update();$('status').textContent='Нейросети работают над вашей задачей.';
  try{
   let token=await ensureSession();
@@ -1154,7 +1159,7 @@ $('start').onclick=async()=>{
    }
   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   const {profile,task:subtask}=resolveProfile(profileId,taskId);
-  await discuss({agents:members,judge:moderator,mode,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
+  await discuss({agents:members,judge:moderator,mode,ambience,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
    researchProvider:$('factCheck').checked&&needsSources(task)?verifyTaskSources:null,onResearch:showResearch});
   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
@@ -1165,8 +1170,8 @@ $('start').onclick=async()=>{
   if(activeTask){
    const {profile,task:subtask}=resolveProfile(profileId,taskId);
    const historyPayload={
-    prompt:$('task').value,profile:profile.name,
-    specialization:subtask?.[1]||'',messages:messages.map(({name,stage,text,final,error})=>({name,stage,text,final:!!final,error:!!error}))
+    prompt:$('task').value,profile:profile.name,ambience,
+    specialization:subtask?.[1]||'',messages:messages.map(({name,nickname,stage,text,final,error})=>({name,nickname,stage,text,final:!!final,error:!!error}))
    };
    try{const finished=await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
      taskId:activeTask.taskId,cancelled:stopRequested,...(activeTask.historyEnabled?{history:historyPayload}:{})
@@ -1175,7 +1180,7 @@ $('start').onclick=async()=>{
   }
   await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#rounds,#length,#factCheck').forEach(e=>e.disabled=false);
+  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
   update();
  }
 };
