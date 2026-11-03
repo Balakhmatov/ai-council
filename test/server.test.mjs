@@ -819,3 +819,53 @@ test('Mistral Large 4 accepts mixed thinking/text chunks, prices calls, and choo
   assert.equal(admin.accounting.totals.unknownCostCalls,0);
  }finally{await t.close();}
 });
+
+
+test('Show requests enforce short budgets on the server and reject excessive context',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4'});
+ try{
+  const user=(await t.login('show-test@example.com')).data;
+  const task=await t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:2},user.token);
+  assert.equal(task.status,200);
+  assert.equal(task.data.maxCalls,4);
+  const talk=provider=>({provider,taskId:task.data.taskId,stage:'intermediate',format:'show',maxWords:45,
+    messages:[{role:'system',content:'Ты персонаж с характером'},{role:'user',content:'Говори одной репликой'}]});
+  const first=await t.send('/api/chat',talk('mistral'),user.token);
+  assert.equal(first.status,200);
+  const mistralPayload=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(mistralPayload.max_tokens,1450);
+  assert.equal(mistralPayload.reasoning_effort,'low');
+  const long=await t.send('/api/chat',{...talk('mistral'),messages:[{role:'system',content:'x'.repeat(5000)},{role:'user',content:'one'}]},user.token);
+  assert.equal(long.status,400);
+  assert.equal(t.calls.length,1,'oversize show prompt must not reach provider');
+  const second=await t.send('/api/chat',talk('openai'),user.token);
+  assert.equal(second.status,200);
+  const openaiPayload=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(openaiPayload.reasoning_effort,'low');
+  assert.equal(openaiPayload.max_completion_tokens,1600);
+  await t.send('/api/chat',talk('mistral'),user.token);
+  assert.equal((await t.send('/api/chat',talk('openai'),user.token)).status,403,'server caps total show calls even after a malformed request');
+  const finish=await t.send('/api/task/finish',{taskId:task.data.taskId},user.token);
+  assert.equal(finish.status,200);
+ }finally{await t.close();}
+});
+test('Show cannot use five rounds to bypass its low-cost two-act limit',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4'});
+ try{
+  const user=(await t.login('show-limit@example.com')).data;
+  const bad=await t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:5},user.token);
+  assert.equal(bad.status,400);
+  const good=await t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:2},user.token);
+  assert.equal(good.status,200);
+  assert.equal(good.data.maxCalls,4);
+ }finally{await t.close();}
+});
+test('Show story asset is available through the real Quorum asset route',async()=>{
+ const t=await setup();
+ try{
+  const response=await t.asset('/show.js');
+  assert.equal(response.status,200);
+  assert.match(response.body,/SHOW_SCENARIOS/);
+  assert.match(response.body,/runShow/);
+ }finally{await t.close();}
+});
