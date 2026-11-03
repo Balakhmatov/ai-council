@@ -337,6 +337,11 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       :{model,messages,max_tokens:longFinal?7000:intermediateTokens};
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
+    if(body.provider==='mistral'&&model==='mistral-large-4'){
+     payload.reasoning_effort=ballotStage?'low':'medium';
+     // Reasoning tokens may consume the completion budget before user-visible text.
+     payload.max_tokens=longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
+    }
     if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){
@@ -345,7 +350,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
        log(model,'error',null,upstream.status,'upstream_error',safeReason);
        return fail(upstream.status,`Модель ${body.provider[0].toUpperCase()+body.provider.slice(1)} сейчас недоступна. Попробуйте позже или выберите другую.`);
      }
-    const data=await upstream.json();const text=body.provider==='claude'?data.content?.filter(c=>c.type==='text').map(c=>c.text).join('\n'):data.choices?.[0]?.message?.content;
+    const data=await upstream.json();const raw=body.provider==='claude'?data.content:data.choices?.[0]?.message?.content;
+    // Large 4 can interleave thinking and text chunks. Forward only answer text.
+    const text=typeof raw==='string'?raw:Array.isArray(raw)?raw.filter(c=>c&&c.type==='text'&&typeof c.text==='string').map(c=>c.text).join('\n'):'';
     if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502,'empty_response','Ответ не содержит текстового содержимого');return fail(502,'Модель вернула пустой ответ');}
     log(model,'ok',data.usage,200);
     economy.success(body.taskId);
