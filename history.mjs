@@ -37,7 +37,7 @@ export function createHistoryStore({file='',now=Date.now}={}){
     typeof m.name!=='string'||m.name.length>100||typeof m.stage!=='string'||m.stage.length>150)
     throw Error('Некорректные сообщения');
    const nickname=typeof m.nickname==='string'?m.nickname.trim().slice(0,80):'';
-   return {name:m.name,...(nickname?{nickname}:{}),stage:m.stage,text:m.text,final:!!m.final,error:!!m.error};
+   return {name:m.name,...(nickname?{nickname}:{}),stage:m.stage,text:m.text,final:!!m.final,error:!!m.error,...(m.show?{show:true}:{})};
   });
  }
  function record(identity,taskId,payload){
