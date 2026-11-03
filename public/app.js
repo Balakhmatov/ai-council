@@ -1,5 +1,5 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=portraits2';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=diner-improv1';
 import {scenePoster,characterPortrait} from './show-art.js?v=portraits2';
 import {STORY_CORE_ROLES,storyBible} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';

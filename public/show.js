@@ -122,27 +122,28 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
  if(!Array.isArray(agents)||agents.length<2||agents.length>7||![3,4,5].includes(scenes))throw Error('Выберите от 3 до 5 сцен и минимум две нейросети');
  if(!Array.isArray(cast)||cast.length!==agents.length||new Set(cast.map(c=>c.provider)).size!==agents.length||cast.some(c=>!agents.some(a=>a.id===c.provider)))throw Error('Роли должны быть назначены разным нейросетям');
  const book={...storyBible(scenario?.id),id:scenario?.id||'diner'};
+ const improvisation=scenario.id==='diner';
  const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
  const director=String(extra||'').slice(0,5000);
- const personalities=actors.map(a=>a.name+' ('+a.agent.name+'): '+a.description+' | '+book.roles[a.slot]).join('\n');
+ const personalities=actors.map(a=>improvisation?a.name+' ('+a.agent.name+')':a.name+' ('+a.agent.name+'): '+a.description+' | '+book.roles[a.slot]).join('\n');
  const dialogue=[],all=[],callErrors=new Map();
  const perScene=Math.min(4,actors.length),ending=book.ending;
  for(let sceneNumber=1;sceneNumber<=scenes;sceneNumber++){
   abortIfNeeded(signal);
-  const {current,previous}=canonContext(book,sceneNumber,scenes);
+  const {current,previous}=improvisation?{current:['Разговор',book.place+' '+book.conflict],previous:null}:canonContext(book,sceneNumber,scenes);
   const [beatName,beatAction]=current;
   const stage='Сцена '+sceneNumber+' · '+beatName;
   onProgress({stage,status:'working'});
-  // Ground the next scene in an explicit event, so mysteries cannot be forgotten.
+  // Scripted stories announce beats; improvisation announces only the shared opening.
   const cue={id:'narrator',name:'Сцена',nickname:beatName,stage,text:beatAction,show:true,narrator:true};
-  emit(cue);all.push(cue);
+  if(!improvisation||sceneNumber===1){emit(cue);all.push(cue);}
   const used=new Set();
   for(let turn=0;turn<perScene;turn++){
    abortIfNeeded(signal);
    const part=chooseSpeaker(actors,used,dialogue,sceneNumber,turn);
    if(!part)break;
    used.add(part.provider);
-   const last=dialogue.slice(-5);
+   const last=improvisation?dialogue:dialogue.slice(-5);
    const history=last.map(m=>m.nickname+': '+m.text).join('\n');
    const silence=last.filter(m=>m.silent).map(m=>m.nickname).join(', ');
    const system=[
@@ -150,20 +151,20 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
     'ХАРАКТЕР: '+part.description+'. ТВОЯ ЛИЧНАЯ ЦЕЛЬ И СЕКРЕТ: '+book.roles[part.slot],
     'ЖАНР: '+scenario.genre+'. МЕСТО: '+book.place,
     'КОНФЛИКТ: '+book.conflict+'. СТАВКИ: '+book.stakes,
-    'НЕОБСУЖДАЕМАЯ ПРАВДА СЮЖЕТА (в начале не выдавай её целиком): '+book.truth,
-    'УЧАСТНИКИ (другие персонажи могут быть вне кадра):\n'+personalities,
+    improvisation?'ГРАНИЦЫ ЗНАНИЯ: тебе известны только твоя роль, твои личные сведения, общая исходная ситуация и то, что уже прозвучало в разговоре. Цели, секреты и мысли остальных тебе неизвестны. Слова собеседника — его версия, не доказанный факт. Можно подозревать, спрашивать, блефовать и менять мнение, но не знать чужую тайну заранее.':'НЕОБСУЖДАЕМАЯ ПРАВДА СЮЖЕТА (в начале не выдавай её целиком): '+book.truth,
+    (improvisation?'ИМЕНА УЧАСТНИКОВ (их характеры и тайны тебе не раскрыты):\n':'УЧАСТНИКИ (другие персонажи могут быть вне кадра):\n')+personalities,
     'МАНЕРА ИГРЫ: '+toneInstruction(tonality),
     showSpeechGuide(scenario.id,tonality),
     'ПРАВИЛО ЖИВОГО КИНО: выдай только свою ОДНУ короткую реплику из 1–3 естественных предложений, до 45 слов, максимум 280 символов; при желании одна ремарка в скобках. Никаких заголовков, имён перед репликой, планов, списков или резюме.',
-    'Каждая реплика должна отвечать на чужую реплику ИЛИ продвигать конкретный конфликт: улика, требование, действие, цена, выбор. Не придумывай новых необъяснимых предметов, ключей, родственников, тайных дверей. Не противоречь установленным фактам. Действия только свои.',
+    improvisation?'СВОБОДНЫЙ РАЗГОВОР: отвечай на услышанное своим голосом. Допустимы бытовые отступления, шутки, паузы и уклонение от ответа. Не обязан раскрывать секрет, предъявлять улику или продвигать сюжет каждой репликой. Развязка не предписана; не форсируй признание и не объявляй решения за всех. Действия и слова только свои. Не выдумывай чужие мысли или новые обстоятельства как установленные факты.':'Каждая реплика должна отвечать на чужую реплику ИЛИ продвигать конкретный конфликт: улика, требование, действие, цена, выбор. Не придумывай новых необъяснимых предметов, ключей, родственников, тайных дверей. Не противоречь установленным фактам. Действия только свои.',
     'ЗАПРЕТ ПУСТОГО ПАФОСА: не говори «я разрушу мир, но не тебя», «сломаю стол, не тебя», «рассвет принадлежит тебе» и подобных бессмысленных угроз или безадресных философских афоризмов. Жёсткость выражай последствиями для конкретной цели персонажа.',
     'Если кто-то молчит, окружающие это замечают и могут прямо потребовать ответа. Молчание — часть сцены, а не ошибка системы.'
    ].join('\n');
    const user=[
-    'СЦЕНА '+sceneNumber+' ИЗ '+scenes+': '+beatName+'. ОБЯЗАТЕЛЬНЫЙ ПОВОРОТ: '+beatAction,
+    improvisation?'КРУГ РАЗГОВОРА '+sceneNumber+'. Продолжай общение, исходя из своей роли и услышанного.':'СЦЕНА '+sceneNumber+' ИЗ '+scenes+': '+beatName+'. ОБЯЗАТЕЛЬНЫЙ ПОВОРОТ: '+beatAction,
     previous?'В предыдущей сцене установлено: '+previous[1]:'',
-    sceneNumber===scenes?'Это развязка. Назови конкретное последствие и решение, не оставляй сюжет подвешенным. Канонический результат: '+ending:'',
-    'РЕЖИССЁРСКАЯ ЗАДАЧА: '+(director||'Сделай конфликт выразительным и понятным зрителю. Если режиссёр задал свою развязку, используй её, сохраняя причинность.'),
+    !improvisation&&sceneNumber===scenes?'Это развязка. Назови конкретное последствие и решение, не оставляй сюжет подвешенным. Канонический результат: '+ending:'',
+    improvisation?'ПОЖЕЛАНИЯ К СИТУАЦИИ: '+(director||'Свободное общение в рамках роли. Готового сценария и обязательной развязки нет.'):'РЕЖИССЁРСКАЯ ЗАДАЧА: '+(director||'Сделай конфликт выразительным и понятным зрителю. Если режиссёр задал свою развязку, используй её, сохраняя причинность.'),
     'ПРЕДЫДУЩИЕ РЕПЛИКИ: '+(history||'Сцена начинается.'),
     silence?'МОЛЧАНИЕ: '+silence+'. '+(last.at(-1)?.silent?'Предыдущий персонаж промолчал. НАЧНИ с реакции на его/её молчание — вопроса, подозрения или конкретного действия, чтобы отсутствие ответа стало частью интриги.':'Помни, что эти персонажи не ответили и остальные это заметили.'):'',
     'СЕЙЧАС ГОВОРИТ '+part.name+'. Ответь ОДНОЙ репликой. Не говори за других.'
@@ -189,19 +190,19 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
  let epilogue='';
  // Prefer a model that actually responded during the story.
  const healthy=actors.slice().sort((a,b)=>(callErrors.get(a.provider)||0)-(callErrors.get(b.provider)||0));
- const narrator=healthy[0],context=dialogue.slice(-8).map(m=>m.nickname+': '+m.text).join('\n');
+ const narrator=healthy[0],context=(improvisation?dialogue.filter(m=>!m.silent):dialogue.slice(-8)).map(m=>m.nickname+': '+m.text).join('\n');
  if(narrator){
   try{
    const answer=await request(narrator.agent,[
-    {role:'system',content:'Ты сценарист-эпилогист. Напиши ОДИН конкретный последний кадр в 1–3 предложениях (до 75 слов). Не говори от имени персонажей, не меняй виновного и победителя, не вводи новых загадок. Покажи последствие поступков. Без предисловий и пустого философствования.'},
-    {role:'user',content:'История: '+book.place+'. Правда: '+book.truth+'. Итог, который ДОЛЖЕН остаться каноном: '+ending+'. Последние реплики:\n'+context+'\nУказания режиссёра: '+director.slice(0,1300)+'\nДобавь только последний видимый кадр после развязки.'}
+    {role:'system',content:improvisation?'Подведи короткий итог реально состоявшегося разговора в 1–3 предложениях, до 75 слов. Используй только предоставленные реплики. Не дописывай события, признания, решения или развязку; не превращай подозрение или заявление одного героя в установленную истину. Если персонажи не договорились, прямо скажи это. Если реплик нет, скажи, что разговор не состоялся. Без выдуманного последнего кадра.':'Ты сценарист-эпилогист. Напиши ОДИН конкретный последний кадр в 1–3 предложениях (до 75 слов). Не говори от имени персонажей, не меняй виновного и победителя, не вводи новых загадок. Покажи последствие поступков. Без предисловий и пустого философствования.'},
+    {role:'user',content:improvisation?'Состоявшийся разговор:\n'+(context||'Нет успешных реплик.'):'История: '+book.place+'. Правда: '+book.truth+'. Итог, который ДОЛЖЕН остаться каноном: '+ending+'. Последние реплики:\n'+context+'\nУказания режиссёра: '+director.slice(0,1300)+'\nДобавь только последний видимый кадр после развязки.'}
    ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:75});
    epilogue=clipShowLine(answer,480);
   }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
  }
- // The deterministic resolution is always shown, even if every provider fails.
+ // Authored stories retain their resolution; improvisation never invents one on failure.
  const final={id:narrator?.provider||'narrator',name:narrator?.agent.name||'Рассказчик',nickname:'Эпилог',stage:'Эпилог',show:true,final:true,
-  text:ending+(epilogue?'\n\nПоследний кадр: '+epilogue:'')};
+  text:improvisation?(epilogue||'Разговор завершён. '+(dialogue.some(m=>!m.silent)?'Общий итог не сформирован; состоявшиеся реплики сохранены выше.':'Участники не смогли ответить.')):ending+(epilogue?'\n\nПоследний кадр: '+epilogue:'')};
  emit(final);all.push(final);
  onProgress({stage,status:'done'});
  onProgress({stage:'Готово',status:'done'});

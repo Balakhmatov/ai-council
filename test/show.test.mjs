@@ -111,3 +111,38 @@ test('crime Show prompts include optional speech palette without overriding rest
   if(tonality==='restrained')assert.ok(dialogue.every(p=>!p.includes('полная хуйня')&&p.includes('Выбранная манера важнее')));
  }
 });
+
+test('diner improvisation keeps other roles private and never sends authored plot or ending',async()=>{
+ const scenario=showScenario('diner');
+ const crew=Array.from({length:7},(_,i)=>({id:'actor'+i,name:'Model '+i}));
+ const parts=showCast(scenario,Object.fromEntries(crew.map((a,i)=>[i,a.id])));
+ const calls=[],events=[],book=STORY_BIBLE.diner;
+ await runShow({agents:crew,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async(a,m,s,stage)=>{calls.push({a,m,stage});return stage.stage==='final'?'Участники спорят, но общего решения не приняли.':'Я пока не верю твоей версии. Объясни ещё раз.';}});
+ const dialogue=calls.filter(c=>c.stage.stage==='intermediate');
+ assert.ok(dialogue.length>0);
+ for(const call of dialogue){
+  const own=parts.find(p=>p.provider===call.a.id),prompt=call.m.map(m=>m.content).join('\n');
+  assert.ok(prompt.includes(book.roles[own.slot]));
+  for(let slot=0;slot<7;slot++)if(slot!==own.slot)assert.ok(!prompt.includes(book.roles[slot]),'another character secret leaked');
+  assert.ok(prompt.includes(book.place)&&prompt.includes(book.conflict));
+  assert.ok(!prompt.includes('ОБЯЗАТЕЛЬНЫЙ ПОВОРОТ'));
+  assert.ok(!prompt.includes('Канонический результат'));
+ }
+ for(const call of calls){
+  const prompt=call.m.map(m=>m.content).join('\n');
+  assert.ok(!prompt.includes(book.truth));assert.ok(!prompt.includes(book.ending));
+  for(const [,beat]of book.beats)assert.ok(!prompt.includes(beat),'future scene leaked');
+ }
+ assert.equal(events.filter(e=>e.narrator).length,1,'only the shared opening situation is narrated');
+ assert.equal(events.at(-1).text,'Участники спорят, но общего решения не приняли.');
+});
+
+test('diner actors learn events from spoken dialogue and failure never invents a canon ending',async()=>{
+ const scenario=showScenario('diner'),parts=showCast(scenario,{0:'openai',1:'mistral',2:'grok'}),calls=[];
+ await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:()=>{},request:async(a,m,s,stage)=>{calls.push(m);return 'Я отдаю свою долю Рокси — это моё решение.';}});
+ assert.ok(calls[1][1].content.includes('Я отдаю свою долю Рокси'));
+ const events=[];
+ await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async()=>{throw Error('unavailable')}});
+ assert.ok(!events.at(-1).text.includes(STORY_BIBLE.diner.ending));
+ assert.ok(events.at(-1).text.includes('Участники не смогли ответить'));
+});
