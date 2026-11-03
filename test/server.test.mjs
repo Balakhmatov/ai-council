@@ -775,3 +775,47 @@ test('toxic AI debate is accepted as a distinct normal-priced task without bypas
   assert.equal((await t.send('/api/task/finish',{taskId:task.data.taskId},user.token)).status,200);
  }finally{await t.close();}
 });
+
+
+test('Mistral Large 4 accepts mixed thinking/text chunks, prices calls, and chooses reasoning budgets per stage',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'mistral-test-key',MISTRAL_MODEL:'mistral-large-4'},{
+  upstream:async()=>Response.json({
+   choices:[{message:{content:[
+    {type:'thinking',thinking:[{text:'hidden internal work'}]},
+    {type:'text',text:'Сильная идея'},
+    {type:'text',text:'Проверка решения'}
+   ]}}],
+   usage:{prompt_tokens:1200,completion_tokens:500,prompt_tokens_details:{cached_tokens:120}}
+  })
+ });
+ try{
+  const health=(await t.send('/healthz')).data;
+  assert.equal(health.mistralModel,'mistral-large-4');
+  const prompt={provider:'mistral',messages:[{role:'system',content:'Ты участник Кворума.'},{role:'user',content:'Проверь идею'}]};
+  const first=await t.send('/api/chat',{...prompt,step:'Раунд 1',maxWords:300},'admin-test-only');
+  assert.equal(first.status,200);
+  assert.equal(first.data.text,'Сильная идея\nПроверка решения');
+  assert(!JSON.stringify(first.data).includes('hidden internal work'));
+  const payload=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(payload.model,'mistral-large-4');
+  assert.equal(payload.reasoning_effort,'medium');
+  assert(payload.max_tokens>=3000);
+  const ballot=await t.send('/api/chat',{...prompt,step:'Проверка согласия',maxWords:300},'admin-test-only');
+  assert.equal(ballot.status,200);
+  const ballotPayload=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(ballotPayload.reasoning_effort,'low');
+  assert.equal(ballotPayload.max_tokens,2200);
+  const final=await t.send('/api/chat',{...prompt,stage:'final'},'admin-test-only');
+  assert.equal(final.status,200);
+  const finalPayload=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(finalPayload.reasoning_effort,'medium');
+  assert.equal(finalPayload.max_tokens,9000);
+  const admin=(await t.send('/api/admin',undefined,'admin-test-only')).data;
+  const p=admin.accounting.prices.find(x=>x.provider==='mistral');
+  assert.equal(p.model,'mistral-large-4');
+  assert.equal(p.input,0.7*82.5);
+  assert.equal(p.output,2.1*82.5);
+  assert.equal(p.cached,0.07*82.5);
+  assert.equal(admin.accounting.totals.unknownCostCalls,0);
+ }finally{await t.close();}
+});
