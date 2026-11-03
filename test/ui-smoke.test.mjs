@@ -390,3 +390,28 @@ test('discussion ambience is a separate live setting with scene nicknames and tr
  assert.match(app,/m\.nickname\?m\.nickname\+' · '\+m\.name:m\.name/);
  assert.match(css,/\.ambience-setting\{/);
 });
+
+
+test('Show stays independent of Council, includes ten visual scenes and model-to-character casting',()=>{
+ const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../public/uiux32.css',import.meta.url),'utf8');
+ const show=readFileSync(new URL('../public/show.js',import.meta.url),'utf8');
+ for(const id of ['experienceCouncil','experienceShow','councilPanel','showPanel','showScenarioCards','showScenarioDetails','showCast','showRandomCast','showExtra'])
+  assert.match(html,new RegExp('id="'+id+'"'));
+ assert.match(html,/app\\.js\\?v=show62/);
+ assert.match(html,/uiux32\\.css\\?v=show62/);
+ assert.match(app,/import \{SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow\} from '\.\/show\.js'/);
+ assert.match(app,/const isShow=experience==='show'/);
+ assert.match(app,/await runShow\(/);
+ assert.match(app,/mode:isShow\?'show':mode/);
+ assert.match(app,/format:stage\.format/);
+ assert.match(app,/maxWords:stage\.format==='show'\?45/);
+ assert.match(app,/showAssigned\[index\]=selected/);
+ assert.match(app,/crypto\.getRandomValues/);
+ assert.match(css,/\.show-scenarios\{/);
+ assert.match(css,/\.show-poster\{/);
+ assert.match(css,/\.show-role\{/);
+ assert.match(css,/#feed \.show-message/);
+ assert.match(show,/export const SHOW_SCENARIOS/);
+});
