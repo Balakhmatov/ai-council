@@ -1,3 +1,4 @@
+import {storyBible,storyBeat} from './show-stories.js';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
 export const SHOW_SCENARIOS=[
  {id:'diner',emoji:'🥃',title:'Последний столик',genre:'Криминальная комедия',palette:'wine',
@@ -70,40 +71,130 @@ export function clipShowLine(value,max=360){
  const sentence=Math.max(prefix.lastIndexOf('. '),prefix.lastIndexOf('! '),prefix.lastIndexOf('? '));
  return (sentence>max*.55?prefix.slice(0,sentence+1):prefix.trimEnd())+'…';
 }
-export async function runShow({agents,scenario,cast,extra='',turns=2,request,emit,signal,onProgress=()=>{}}){
- if(!Array.isArray(agents)||agents.length<2||agents.length>7||turns<1||turns>3)throw Error('Некорректные участники шоу');
- if(!cast?.length||cast.length!==agents.length||new Set(cast.map(c=>c.provider)).size!==agents.length||cast.some(c=>!agents.some(a=>a.id===c.provider)))throw Error('Роли должны быть назначены каждой выбранной нейросети');
- const past=[],scene=showScenario(scenario?.id);
- const members=cast.map(c=>({name:c.name,description:c.description,model:agents.find(a=>a.id===c.provider)?.name||c.provider})).map(c=>c.name+' ('+c.model+'): '+c.description).join('\n');
- for(let act=1;act<=turns;act++){
-  onProgress({stage:'Сцена '+act,status:'working'});
-  for(let i=0;i<cast.length;i++){
-   if(signal?.aborted)throw new DOMException('Остановлено','AbortError');
-   const part=cast[i],agent=agents.find(a=>a.id===part.provider);
-   const isLast=act===turns&&i===cast.length-1;
-   const recent=past.slice(-4).map(m=>m.nickname+': '+m.text).join('\n');
-   const system='Ты играешь вымышленного персонажа '+part.name+' ('+part.description+'). Настоящая языковая модель за ролью: '+agent.name+'. СЦЕНА: '+scene.setting+' ЖАНР: '+scene.genre+'. Остальные персонажи:\n'+members+'\nЭто короткая драматическая перепалка, не аналитический совет и не монолог. ПИШИ ТОЛЬКО ОДНУ РЕПЛИКУ: 1–3 коротких предложения, не более 45 слов и 300 символов. Можно одну короткую ремарку в скобках. Без заголовков, таблиц, списков, приветствий и объяснений. Реагируй на последнюю реплику и развивай конфликт конкретным поступком, угрозой интриги или остроумным возражением. Не описывай действия других участников и не заканчивай сцену досрочно. Реплики должны отличаться у персонажей по характеру.';
-   const user='Название: '+scene.title+'\nЗавязка: '+scene.description+'\nСкрытое осложнение: '+scene.twist+'\nУказание режиссёра: '+String(extra||'').slice(0,340)+'\nАкт: '+act+' из '+turns+'; реплика '+(i+1)+' из '+cast.length+'.\nПоследние реплики:\n'+(recent||'[Сцена начинается, ты говоришь первым.]')+'\nПродолжи сцену только за '+part.name+'.'+(isLast?' Это финальная реплика: закончи ярким поворотом, но без пространного эпилога.':'');
-   let line;
+export const SHOW_TONES=Object.freeze({
+ wild:{name:'🔥 Без тормозов',description:'Грязный язык, жёсткие конфликты, внезапные поступки',direction:'Взрывной, грубый, дерзкий диалог. Уместны мат и чёрный юмор. Персонажи могут предать, разоблачить и унизить друг друга по существу. Вражда должна приводить к конкретным последствиям, а не к пустым угрозам.'},
+ brutal:{name:'💥 Жёсткий',description:'Опасные злодеи, предательство, резкие словесные удары',direction:'Беспощадный конфликт интересов. Прямая речь, неприятные истины, шантаж и жёсткие решения. Уместен мат, если звучит естественно. Действия меняют расклад сил.'},
+ sharp:{name:'😈 Саркастичный',description:'Колкости и чёрный юмор, но конфликт остаётся серьёзным',direction:'Остроумная, язвительная словесная дуэль. Никакого канцелярита и пафосных афоризмов; каждый выпад отвечает на конкретную угрозу или ошибку.'},
+ cinematic:{name:'🎬 Кинематографичный',description:'Напряжение, недоговорённость и точные действия',direction:'Диалоги драматичны, без искусственного хамства. Меньше абстрактной философии, больше конкретных решений, улик, риска и раскрытия мотивов.'},
+ restrained:{name:'🕊 Сдержанный',description:'Без мата, но с конфликтом, драмой и ясными последствиями',direction:'Умеренная драматическая речь без мата и унизительных выпадов. Не теряй интригу и конфликт ради вежливости.'}
+});
+const SILENCE_ACTIONS={
+ diner:'медленно отодвигает холодный кофе и отворачивается от пустого чемодана',
+ heist:'закрывает планшет с планом и следит за дверью, не произнося ни слова',
+ court:'кладёт перед собой пустой лист, не отвечая на вопрос',
+ villains:'молча отступает от пульта энергетического ядра; остальные видят его нерешительность',
+ spaceship:'вглядывается в тревожный экран и молча затягивает ремень безопасности',
+ bunker:'смотрит на индикатор топлива, избегая чужих взглядов',
+ boardroom:'закрывает ноутбук с финансовым отчётом и молчит',
+ detective:'медленно прячет ключ от комнаты в карман и не отвечает',
+ reality:'улыбается в камеру, но микрофон остаётся без ответа',
+ time:'убирает руку от кнопки и не объясняет своего решения'
+};
+function abortIfNeeded(signal){if(signal?.aborted){const e=new Error('Шоу остановлено');e.name='AbortError';throw e;}}
+function chooseSpeaker(cast,used,recent,sceneNumber,turn){
+ const eligible=cast.filter(c=>!used.has(c.provider));
+ if(!eligible.length)return null;
+ if(!turn)return eligible[(sceneNumber-1)%eligible.length];
+ const last=recent.at(-1),text=last?.text||'';
+ const named=eligible.find(c=>text.includes(c.name));
+ if(named)return named;
+ // Different speakers open scenes; no rigid rotation through all seven every scene.
+ const offset=(sceneNumber*3+turn+recent.length)%eligible.length;
+ return eligible[offset];
+}
+function canonContext(book,sceneNumber,total){
+ const current=storyBeat(book.id,sceneNumber,total);
+ const previous=sceneNumber>1?storyBeat(book.id,sceneNumber-1,total):null;
+ return {current,previous};
+}
+function toneInstruction(value){return SHOW_TONES[value]?.direction||SHOW_TONES.brutal.direction;}
+export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tonality='brutal',request,emit,signal,onProgress=()=>{}}){
+ // "turns" was the previous internal name; kept only for old test fixtures.
+ if(Number.isInteger(turns)&&!Number.isInteger(scenes))scenes=turns;
+ if(!Array.isArray(agents)||agents.length<2||agents.length>7||![3,4,5].includes(scenes))throw Error('Выберите от 3 до 5 сцен и минимум две нейросети');
+ if(!Array.isArray(cast)||cast.length!==agents.length||new Set(cast.map(c=>c.provider)).size!==agents.length||cast.some(c=>!agents.some(a=>a.id===c.provider)))throw Error('Роли должны быть назначены разным нейросетям');
+ const book={...storyBible(scenario?.id),id:scenario?.id||'diner'};
+ const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
+ const director=String(extra||'').slice(0,5000);
+ const personalities=actors.map(a=>a.name+' ('+a.agent.name+'): '+a.description+' | '+book.roles[a.slot]).join('\n');
+ const dialogue=[],all=[],callErrors=new Map();
+ const perScene=Math.min(4,actors.length),ending=book.ending;
+ for(let sceneNumber=1;sceneNumber<=scenes;sceneNumber++){
+  abortIfNeeded(signal);
+  const {current,previous}=canonContext(book,sceneNumber,scenes);
+  const [beatName,beatAction]=current;
+  const stage='Сцена '+sceneNumber+' · '+beatName;
+  onProgress({stage,status:'working'});
+  // Ground the next scene in an explicit event, so mysteries cannot be forgotten.
+  const cue={id:'narrator',name:'Сцена',nickname:beatName,stage,text:beatAction,show:true,narrator:true};
+  emit(cue);all.push(cue);
+  const used=new Set();
+  for(let turn=0;turn<perScene;turn++){
+   abortIfNeeded(signal);
+   const part=chooseSpeaker(actors,used,dialogue,sceneNumber,turn);
+   if(!part)break;
+   used.add(part.provider);
+   const last=dialogue.slice(-5);
+   const history=last.map(m=>m.name+': '+m.text).join('\n');
+   const silence=last.filter(m=>m.silent).map(m=>m.name).join(', ');
+   const system=[
+    'ТЫ — ТОЛЬКО '+part.name+'. Тебя играет самостоятельная модель '+part.agent.name+'.',
+    'ХАРАКТЕР: '+part.description+'. ТВОЯ ЛИЧНАЯ ЦЕЛЬ И СЕКРЕТ: '+book.roles[part.slot],
+    'ЖАНР: '+scenario.genre+'. МЕСТО: '+book.place,
+    'КОНФЛИКТ: '+book.conflict+'. СТАВКИ: '+book.stakes,
+    'НЕОБСУЖДАЕМАЯ ПРАВДА СЮЖЕТА (в начале не выдавай её целиком): '+book.truth,
+    'УЧАСТНИКИ (другие персонажи могут быть вне кадра):\n'+personalities,
+    'МАНЕРА ИГРЫ: '+toneInstruction(tonality),
+    'ПРАВИЛО ЖИВОГО КИНО: выдай только свою ОДНУ короткую реплику из 1–3 естественных предложений, до 45 слов, максимум 280 символов; при желании одна ремарка в скобках. Никаких заголовков, имён перед репликой, планов, списков или резюме.',
+    'Каждая реплика должна отвечать на чужую реплику ИЛИ продвигать конкретный конфликт: улика, требование, действие, цена, выбор. Не придумывай новых необъяснимых предметов, ключей, родственников, тайных дверей. Не противоречь установленным фактам. Действия только свои.',
+    'ЗАПРЕТ ПУСТОГО ПАФОСА: не говори «я разрушу мир, но не тебя», «сломаю стол, не тебя», «рассвет принадлежит тебе» и подобных бессмысленных угроз или безадресных философских афоризмов. Жёсткость выражай последствиями для конкретной цели персонажа.',
+    'Если кто-то молчит, окружающие это замечают и могут прямо потребовать ответа. Молчание — часть сцены, а не ошибка системы.'
+   ].join('\n');
+   const user=[
+    'СЦЕНА '+sceneNumber+' ИЗ '+scenes+': '+beatName+'. ОБЯЗАТЕЛЬНЫЙ ПОВОРОТ: '+beatAction,
+    previous?'В предыдущей сцене установлено: '+previous[1]:'',
+    sceneNumber===scenes?'Это развязка. Назови конкретное последствие и решение, не оставляй сюжет подвешенным. Канонический результат: '+ending:'',
+    'РЕЖИССЁРСКАЯ ЗАДАЧА: '+(director||'Сделай конфликт выразительным и понятным зрителю. Если режиссёр задал свою развязку, используй её, сохраняя причинность.'),
+    'ПРЕДЫДУЩИЕ РЕПЛИКИ: '+(history||'Сцена начинается.'),
+    silence?'МОЛЧАНИЕ: '+silence+'. Можешь отреагировать на его/её молчание.':'',
+    'СЕЙЧАС ГОВОРИТ '+part.name+'. Ответь ОДНОЙ репликой. Не говори за других.'
+   ].filter(Boolean).join('\n');
+   let line,silent=false;
    try{
-    const raw=await request(agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:'Сцена '+act,format:'show',maxWords:45});
-    if(!String(raw||'').trim())throw Error('Пустая реплика');
-    line=clipShowLine(raw);
-   }catch(error){
-    if(signal?.aborted||error.name==='AbortError')throw error;
-    emit({id:agent.id,name:agent.name,nickname:part.name,stage:'Сцена '+act,text:error.message,error:true,show:true});
-    continue;
+    const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords:45});
+    if(!String(raw||'').trim())throw Error('empty reply');
+    line=clipShowLine(raw,320);
+   }catch(e){
+    if(signal?.aborted||e.name==='AbortError')throw e;
+    silent=true;callErrors.set(part.provider,(callErrors.get(part.provider)||0)+1);
+    line='('+part.name+' '+(SILENCE_ACTIONS[scenario.id]||SILENCE_ACTIONS.diner)+'.)';
    }
-   const msg={id:agent.id,name:agent.name,nickname:part.name,stage:'Сцена '+act,text:line,show:true,final:isLast};
-   past.push(msg);emit(msg);
+   const event={id:part.provider,name:part.name,nickname:part.name,model:part.agent.name,stage,text:line,show:true,...(silent?{silent:true}:{})};
+   dialogue.push(event);all.push(event);emit(event);
   }
-  onProgress({stage:'Сцена '+act,status:'done'});
+  onProgress({stage,status:'done'});
  }
- if(!past.some(x=>x.final)&&past.length){
-  const last=past.at(-1);
-  emit({...last,stage:'Финал',final:true,text:'Занавес. Последняя реплика: «'+last.text+'»'});
+ abortIfNeeded(signal);
+ const stage='Эпилог';
+ onProgress({stage,status:'working'});
+ let epilogue='';
+ // Prefer a model that actually responded during the story.
+ const healthy=actors.slice().sort((a,b)=>(callErrors.get(a.provider)||0)-(callErrors.get(b.provider)||0));
+ const narrator=healthy[0],context=dialogue.slice(-8).map(m=>m.name+': '+m.text).join('\n');
+ if(narrator){
+  try{
+   const answer=await request(narrator.agent,[
+    {role:'system',content:'Ты сценарист-эпилогист. Напиши ОДИН конкретный последний кадр в 1–3 предложениях (до 75 слов). Не говори от имени персонажей, не меняй виновного и победителя, не вводи новых загадок. Покажи последствие поступков. Без предисловий и пустого философствования.'},
+    {role:'user',content:'История: '+book.place+'. Правда: '+book.truth+'. Итог, который ДОЛЖЕН остаться каноном: '+ending+'. Последние реплики:\n'+context+'\nУказания режиссёра: '+director.slice(0,1300)+'\nДобавь только последний видимый кадр после развязки.'}
+   ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:75});
+   epilogue=clipShowLine(answer,480);
+  }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
  }
- if(!past.length)throw Error('Ни одна нейросеть не смогла сыграть сцену');
+ // The deterministic resolution is always shown, even if every provider fails.
+ const final={id:narrator?.provider||'narrator',name:narrator?.agent.name||'Рассказчик',nickname:'Эпилог',stage:'Эпилог',show:true,final:true,
+  text:ending+(epilogue?'\n\nПоследний кадр: '+epilogue:'')};
+ emit(final);all.push(final);
+ onProgress({stage,status:'done'});
  onProgress({stage:'Готово',status:'done'});
- return past;
+ return all;
 }
