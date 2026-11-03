@@ -381,9 +381,14 @@ export const STORY_BIBLE={
     "ending": "Путешественники сохраняют Архив лишь частично, перенося его в новый мир без уничтожения памяти создателей благодаря обходу Джо. Кнопку они разрушают, закрывая возможность дальнейших вмешательств."
   }
 };
+export const STORY_CORE_ROLES={
+ diner:[5,1,3],heist:[4,0,5],court:[1,2,4],villains:[1,0,4],
+ spaceship:[5,0,4],bunker:[3,0,1],boardroom:[0,1,2],
+ detective:[1,2,0],reality:[0,5,2],time:[6,3,2]
+};
 export const storyBible=id=>STORY_BIBLE[id]||STORY_BIBLE.diner;
 export function storyBeat(id,sceneNo,scenes){
  const book=storyBible(id);
- const indices=scenes===3?[0,3,4]:scenes===4?[0,1,3,4]:[0,1,2,3,4];
+ const indices=scenes===3?[0,3,4]:scenes===4?[0,2,3,4]:[0,1,2,3,4];
  return book.beats[indices[Math.max(0,Math.min(indices.length-1,sceneNo-1))]];
 }
