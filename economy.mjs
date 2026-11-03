@@ -162,7 +162,7 @@ export function createEconomy({env,now=Date.now}){
  }
  function start(identity,isAdmin,params,available){
   const models=params?.participants,rounds=Number(params?.rounds),mode=params?.mode;
-  if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>5||!['consensus','vote','judge','roles','brainstorm'].includes(mode))return null;
+  if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>5||!['consensus','vote','judge','roles','brainstorm','roast'].includes(mode))return null;
   const allowedModels=isAdmin||!!subscription(identity)?7:3;
   if(!isAdmin&&models.length>allowedModels)return {upgradeRequired:true};
   const sub=isAdmin?null:subscription(identity);
