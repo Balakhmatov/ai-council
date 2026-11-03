@@ -1,4 +1,4 @@
-import {runLiveShow} from './show-live.js?v=drama1';
+import {runLiveShow} from './show-live.js?v=drama2';
 import {ambiences} from './engine.js';
 import {storyBible,storyBeat} from './show-stories.js';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
