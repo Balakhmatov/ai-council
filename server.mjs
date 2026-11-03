@@ -311,6 +311,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(!body||typeof body!=='object'||!Object.hasOwn(models,body.provider)||!Array.isArray(body.messages)||!body.messages.length||body.messages.length>30||body.messages.some(m=>!m||!['system','user','assistant'].includes(m.role)||typeof m.content!=='string'))return fail(400,'Модель недоступна или запрос некорректен');
    if(!isAdmin&&body.stage!=='final'&&Number(body.maxWords)===1000&&!economy.activeTaskAccess(body.taskId,visitorHash)?.detailedEnabled)
     return fail(403,'Подробное обсуждение доступно по подписке.');
+   const taskMode=economy.activeTaskAccess(body.taskId,visitorHash)?.mode;
+   if(body.format==='show'&&taskMode!=='show'&&!isAdmin)return fail(403,'Неверный формат задачи');
+   if(taskMode==='show'&&(body.format!=='show'||body.messages.length!==2||body.messages[0].role!=='system'||body.messages[1].role!=='user'||body.messages.some(m=>m.content.length>9500)))return fail(400,'Слишком длинный контекст шоу');
    if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активной задаче либо лимит исчерпан');
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
@@ -322,13 +325,13 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     // The server clock, not the browser or the model's training cutoff, is authoritative.
     const currentUtc=new Date(now()).toISOString();
     const timeContext=`Текущие дата и время: ${currentUtc} (UTC). Это реальное время запроса, а не дата окончания обучения. Не принимай события прошлых лет за текущие. У тебя нет автоматического доступа к свежим новостям: отделяй проверенные факты от предположений и прямо указывай, если актуальность сведений не подтверждена.`;
-    const messages=body.messages[0].role==='system'
+    const isShowTask=taskMode==='show';
+    const messages=isShowTask?body.messages:body.messages[0].role==='system'
       ?[{...body.messages[0],content:timeContext+'\n\n'+body.messages[0].content},...body.messages.slice(1)]
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
-    const isShowTask=economy.activeTaskAccess(body.taskId,visitorHash)?.mode==='show';
     const showFormat=isShowTask||body.format==='show';
-    if(showFormat&&(body.messages.length!==2||body.messages[0].role!=='system'||body.messages[1].role!=='user'||body.messages.some(m=>m.content.length>4600)))return fail(400,'Слишком длинный контекст шоу');
+    if(showFormat&&(body.messages.length!==2||body.messages[0].role!=='system'||body.messages[1].role!=='user'||body.messages.some(m=>m.content.length>9500)))return fail(400,'Слишком длинный контекст шоу');
     const longFinal=body.stage==='final'&&!showFormat;
     const maxWords=[120,250,500,300,600,1000].includes(body.maxWords)?body.maxWords:300;
     const ballotStage=['Голосование','Проверка согласия'].includes(body.step);
@@ -353,7 +356,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
      // Reasoning tokens may consume the completion budget before user-visible text.
      payload.max_tokens=showFormat?1450:longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
     }
-    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:showFormat?600:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){
        let reason='';try{const errorBody=(await upstream.text()).slice(0,4096);const parsed=JSON.parse(errorBody);reason=String(parsed?.error?.message||parsed?.message||parsed?.error?.type||'');}catch{}
