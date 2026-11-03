@@ -2,8 +2,8 @@
 <html lang="ru"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#f4e1fa">
-<title>Кворум — несколько нейросетей для ваших задач</title>
-<meta name="description" content="Создавайте тексты, рекламные идеи и стратегии вместе с несколькими нейросетями. Кворум сравнит подходы и подготовит готовый результат.">
+<title>Кворум — шоу, в которых персонажей играют настоящие нейросети</title>
+<meta name="description" content="Выбирайте истории и персонажей, распределяйте роли между нейросетями и смотрите непредсказуемое AI-шоу с настоящими диалогами.">
 <link rel="icon" type="image/png" sizes="32x32" href="./assets/favicon-32-v2.png">
 <link rel="shortcut icon" href="./favicon.ico?v=2">
 <link rel="apple-touch-icon" sizes="180x180" href="./assets/apple-touch-icon-v2.png">
@@ -40,12 +40,11 @@
 <header><a class="brand" href="./"><img class="logo" src="./assets/quorum-icon-192-v2.png" width="42" height="42" alt="" decoding="async"><span>кворум</span><span class="beta">LAB</span></a>
 <div class="header-actions"><button id="pricingOpen" class="pricing-open" type="button" aria-haspopup="dialog" aria-controls="pricingDialog">Тарифы</button><span id="accessChip" class="access-chip" hidden>Бесплатно: —</span><span id="accountName" class="account-name" hidden></span><button id="passwordSettings" class="quiet password-settings" type="button" hidden>Пароль</button><button id="loginOpen" class="quiet" type="button">Войти</button><button id="emailLogout" class="quiet" type="button" hidden>Выйти</button><button id="settingsOpen" class="quiet" hidden>Администрирование</button></div></header>
 <main>
-<section class="intro"><div class="eyebrow">МАРКЕТИНГ · КОНТЕНТ · ИДЕИ</div><h1>Один запрос —<br>несколько сильных <span>ответов.</span></h1>
-<p>Дайте задачу сразу нескольким ИИ. Кворум сравнит подходы и подготовит готовый результат — без длинной переписки.</p></section>
-<nav class="experience-tabs" aria-label="Формат Кворума"><button type="button" id="experienceCouncil" class="experience-tab active" aria-pressed="true">🧠 Совет</button><button type="button" id="experienceShow" class="experience-tab" aria-pressed="false">🎭 Шоу</button></nav>
+<section class="intro"><div class="eyebrow">КВОРУМ / AI SHOW</div><h1>Твои персонажи.<br>Настоящие <span>нейросети.</span></h1><p>Выбери историю, собери актёрский состав и смотри, как разные ИИ разыграют её по-своему.</p></section>
+<nav class="experience-tabs" aria-label="Формат Кворума" hidden><button type="button" id="experienceCouncil" class="experience-tab active" aria-pressed="true">🧠 Совет</button><button type="button" id="experienceShow" class="experience-tab" aria-pressed="false">🎭 Шоу</button></nav>
 <div class="workspace">
 <section class="board">
-<div id="councilPanel" class="council-panel">
+<div id="councilPanel" class="council-panel" hidden>
 <div class="section-title"><h2>01 / Выберите направление</h2><span class="step-note">Можно выбрать без уточнения задачи</span></div>
 <div id="profiles" class="profile-list" role="group" aria-label="Направление работы"></div>
 <div class="section-title spaced"><h2>Уточните задачу</h2><span class="step-note">Необязательно</span></div>
@@ -65,28 +64,31 @@
 <p id="roastModeNote" class="roast-mode-note" hidden>🔥 Нейросети ругаются между собой — не с вами. Мат, сарказм и конкретная критика аргументов. Готовый результат остаётся пригодным для работы.</p>
 </details>
 </div>
-<section id="showPanel" class="show-panel" aria-label="Создать шоу" hidden>
+<section id="showPanel" class="show-panel" aria-label="Создать шоу">
  <div class="section-title"><h2>01 / Выберите сценарий</h2><span class="step-note">10 историй · новые будут добавляться</span></div>
  <div id="showScenarioCards" class="show-scenarios" role="group" aria-label="Сценарии шоу"></div>
  <div id="showScenarioDetails" class="show-scene-description" aria-live="polite"></div>
+ <div class="show-style-controls">
+  <label for="showScenes">Количество сцен<select id="showScenes"><option value="3">3 · динамичная история</option><option value="4" selected>4 · полноценный сюжет</option><option value="5">5 · расширенная история</option></select></label>
+  <label for="showTone">Манера персонажей<select id="showTone"><option value="wild">🔥 Без тормозов</option><option value="brutal" selected>💥 Жёсткая</option><option value="sharp">😈 Саркастичная</option><option value="cinematic">🎬 Кинематографичная</option><option value="restrained">🕊 Сдержанная</option></select></label>
+ </div>
  <div class="section-title spaced"><h2>02 / Кастинг персонажей</h2><span id="showCastCount" class="step-note"></span></div>
  <p class="hint">Персонаж — отдельная роль. Любая выбранная нейросеть может его играть.</p>
  <div class="show-cast-controls"><button type="button" id="showRandomCast" class="quiet">🎲 Случайный кастинг</button><span id="showCastMode">Можно назначать вручную</span></div>
  <div id="showCast" class="show-cast" role="group" aria-label="Назначение ролей моделям"></div>
  <label class="show-direction" for="showExtra">Ваш поворот сюжета <span>(необязательно)</span></label>
- <textarea id="showExtra" maxlength="340" rows="2" placeholder="Например: Один из участников получил тайное сообщение…"></textarea>
- <div class="show-runtime-note"><strong>🎬 Короткий формат</strong><span>2 сцены · по 1 реплике от каждого персонажа в сцене · до 45 слов на реплику · без длинных рассуждений</span></div>
+ <textarea id="showExtra" maxlength="5000" rows="4" placeholder="Например: Куро подкупил городскую стражу. Акира знает об этом и должен разоблачить его до 06:00…"></textarea><div id="showExtraCount" class="show-extra-counter">0 / 5 000 символов</div>
 </section>
 <div class="launch" id="launchBar"><label class="discussion-choice"><input id="showDiscussion" type="checkbox"> <span id="discussionChoiceLabel">Показывать обсуждение моделей</span></label>
-<button class="primary" id="start" type="button">Получить результат</button><div id="stopAction" class="stop-action" hidden><button id="stop" type="button">Остановить задачу</button><small>При остановке квота не возвращается.</small></div></div>
-<p id="status" role="status">Выберите направление и поставьте задачу.</p>
+<button class="primary" id="start" type="button">Запустить шоу</button><div id="stopAction" class="stop-action" hidden><button id="stop" type="button">Остановить задачу</button><small>При остановке квота не возвращается.</small></div></div>
+<p id="status" role="status">Выберите историю и персонажей.</p>
 <div id="progress" class="progress" hidden aria-live="polite"></div>
 <section id="researchPanel" class="research-panel" hidden aria-live="polite">
  <div class="research-head"><strong>Проверка источников</strong><span id="researchState"></span></div>
  <div id="researchSources" class="research-sources"></div>
  <div id="researchSearchWidget" class="research-search-widget"></div>
 </section>
-<div class="discussion-title"><h2>Результат</h2><div class="result-actions"><button class="quiet history-jump" id="historyJump" type="button" hidden>История задач</button><button class="copy-action copy-all" id="copyAll" disabled type="button" title="Скопировать задачу, все раунды и итог" aria-label="Скопировать всю задачу">Скопировать всё</button><button class="quiet" id="export" disabled type="button">Скачать .md</button></div></div>
+<div class="discussion-title"><h2>История</h2><div class="result-actions"><button class="quiet history-jump" id="historyJump" type="button" hidden>История задач</button><button class="copy-action copy-all" id="copyAll" disabled type="button" title="Скопировать задачу, все раунды и итог" aria-label="Скопировать всю задачу">Скопировать всё</button><button class="quiet" id="export" disabled type="button">Скачать .md</button></div></div>
 <div id="feed" aria-live="polite"><div class="empty"><img class="orbits" src="./assets/quorum-icon-192-v2.png" width="72" height="72" alt="" decoding="async"><h3>Здесь появится готовый материал</h3><p>Кворум обсудит задачу и соберёт итог. Вы получите результат без длинной переписки.</p></div></div>
 <section id="historySection" class="history-section" hidden>
  <div class="section-title spaced"><h2>История задач</h2><span id="historyCount" class="step-note"></span></div>
@@ -117,7 +119,7 @@
   <h2>Нейросети</h2><span id="count"></span>
   <button type="button" class="participants-toggle-mobile" id="agentsToggle" aria-expanded="false" aria-controls="agentsPanel">Выбрать ИИ</button>
 </div>
-<p class="hint participants-desktop-hint">Несколько независимых взглядов на задачу.</p>
+<p class="hint participants-desktop-hint">Кого пригласить в актёрский состав?</p>
 <div id="agentsPanel" class="agents-panel">
   <div id="agents" class="agents-grid"></div>
   <label class="judge-label">Кто подготовит итог<select id="judge"></select></label><p class="hint" style="font-size:11px;margin:4px 0 10px">Если выбранная модель недоступна, итог автоматически подготовит другая выбранная модель.</p>
@@ -126,7 +128,7 @@
 <div class="access-panel"><div class="access-title">Бесплатные токены</div><p id="accessInfo" class="access-lead">Войдите через Telegram или email — 10 бесплатных токенов при регистрации.</p><p class="hint">Без подписки — до 3 моделей и без сохранения новых задач. С подпиской — все доступные модели и бессрочная история.</p></div>
 
 </aside></div>
-<footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Council</a><span>Разные идеи — один полезный результат.</span><nav class="legal-footer" aria-label="Документы"><a href="./terms.html">Условия использования</a><a href="./privacy.html">Конфиденциальность</a><a href="./refunds.html">Оплата и возвраты</a></nav></footer>
+<footer><a class="footer-brand" href="./"><img src="./assets/quorum-icon-192-v2.png" width="26" height="26" alt="">Кворум / AI Show</a><span>Одна история — несколько настоящих интеллектов.</span><nav class="legal-footer" aria-label="Документы"><a href="./terms.html">Условия использования</a><a href="./privacy.html">Конфиденциальность</a><a href="./refunds.html">Оплата и возвраты</a></nav></footer>
 </main>
 <dialog id="pricingDialog" class="pricing-dialog" aria-labelledby="pricingTitle">
  <div class="pricing-modal-head">
