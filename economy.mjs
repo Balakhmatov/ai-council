@@ -165,7 +165,7 @@ export function createEconomy({env,now=Date.now}){
   const models=params?.participants,rounds=Number(params?.rounds),mode=params?.mode;
   if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>5||!['consensus','vote','judge','roles','brainstorm','roast','show'].includes(mode))return null;
   const allowedModels=isAdmin||!!subscription(identity)?7:3;
-  if(mode==='show'&&rounds!==2)return null;
+  if(mode==='show'&&(rounds<3||rounds>5))return null;
   if(!isAdmin&&models.length>allowedModels)return {upgradeRequired:true};
   const sub=isAdmin?null:subscription(identity);
   let source='admin';
@@ -184,7 +184,7 @@ export function createEconomy({env,now=Date.now}){
    save();
   }
   const id=crypto.randomBytes(24).toString('hex');
-  const limit=mode==='show'?models.length*2:models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
+  const limit=mode==='show'?Math.min(models.length,4)*rounds+1:models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
   tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:'lifetime',source,debits,creditSourceByModel:Object.fromEntries(models.map((provider,i)=>[provider,i<(debits.subscription+debits.free)?(sub?'subscription':'free'):'pack'])),roundOutcomes:new Map(),mode,rounds,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
@@ -196,7 +196,7 @@ export function createEconomy({env,now=Date.now}){
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
   if(!task||task.identity!==identity||!task.allowed.has(provider)||task.calls>=task.maxCalls||now()-task.createdAt>7200000)return false;
-  if(stage==='final'&&(task.finalCalls>=task.allowed.size||task.finalProviders.has(provider)))return false;
+  if(stage==='final'&&((task.mode==='show'&&task.finalCalls>=1)||task.finalCalls>=task.allowed.size||task.finalProviders.has(provider)))return false;
   if(stage==='final'){task.finalCalls++;task.finalProviders.add(provider);}
   task.calls++;return true;
  }
