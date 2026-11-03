@@ -29,7 +29,7 @@ for(const p of ['/etc/business-pulse/yookassa.env','/var/byvshaya/shared/cityai.
 }
 // Migrate the existing server-pinned OpenAI model without touching credentials or custom newer models.
 if(!config.OPENAI_MODEL||/^gpt-(?:4|5)(?:[.-]|$)/.test(config.OPENAI_MODEL))config.OPENAI_MODEL='gpt-6-luna';
-if(!config.MISTRAL_MODEL||config.MISTRAL_MODEL==='mistral-large-4'||config.MISTRAL_MODEL==='mistral-large-latest'||config.MISTRAL_MODEL==='mistral-small-latest')config.MISTRAL_MODEL='mistral-large-2512';
+if(!config.MISTRAL_MODEL||config.MISTRAL_MODEL==='mistral-large-2512'||config.MISTRAL_MODEL==='mistral-large-latest'||config.MISTRAL_MODEL==='mistral-small-latest')config.MISTRAL_MODEL='mistral-large-4';
 if(!config.QWEN_MODEL)config.QWEN_MODEL='qwen3.7-plus';
 if(!config.DEEPSEEK_MODEL)config.DEEPSEEK_MODEL='deepseek-v4.1-flash';
 if(!config.QWEN_BASE_URL)config.QWEN_BASE_URL='https://ddtnew.com/v1';
