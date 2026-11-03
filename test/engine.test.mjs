@@ -179,3 +179,32 @@ test('OpenAI gets an explicitly energetic roast persona, without altering normal
  assert(calls.find(c=>c.id==='openai').sys.includes('не смягчай конфликт до делового анализа'));
  assert(calls.find(c=>c.id==='openai'&&c.stage.includes('Готовый результат'))?.sys.includes('язвительное представление') || calls.find(c=>c.id==='openai').sys.includes('ОСОБО'));
 });
+
+test('heist scene reaches model prompts and transcript while retaining provider identity',async()=>{
+ const calls=[],out=[];
+ await discuss({...base,mode:'judge',ambience:'heist',emit:m=>out.push(m),request:async(a,m)=>{calls.push(m[0].content);return 'Сначала проверим противоречия.';}});
+ assert.ok(calls.length>0);
+ assert.ok(calls.every(prompt=>prompt.includes('ограбление')&&prompt.includes('Реальная модель:')));
+ assert.ok(calls.some(prompt=>prompt.includes('Чёрный')||prompt.includes('Белый')));
+ assert.ok(out.some(message=>message.nickname&&message.name));
+ assert.ok(out.at(-1).final);
+});
+
+test('scene vocabulary is optional, reaches prompts, and stays scoped to the selected scene',async()=>{
+ const {ambiences}=await import('../public/engine.js');
+ for(const scene of ['cinema','heist','gangster','yard','anime','cyberpunk','none']){
+  const calls=[];
+  await discuss({...base,mode:'judge',ambience:scene,emit:()=>{},request:async(a,m)=>{calls.push(m[0].content);return 'Предлагаю конкретное улучшение.';}});
+  assert.ok(calls.length>0);
+  for(const prompt of calls){
+   assert.equal(prompt.includes('РЕЧЕВАЯ ПАЛИТРА СЦЕНАРИЯ'),scene!=='none');
+   if(scene==='none')continue;
+   assert.ok(prompt.includes(ambiences[scene].lexicon.at(-1)));
+   assert.ok(prompt.includes(ambiences[scene].speechRhythm));
+   assert.ok(prompt.includes('Можно не использовать ни одного примера'));
+   assert.ok(prompt.includes('Итоговый рабочий материал оформляй в тоне'));
+   assert.ok(!prompt.includes('РЕЖИМ «ТОКСИЧНЫЙ БАТТЛ»'));
+   if(scene!=='heist')assert.ok(!prompt.includes('Я сейчас сам тебя трахну'));
+  }
+ }
+});

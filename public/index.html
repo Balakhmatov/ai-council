@@ -56,10 +56,17 @@
  <label>Длина промежуточных ответов<select id="length"><option value="short" selected>Коротко · до 300 слов</option><option value="medium">Средне · до 600 слов</option><option value="detailed">Подробно · до 1 000 слов</option></select><small id="lengthNote" class="length-note">«Подробно» доступно по подписке.</small></label>
 </div>
 <label class="research-choice"><input id="factCheck" type="checkbox" checked><span><strong>Проверять факты по открытым источникам</strong><small>Автоматически для анализа компаний, рынков и конкурентов. Для творческих задач поиск не запускается.</small></span></label>
+<section class="scene-picker" aria-labelledby="scenesTitle">
+<div class="scene-heading"><div><span class="scene-eyebrow">ВАША ЗАДАЧА. ИХ ШОУ.</span><h2 id="scenesTitle">Выберите сюжет</h2></div><button id="scenesAll" type="button" class="quiet">Смотреть все ↗</button></div>
+<div class="scene-navigation"><button id="scenesPrev" type="button" aria-label="Предыдущие сценарии">←</button><div id="sceneTrack" class="scene-track" role="group" aria-label="Сценарии"></div><button id="scenesNext" type="button" aria-label="Следующие сценарии">→</button></div>
+<div class="ambience-setting"><label class="sr-only" for="ambience">Антураж обсуждения</label><select id="ambience" class="sr-only" aria-describedby="ambienceHint" tabindex="-1"></select><small id="ambienceHint"></small></div>
+<div id="sceneCast" class="scene-cast" aria-label="Персонажи выбранного сюжета"></div>
+</section>
+<dialog id="scenesDialog" class="scenes-dialog" aria-labelledby="allScenesTitle"><div class="scene-heading"><h2 id="allScenesTitle">Все сценарии</h2><button id="scenesClose" type="button" class="quiet" aria-label="Закрыть сценарии">✕</button></div><div id="allScenes" class="all-scenes"></div></dialog>
 <details class="advanced"><summary>Как нейросети будут работать над задачей <span class="advanced-chevron">⌄</span></summary>
 <p class="hint">Выберите способ совместной работы. Если не уверены, оставьте первый.</p>
 <div id="modes"></div>
-<div class="ambience-setting"><label for="ambience">Антураж обсуждения</label><select id="ambience" aria-describedby="ambienceHint"></select><small id="ambienceHint">Обычный стиль разговора</small></div>
+
 <p id="roastModeNote" class="roast-mode-note" hidden>🔥 Нейросети ругаются между собой — не с вами. Мат, сарказм и конкретная критика аргументов. Готовый результат остаётся пригодным для работы.</p>
 </details>
 <div class="launch" id="launchBar"><label class="discussion-choice"><input id="showDiscussion" type="checkbox"> <span id="discussionChoiceLabel">Показывать обсуждение моделей</span></label>

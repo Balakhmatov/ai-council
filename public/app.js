@@ -1,4 +1,4 @@
-import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
+import {modes,ambiences,characterName,discuss,parseBallotDetail} from './engine.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -97,7 +97,7 @@ for(const a of agents){
  const label=document.createElement('label');label.className='agent';
  const avatar=document.createElement('span');avatar.className='avatar provider-avatar';
  const img=document.createElement('img');img.src='./assets/models/'+a.id+'.svg';img.width=26;img.height=26;img.alt='';avatar.append(img);
- const data=document.createElement('span');const strong=document.createElement('strong');strong.textContent=a.name;const small=document.createElement('small');small.textContent=a.sub;data.append(strong,small);
+ const data=document.createElement('span');const strong=document.createElement('strong');strong.textContent=a.name;const small=document.createElement('small');small.textContent='';data.append(strong,small);
  const input=document.createElement('input');input.type='checkbox';input.setAttribute('aria-label',a.name);input.checked=chosen.has(a.id);
  input.onchange=()=>{
   const cap=access?.maxModels??3;
@@ -118,7 +118,46 @@ for(const [id,[title,description]] of Object.entries(modes)){
 }
 for(const [id,scene] of Object.entries(ambiences))$('ambience').add(new Option(scene.label,id));
 $('ambience').value=ambience;
-$('ambience').onchange=()=>{ambience=$('ambience').value;if(ambience!=='none')$('showDiscussion').checked=true;update();};
+$('ambience').onchange=()=>selectScene($('ambience').value);
+const castDescriptions={openai:'Держит лицо и собирает разрозненные версии в один план.',claude:'Слушает внимательно. Задаёт вопросы, от которых становится тихо.',mistral:'Говорит коротко, вспыхивает быстро. Терпеть не может пустые обещания.',gemini:'Замечает связи, которые остальные предпочли бы не видеть.',grok:'Провоцирует, шутит не вовремя и ломает удобные версии.',deepseek:'Молчаливый наблюдатель. Помнит каждую нестыковку.',qwen:'Следит за деталями. У него всегда есть ещё один вопрос.'};
+const sceneColors={none:'#695780',cinema:'#b94636',heist:'#b99843',gangster:'#647c64',yard:'#7b6a99',anime:'#c2678f',cyberpunk:'#398e9c'};
+function portrait(index,color){
+ // Original vector portraits: separate silhouettes, hair, glasses and clothing.
+ return `<svg viewBox="0 0 160 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="160" height="150" fill="${color}"/><circle cx="125" cy="30" r="65" fill="#fff" opacity=".09"/><path d="M15 150Q20 103 80 104Q140 103 145 150" fill="#20202b"/><path d="M60 105L80 140L100 105" fill="#eee1cb"/><path d="M75 119L85 119L89 150H71Z" fill="${index%2?'#a5373e':'#282833'}"/><rect x="66" y="83" width="28" height="28" rx="10" fill="#bf896a"/><ellipse cx="80" cy="64" rx="30" ry="38" fill="${index%2?'#e5b28c':'#c99573'}"/><path d="M49 60Q39 10 81 19Q122 10 111 64L102 39L${index%2?'58 35':'76 26'}L56 62Z" fill="#25232c"/>${index%3===0?'<path d="M49 56H111L105 73H86L80 63L75 73H55Z" fill="#20202b"/>':'<path d="M60 61H70M90 61H100" stroke="#29232a" stroke-width="4"/>'}<path d="M72 84Q80 88 89 82" fill="none" stroke="#704737" stroke-width="2"/><path d="M28 132L53 111L60 150M132 132L107 111L100 150" fill="none" stroke="#ffffff" opacity=".18" stroke-width="2"/></svg>`;
+}
+function sceneCard(id,scene){
+ const b=document.createElement('button');b.type='button';b.className='scene-card';b.dataset.scene=id;b.style.setProperty('--scene-color',sceneColors[id]);
+ const art=document.createElement('div');art.className='scene-art';art.innerHTML=portrait(Object.keys(ambiences).indexOf(id),sceneColors[id]);
+ const title=document.createElement('strong');title.textContent=scene.title||scene.label;
+ const desc=document.createElement('span');desc.textContent=scene.description;
+ b.append(art,title,desc);b.onclick=()=>{if(!sceneDragging){selectScene(id);if($('scenesDialog').open)$('scenesDialog').close();}};return b;
+}
+let sceneDragging=false;
+for(const [id,scene] of Object.entries(ambiences)){
+ $('sceneTrack').append(sceneCard(id,scene));$('allScenes').append(sceneCard(id,scene));
+}
+function selectScene(id){if(running)return;ambience=id;$('ambience').value=id;if(id!=='none')$('showDiscussion').checked=true;update();}
+function renderSceneCast(){
+ document.querySelectorAll('.scene-card').forEach(b=>{b.classList.toggle('active',b.dataset.scene===ambience);b.setAttribute('aria-pressed',String(b.dataset.scene===ambience));b.disabled=running;});
+ const cast=$('sceneCast');cast.hidden=ambience==='none';
+ cast.replaceChildren(...(ambience==='none'?[]:agents.map((a,i)=>{
+  const card=document.createElement('article');card.className='character-card';
+  const art=document.createElement('div');art.className='character-art';art.innerHTML=portrait(i,sceneColors[ambience]);
+  const name=document.createElement('h3');name.textContent=characterName(ambience,a.id,i);
+  const model=document.createElement('span');model.className='character-model';model.textContent=a.name;
+  const description=document.createElement('p');description.textContent=castDescriptions[a.id];card.append(art,name,model,description);return card;
+ })));
+}
+$('scenesAll').onclick=()=>$('scenesDialog').showModal();$('scenesClose').onclick=()=>$('scenesDialog').close();
+$('scenesDialog').addEventListener('click',e=>{if(e.target===$('scenesDialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
+const sceneTrack=$('sceneTrack');
+function moveScenes(direction){sceneTrack.scrollBy({left:direction*sceneTrack.clientWidth*.85,behavior:'smooth'});}
+$('scenesPrev').onclick=()=>moveScenes(-1);$('scenesNext').onclick=()=>moveScenes(1);
+let scenePointer=null;
+sceneTrack.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0)return;sceneDragging=false;scenePointer={id:e.pointerId,x:e.clientX,left:sceneTrack.scrollLeft};});
+sceneTrack.addEventListener('pointermove',e=>{if(!scenePointer)return;const dx=e.clientX-scenePointer.x;if(Math.abs(dx)>6){sceneDragging=true;sceneTrack.setPointerCapture(e.pointerId);sceneTrack.classList.add('dragging');sceneTrack.scrollLeft=scenePointer.left-dx;}});
+function endSceneDrag(){scenePointer=null;sceneTrack.classList.remove('dragging');setTimeout(()=>sceneDragging=false,0);}
+sceneTrack.addEventListener('pointerup',endSceneDrag);sceneTrack.addEventListener('pointercancel',endSceneDrag);sceneTrack.addEventListener('lostpointercapture',endSceneDrag);
 function update(){
  const premium=!!(access?.admin||access?.subscriptionActive);
  const detailed=$('length').querySelector('option[value="detailed"]');
@@ -145,10 +184,11 @@ function update(){
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=available.has(a.id),input=label.querySelector('input');
   input.disabled=running||!ok;label.classList.toggle('unavailable',!ok);
-  label.querySelector('small').textContent=ok?a.sub:'Скоро';
+  label.querySelector('small').textContent=ok?'':'Скоро';
  });
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
  $('ambience').disabled=running;
+ renderSceneCast();
 }
 $('rounds').onchange=update;$('length').onchange=update;
 $('judge').onchange=()=>{moderatorChosenByUser=true;update();};
