@@ -1,4 +1,7 @@
-import {modes,ambiences,characterName,discuss,parseBallotDetail} from './engine.js';
+import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
+import {scenePoster} from './show-art.js';
+import {STORY_CORE_ROLES,storyBible} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -23,7 +26,7 @@ const agents=MODEL_PRIORITY.map(id=>({id,...agentDetails[id]}));
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
-let mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
+let experience='show',showScenarioId='diner',showAssigned={},mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let landingExploring=false;
@@ -39,7 +42,7 @@ function syncLanding(){
  // Only an explicit click to explore (or a deep link to admin/payment) opens the workspace.
  const url=new URLSearchParams(location.search);
  const openWorkspace=landingExploring||url.has('admin')||url.has('payment');
- document.body.classList.toggle('landing-visible',!openWorkspace);
+ document.body.classList.remove('landing-visible'); // Show-only homepage
 }
 $('landingTry').onclick=()=>{
  landingExploring=true;syncLanding();window.scrollTo({top:0,behavior:'instant'});
@@ -118,46 +121,166 @@ for(const [id,[title,description]] of Object.entries(modes)){
 }
 for(const [id,scene] of Object.entries(ambiences))$('ambience').add(new Option(scene.label,id));
 $('ambience').value=ambience;
-$('ambience').onchange=()=>selectScene($('ambience').value);
-const castDescriptions={openai:'Держит лицо и собирает разрозненные версии в один план.',claude:'Слушает внимательно. Задаёт вопросы, от которых становится тихо.',mistral:'Говорит коротко, вспыхивает быстро. Терпеть не может пустые обещания.',gemini:'Замечает связи, которые остальные предпочли бы не видеть.',grok:'Провоцирует, шутит не вовремя и ломает удобные версии.',deepseek:'Молчаливый наблюдатель. Помнит каждую нестыковку.',qwen:'Следит за деталями. У него всегда есть ещё один вопрос.'};
-const sceneColors={none:'#695780',cinema:'#b94636',heist:'#b99843',gangster:'#647c64',yard:'#7b6a99',anime:'#c2678f',cyberpunk:'#398e9c'};
+$('ambience').onchange=()=>{ambience=$('ambience').value;if(ambience!=='none')$('showDiscussion').checked=true;update();};
+
 function portrait(index,color){
  // Original vector portraits: separate silhouettes, hair, glasses and clothing.
  return `<svg viewBox="0 0 160 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="160" height="150" fill="${color}"/><circle cx="125" cy="30" r="65" fill="#fff" opacity=".09"/><path d="M15 150Q20 103 80 104Q140 103 145 150" fill="#20202b"/><path d="M60 105L80 140L100 105" fill="#eee1cb"/><path d="M75 119L85 119L89 150H71Z" fill="${index%2?'#a5373e':'#282833'}"/><rect x="66" y="83" width="28" height="28" rx="10" fill="#bf896a"/><ellipse cx="80" cy="64" rx="30" ry="38" fill="${index%2?'#e5b28c':'#c99573'}"/><path d="M49 60Q39 10 81 19Q122 10 111 64L102 39L${index%2?'58 35':'76 26'}L56 62Z" fill="#25232c"/>${index%3===0?'<path d="M49 56H111L105 73H86L80 63L75 73H55Z" fill="#20202b"/>':'<path d="M60 61H70M90 61H100" stroke="#29232a" stroke-width="4"/>'}<path d="M72 84Q80 88 89 82" fill="none" stroke="#704737" stroke-width="2"/><path d="M28 132L53 111L60 150M132 132L107 111L100 150" fill="none" stroke="#ffffff" opacity=".18" stroke-width="2"/></svg>`;
 }
-function sceneCard(id,scene){
- const b=document.createElement('button');b.type='button';b.className='scene-card';b.dataset.scene=id;b.style.setProperty('--scene-color',sceneColors[id]);
- const art=document.createElement('div');art.className='scene-art';art.innerHTML=portrait(Object.keys(ambiences).indexOf(id),sceneColors[id]);
- const title=document.createElement('strong');title.textContent=scene.title||scene.label;
- const desc=document.createElement('span');desc.textContent=scene.description;
- b.append(art,title,desc);b.onclick=()=>{if(!sceneDragging){selectScene(id);if($('scenesDialog').open)$('scenesDialog').close();}};return b;
-}
+
 let sceneDragging=false;
-for(const [id,scene] of Object.entries(ambiences)){
- $('sceneTrack').append(sceneCard(id,scene));$('allScenes').append(sceneCard(id,scene));
+function createShowCard(scene){
+ const b=document.createElement('button');b.type='button';b.className='show-scenario show-palette-'+scene.palette;b.dataset.scenario=scene.id;
+ b.setAttribute('aria-pressed',String(scene.id===showScenarioId));
+ const poster=document.createElement('span');poster.className='show-poster';poster.setAttribute('aria-hidden','true');
+ poster.innerHTML=scenePoster(scene.id);
+ const body=document.createElement('span');body.className='show-scenario-body';
+ const genre=document.createElement('small');genre.textContent=scene.genre;
+ const title=document.createElement('strong');title.textContent=scene.title;
+ const desc=document.createElement('span');desc.textContent=scene.description;
+ body.append(genre,title,desc);b.append(poster,body);
+ b.onclick=()=>{if(running||sceneDragging)return;if($('scenesDialog').open)$('scenesDialog').close();showScenarioId=scene.id;showAssigned={};randomShowCast();renderShowScenarios();renderShowCast();};
+ return b;
 }
-function selectScene(id){if(running)return;ambience=id;$('ambience').value=id;if(id!=='none')$('showDiscussion').checked=true;update();}
-function renderSceneCast(){
- document.querySelectorAll('.scene-card').forEach(b=>{b.classList.toggle('active',b.dataset.scene===ambience);b.setAttribute('aria-pressed',String(b.dataset.scene===ambience));b.disabled=running;});
- const cast=$('sceneCast');cast.hidden=ambience==='none';
- cast.replaceChildren(...(ambience==='none'?[]:agents.map((a,i)=>{
-  const card=document.createElement('article');card.className='character-card';
-  const art=document.createElement('div');art.className='character-art';art.innerHTML=portrait(i,sceneColors[ambience]);
-  const name=document.createElement('h3');name.textContent=characterName(ambience,a.id,i);
-  const model=document.createElement('span');model.className='character-model';model.textContent=a.name;
-  const description=document.createElement('p');description.textContent=castDescriptions[a.id];card.append(art,name,model,description);return card;
- })));
+function renderShowScenarios(){
+ const scroll=$('showScenarioCards').scrollLeft;
+ $('showScenarioCards').replaceChildren(...SHOW_SCENARIOS.map(createShowCard));
+ $('showScenarioCards').scrollLeft=scroll;
+ $('allScenes').replaceChildren(...SHOW_SCENARIOS.map(createShowCard));
+ const scene=showScenario(showScenarioId);
+ const title=document.createElement('strong');title.textContent=scene.emoji+' '+scene.title;
+ const book=storyBible(scene.id);
+ const text=document.createElement('p');text.textContent=book.place;
+ const conflict=document.createElement('p');conflict.textContent=book.conflict;
+ const stakes=document.createElement('p');stakes.className='show-stakes';stakes.textContent='На кону: '+book.stakes;
+ const twist=document.createElement('small');twist.textContent='Интрига: '+scene.twist;
+ $('showScenarioDetails').replaceChildren(title,text,conflict,stakes,twist);
 }
-$('scenesAll').onclick=()=>$('scenesDialog').showModal();$('scenesClose').onclick=()=>$('scenesDialog').close();
-$('scenesDialog').addEventListener('click',e=>{if(e.target===$('scenesDialog')){const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();}});
-const sceneTrack=$('sceneTrack');
-function moveScenes(direction){sceneTrack.scrollBy({left:direction*sceneTrack.clientWidth*.85,behavior:'smooth'});}
+$('scenesAll').onclick=()=>$('scenesDialog').showModal();
+$('scenesClose').onclick=()=>$('scenesDialog').close();
+$('scenesDialog').addEventListener('click',e=>{if(e.target!==$('scenesDialog'))return;const r=e.target.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)e.target.close();});
+const sceneTrack=$('showScenarioCards');
+function moveScenes(direction){sceneTrack.scrollBy({left:direction*sceneTrack.clientWidth*.85,behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});}
 $('scenesPrev').onclick=()=>moveScenes(-1);$('scenesNext').onclick=()=>moveScenes(1);
 let scenePointer=null;
 sceneTrack.addEventListener('pointerdown',e=>{if(e.pointerType!=='mouse'||e.button!==0)return;sceneDragging=false;scenePointer={id:e.pointerId,x:e.clientX,left:sceneTrack.scrollLeft};});
 sceneTrack.addEventListener('pointermove',e=>{if(!scenePointer)return;const dx=e.clientX-scenePointer.x;if(Math.abs(dx)>6){sceneDragging=true;sceneTrack.setPointerCapture(e.pointerId);sceneTrack.classList.add('dragging');sceneTrack.scrollLeft=scenePointer.left-dx;}});
 function endSceneDrag(){scenePointer=null;sceneTrack.classList.remove('dragging');setTimeout(()=>sceneDragging=false,0);}
 sceneTrack.addEventListener('pointerup',endSceneDrag);sceneTrack.addEventListener('pointercancel',endSceneDrag);sceneTrack.addEventListener('lostpointercapture',endSceneDrag);
+sceneTrack.addEventListener('pointerleave',()=>{if(!sceneDragging)scenePointer=null;});
+function orderedChosen(){return agents.filter(a=>chosen.has(a.id)&&available.has(a.id));}
+function ensureShowCast(){
+ const scene=showScenario(showScenarioId),picked=orderedChosen().map(a=>a.id),used=new Set();
+ const result={};
+ for(const [slot,provider]of Object.entries(showAssigned)){
+  if(picked.includes(provider)&&!used.has(provider)&&Number(slot)<scene.roles.length){
+   result[slot]=provider;used.add(provider);
+  }
+ }
+ for(const provider of picked){
+  if(used.has(provider))continue;
+  const slot=scene.roles.findIndex((role,i)=>!Object.hasOwn(result,i));
+  if(slot>=0){result[slot]=provider;used.add(provider);}
+ }
+ showAssigned=result;
+}
+function randomShowCast(){
+ const ids=orderedChosen().map(a=>a.id);
+ const core=STORY_CORE_ROLES[showScenarioId]||[0,1,2];
+ const rest=showScenario(showScenarioId).roles.map((_,i)=>i).filter(i=>!core.includes(i));
+ // Random casting never accidentally leaves the central secret-holder out of a three-actor story.
+ for(let i=rest.length-1;i>0;i--){
+  const values=new Uint32Array(1);crypto.getRandomValues(values);
+  const j=values[0]%(i+1);[rest[i],rest[j]]=[rest[j],rest[i]];
+ }
+ const slots=[...core,...rest];
+ showAssigned=Object.fromEntries(ids.map((id,i)=>[slots[i],id]));
+ $('showCastMode').textContent='Случайное распределение · можно изменить вручную';
+}
+function selectShowRole(index){
+ if(running||showAssigned[index])return;
+ ensureShowCast();
+ const slots=Object.keys(showAssigned).map(Number);
+ if(!slots.length)return;
+ const from=slots[slots.length-1];
+ showAssigned[index]=showAssigned[from];delete showAssigned[from];
+ $('showCastMode').textContent='Ручной выбор персонажей';
+ renderShowCast();
+}
+function renderShowCast(){
+ ensureShowCast();
+ const scene=showScenario(showScenarioId),members=orderedChosen();
+ $('showCastCount').textContent=members.length+' из '+scene.roles.length+' ролей';
+ $('showCast').replaceChildren(...scene.roles.map(([name,description],index)=>{
+  const card=document.createElement('div');card.className='show-role'+(showAssigned[index]?' show-role-active':'');
+  const avatar=document.createElement('span');avatar.className='show-role-avatar';avatar.innerHTML=portrait(index,['#80505a','#867243','#526e83','#765482','#477c7d','#77745a','#5f6680'][SHOW_SCENARIOS.findIndex(s=>s.id===scene.id)%7]);
+  const body=document.createElement('div');body.className='show-role-body';
+  const strong=document.createElement('strong');strong.textContent=name;
+  const desc=document.createElement('small');desc.textContent=description;
+  body.append(strong,desc);
+  const label=document.createElement('label');label.className='show-role-model';
+  const title=document.createElement('span');title.textContent='Исполнитель';
+  const select=document.createElement('select');select.dataset.slot=String(index);select.setAttribute('aria-label','Кто играет '+name);
+  select.add(new Option('— Свободная роль —',''));
+  for(const model of members)select.add(new Option(model.name,model.id));
+  select.value=showAssigned[index]||'';
+  select.disabled=running;
+  select.onchange=()=>{
+   const selected=select.value;
+   if(selected){
+    for(const [key,id] of Object.entries(showAssigned))if(id===selected)delete showAssigned[key];
+    showAssigned[index]=selected;
+   }else delete showAssigned[index];
+   $('showCastMode').textContent='Ручной кастинг';
+   renderShowCast();
+  };
+  label.append(title,select);
+  const pick=document.createElement('button');pick.type='button';pick.className='show-role-choice';
+  pick.textContent=showAssigned[index]?'✓ В составе':'Выбрать персонажа';
+  pick.disabled=running||!!showAssigned[index];pick.onclick=()=>selectShowRole(index);
+  card.append(avatar,body,pick,label);
+  return card;
+ }));
+ $('showRandomCast').disabled=running;
+}
+function setExperience(next){
+ if(running)return;
+ experience=next==='show'?'show':'council';
+ document.body.dataset.experience=experience;
+ $('councilPanel').hidden=experience==='show';
+ $('showPanel').hidden=experience!=='show';
+ $('experienceCouncil').classList.toggle('active',experience==='council');
+ $('experienceShow').classList.toggle('active',experience==='show');
+ for(const id of ['Council','Show'])$('experience'+id).setAttribute('aria-pressed',String(experience===id.toLowerCase()));
+ if(experience==='show'){
+  $('showDiscussion').checked=true;
+  $('showDiscussion').parentElement.hidden=true;
+  messages=[];lastTaskContext=null;syncResultActions();
+  $('researchPanel').hidden=true;
+  if(!Object.keys(showAssigned).length)randomShowCast();
+  renderShowScenarios();
+  renderShowCast();
+  $('status').textContent='Выберите сцену и распределите персонажей по нейросетям.';
+  $('feed').replaceChildren();
+  $('feed').append(Object.assign(document.createElement('p'),{textContent:'🎬 Выберите сюжет и запустите шоу. Здесь появятся короткие реплики персонажей.',className:'show-empty'}));
+ }else{
+  $('showDiscussion').parentElement.hidden=false;
+  messages=[];lastTaskContext=null;syncResultActions();
+  $('status').textContent='Опишите задачу, и Кворум соберёт решение.';
+  renderMessages();
+ }
+ $('experienceCouncil').disabled=running;
+ $('experienceShow').disabled=running;
+ update();
+}
+$('experienceCouncil').onclick=()=>setExperience('council');
+$('experienceShow').onclick=()=>setExperience('show');
+$('showRandomCast').onclick=()=>{randomShowCast();renderShowCast();};
+renderShowScenarios();
+$('showExtra').addEventListener('input',()=>{$('showExtraCount').textContent=$('showExtra').value.length.toLocaleString('ru-RU')+' / 5 000 символов';});
+$('showScenes').addEventListener('change',update);
+$('showTone').addEventListener('change',update);
+
 function update(){
  const premium=!!(access?.admin||access?.subscriptionActive);
  const detailed=$('length').querySelector('option[value="detailed"]');
@@ -175,11 +298,12 @@ function update(){
  $('ambienceHint').textContent=ambiences[ambience]?.description||ambiences.none.description;
  $('discussionChoiceLabel').textContent=mode==='roast'?'Показывать токсичную перепалку моделей':'Показывать обсуждение моделей';
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
- $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
+ const showScenes=Number($('showScenes').value)||4,showCallCount=showScenes*Math.min(4,chosen.size)+1;
+ $('budget').textContent=experience==='show'?chosen.size+' модели · '+showScenes+' сцены · до '+showCallCount+' вызовов · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
  const mq=$('mobileQuorumText');
- if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
+ if(mq) mq.textContent=experience==='show'?chosen.size+' ИИ · '+showScenes+' сцены · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
  const enough=access?.admin||access?.remainingFreeTasks>=chosen.size;
- $('start').textContent=access?'Получить результат':'Войти и начать';
+ $('start').textContent=access?'Запустить историю':'Войти и запустить';
  $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||!connected||(!!access&&!enough);
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=available.has(a.id),input=label.querySelector('input');
@@ -188,7 +312,11 @@ function update(){
  });
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
  $('ambience').disabled=running;
- renderSceneCast();
+ if(experience==='show')renderShowCast();
+ document.querySelectorAll('.show-scenario').forEach(b=>b.disabled=running);
+ $('showExtra').disabled=running;
+ $('showScenes').disabled=running;$('showTone').disabled=running;
+ for(const id of ['Council','Show'])$('experience'+id).disabled=running;
 }
 $('rounds').onchange=update;$('length').onchange=update;
 $('judge').onchange=()=>{moderatorChosenByUser=true;update();};
@@ -1134,13 +1262,13 @@ function readableStoredMessage(m){
 }
 function renderMessage(m){
  const type=agents.find(a=>a.name===m.name)?.id||(m.final?'final':'service');
- const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'');
+ const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'')+(m.show?' show-message':'')+(m.narrator?' narrator':'')+(m.silent?' silent':'');
  const head=document.createElement('div');head.className='message-head';
  const identity=document.createElement('span');identity.className='model-identity';
  const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
- const name=document.createElement('strong');name.textContent=m.final?'Готовый результат':m.nickname?m.nickname+' · '+m.name:m.name;
+ const name=document.createElement('strong');name.textContent=m.final&&!m.show?'Готовый результат':m.nickname?m.nickname+' · '+m.name:m.name;
  identity.append(dot,name);
- const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final&&!m.show?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
  const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
@@ -1156,7 +1284,7 @@ function syncResultActions(){
  $('export').disabled=!messages.some(m=>m.final);
 }
 function renderMessages(){
- const visible=$('showDiscussion').checked?messages:messages.filter(m=>m.final);
+ const visible=experience==='show'||$('showDiscussion').checked?messages:messages.filter(m=>m.final);
  $('feed').replaceChildren(...visible.map(renderMessage));
  syncResultActions();
 }
@@ -1165,30 +1293,37 @@ function emit(m){
  messages.push(m);
  // Append instead of rebuilding the entire feed: preserving iOS/Android touch selections
  // while further AI responses arrive.
- if($('showDiscussion').checked||m.final)$('feed').append(renderMessage(m));
+ if(experience==='show'||$('showDiscussion').checked||m.final)$('feed').append(renderMessage(m));
  syncResultActions();
 }
 async function request(a,chat,signal,stage={}){
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,maxWords:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,maxWords:stage.format==='show'?45:wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  // JSON ballots are a control protocol, not a prose response. Never truncate them.
- return stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
+ return stage.format==='show'?clipShowLine(result.text):stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
   ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{
  if(!access){$('loginOpen').click();return;}
- const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
- const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
+ const isShow=experience==='show',scene=showScenario(showScenarioId);
+ const extra=$('showExtra').value.trim();
+ const task=isShow?scene.title+': '+scene.description+(extra?' Режиссёрский поворот: '+extra:''):$('task').value.trim();
+ if(!task){$('status').textContent='Сначала опишите задачу.';return;}
+ const members=agents.filter(a=>chosen.has(a.id));
+ if(isShow)ensureShowCast();
+ const cast=isShow?showCast(scene,showAssigned):[];
+ if(isShow&&cast.length!==members.length){$('status').textContent='Каждой выбранной нейросети нужна своя роль.';return;}
+ const moderator=members.find(a=>a.id===$('judge').value)||members[0];
  running=true;stopRequested=false;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
  const {profile:currentProfile,task:currentSubtask}=resolveProfile(profileId,taskId);
- lastTaskContext={prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
+ lastTaskContext=isShow?{prompt:task,profile:'Шоу',specialization:scene.title}:{prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
  $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;$('researchPanel').hidden=true;$('researchSources').replaceChildren();$('researchSearchWidget').replaceChildren();
  $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
- document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
- update();$('status').textContent='Нейросети работают над вашей задачей.';
+ document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showScenes,#showTone,#showRandomCast,.show-scenario,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
+ update();$('status').textContent=isShow?'Шоу начинается. Персонажи вступают в диалог.':'Нейросети работают над вашей задачей.';
  try{
   let token=await ensureSession();
-   const startBody={participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode,profile:profileId,subtask:taskId||'unspecified'};
+   const startBody={participants:members.map(a=>a.id),rounds:isShow?Number($('showScenes').value):Number($('rounds').value),mode:isShow?'show':mode,profile:isShow?'show':profileId,subtask:isShow?scene.id:taskId||'unspecified'};
    try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
    catch(error){
     if(error.status!==401||adminToken)throw error;
@@ -1198,10 +1333,15 @@ $('start').onclick=async()=>{
     activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});
    }
   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
-  const {profile,task:subtask}=resolveProfile(profileId,taskId);
-  await discuss({agents:members,judge:moderator,mode,ambience,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
-   researchProvider:$('factCheck').checked&&needsSources(task)?verifyTaskSources:null,onResearch:showResearch});
-  $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
+  if(isShow){
+   await runShow({agents:members,scenario:scene,cast,extra,scenes:Number($('showScenes').value),tonality:$('showTone').value,request,emit,signal:controller.signal,onProgress:progress});
+   $('status').textContent='🎬 История завершена — развязка и эпилог внизу. Можно изменить кастинг и переснять.';
+  }else{
+   const {profile,task:subtask}=resolveProfile(profileId,taskId);
+   await discuss({agents:members,judge:moderator,mode,ambience,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
+    researchProvider:$('factCheck').checked&&needsSources(task)?verifyTaskSources:null,onResearch:showResearch});
+   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
+  }
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
   if(e.status===402&&access){access={...access,remainingFreeTasks:0};renderAccess();}
@@ -1210,8 +1350,8 @@ $('start').onclick=async()=>{
   if(activeTask){
    const {profile,task:subtask}=resolveProfile(profileId,taskId);
    const historyPayload={
-    prompt:$('task').value,profile:profile.name,ambience,
-    specialization:subtask?.[1]||'',messages:messages.map(({name,nickname,stage,text,final,error})=>({name,nickname,stage,text,final:!!final,error:!!error}))
+    prompt:isShow?task:$('task').value,profile:isShow?'Шоу':profile.name,ambience:isShow?'none':ambience,
+    specialization:isShow?scene.title:subtask?.[1]||'',messages:messages.map(({name,nickname,stage,text,final,error,show})=>({name,nickname,stage,text,final:!!final,error:!!error,show:!!show}))
    };
    try{const finished=await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
      taskId:activeTask.taskId,cancelled:stopRequested,...(activeTask.historyEnabled?{history:historyPayload}:{})
@@ -1220,7 +1360,7 @@ $('start').onclick=async()=>{
   }
   await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
+  document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showScenes,#showTone,#showRandomCast,.show-scenario,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
   update();
  }
 };
@@ -1237,5 +1377,4 @@ $('export').onclick=()=>{
  const url=URL.createObjectURL(new Blob([output],{type:'text/markdown;charset=utf-8'}));
  const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-update();
-
+update();setExperience('show');

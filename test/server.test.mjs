@@ -306,7 +306,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=scene61/);
+  assert.match(html.body,/uiux32\.css\?v=show64/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=scene61/);
+  assert.match(html.body,/app\.js\?v=show64/);
  }finally{await t.close();}
 });
 
@@ -817,5 +817,57 @@ test('Mistral Large 4 accepts mixed thinking/text chunks, prices calls, and choo
   assert.equal(p.output,2.1*82.5);
   assert.equal(p.cached,0.07*82.5);
   assert.equal(admin.accounting.totals.unknownCostCalls,0);
+ }finally{await t.close();}
+});
+
+
+
+test('Show API honors 3–5 scene budgets and one final epilogue, rejects long prompts without charging calls',async()=>{
+ const t=await setup({OPENAI_MODEL:'gpt-6-luna',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4',ACCOUNT_DAILY_CALL_LIMIT:'16'});
+ try{
+  const user=(await t.login('show-rework@example.com')).data;
+  const created=await t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:3},user.token);
+  assert.equal(created.status,200);
+  assert.equal(created.data.maxCalls,7);
+  const talk=(provider,stage='intermediate')=>({provider,taskId:created.data.taskId,stage,format:'show',maxWords:45,
+   messages:[{role:'system',content:'Ты персонаж с характером'},{role:'user',content:'Говори одной репликой'}]});
+  const longButValid=await t.send('/api/chat',{...talk('mistral'),messages:[{role:'system',content:'x'.repeat(4900)},{role:'user',content:'y'.repeat(6000)}]},user.token);
+  assert.equal(longButValid.status,200);
+  const first=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(first.max_tokens,1450);assert.equal(first.reasoning_effort,'low');
+  assert(!first.messages[0].content.includes('Текущие дата и время:'),'show skips irrelevant date preambles');
+  const tooLong=await t.send('/api/chat',{...talk('mistral'),messages:[{role:'system',content:'x'.repeat(9600)},{role:'user',content:'a'}]},user.token);
+  assert.equal(tooLong.status,400);assert.equal(t.calls.length,1,'reject before provider');
+  const openai=await t.send('/api/chat',talk('openai'),user.token);
+  assert.equal(openai.status,200);
+  const payload=JSON.parse(t.calls.at(-1).options.body);
+  assert.equal(payload.reasoning_effort,'low');assert.equal(payload.max_completion_tokens,1600);
+  for(let i=0;i<4;i++)assert.equal((await t.send('/api/chat',talk(i%2?'mistral':'openai'),user.token)).status,200);
+  assert.equal((await t.send('/api/chat',talk('mistral','final'),user.token)).status,200);
+  assert.equal((await t.send('/api/chat',talk('openai','final'),user.token)).status,403,'one epilogue max');
+  assert.equal((await t.send('/api/chat',talk('openai'),user.token)).status,403,'scenes cannot exceed server call budget');
+  assert.equal((await t.send('/api/task/finish',{taskId:created.data.taskId},user.token)).status,200);
+ }finally{await t.close();}
+});
+test('Show rejects obsolete two-scene requests and allows valid three to five scene choices',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4'});
+ try{
+  const user=(await t.login('show-scenes@example.com')).data;
+  const start=rounds=>t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds},user.token);
+  assert.equal((await start(2)).status,400);
+  assert.equal((await start(6)).status,400);
+  assert.equal((await start(3)).data.maxCalls,7);
+  assert.equal((await start(4)).data.maxCalls,9);
+  assert.equal((await start(5)).data.maxCalls,11);
+ }finally{await t.close();}
+});
+test('Original story canon, show art and compact dialogue scripts are served on actual routes',async()=>{
+ const t=await setup();
+ try{
+  for(const [path,marker] of [['/show.js','runShow'],['/show-stories.js','STORY_BIBLE'],['/show-art.js','scenePoster']]){
+   const r=await t.asset(path);
+   assert.equal(r.status,200,path);
+   assert.match(r.body,new RegExp(marker));
+  }
  }finally{await t.close();}
 });
