@@ -822,7 +822,7 @@ test('Mistral Large 4 accepts mixed thinking/text chunks, prices calls, and choo
 
 
 test('Show requests enforce short budgets on the server and reject excessive context',async()=>{
- const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4',ACCOUNT_DAILY_CALL_LIMIT:'10'});
+ const t=await setup({OPENAI_MODEL:'gpt-6-luna',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4',ACCOUNT_DAILY_CALL_LIMIT:'10'});
  try{
   const user=(await t.login('show-test@example.com')).data;
   const task=await t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:2},user.token);
