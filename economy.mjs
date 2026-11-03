@@ -3,7 +3,8 @@ import {readFileSync,writeFileSync,renameSync,appendFileSync,existsSync} from 'n
 
 const direct=Object.freeze({
  'openai/gpt-6-luna':{input:0.10,cached:0.01,output:0.50,currency:'USD',source:'OpenAI Standard'},
- 'mistral/mistral-large-2512':{input:0.50,cached:0.05,output:1.50,currency:'USD',source:'Mistral Standard'},
+ 'mistral/mistral-large-2512':{input:0.50,cached:0.05,output:1.50,currency:'USD',source:'Mistral Large 3 historical'},
+ 'mistral/mistral-large-4':{input:0.70,cached:0.07,output:2.10,currency:'USD',source:'Mistral Large 4 Standard · 2026-11-03'},
  'grok/grok-4.7':{input:2,cached:0.50,output:6,currency:'USD',source:'xAI direct'}
 });
 const grokHeavyCny=Object.freeze({input:0.60,cached:0.15,output:1.80});
@@ -156,7 +157,7 @@ export function createEconomy({env,now=Date.now}){
  }
  function prices(models={}){
   return ['openai','mistral','grok',...['claude','gemini','qwen','deepseek'].filter(p=>models[p])].map(provider=>{
-   const model=models[provider]||({openai:'gpt-6-luna',mistral:'mistral-large-2512',grok:'grok-4.7'}[provider]);
+   const model=models[provider]||({openai:'gpt-6-luna',mistral:'mistral-large-4',grok:'grok-4.7'}[provider]);
    return {provider,model,...(price(provider,model)||{currency:'RUB',input:null,cached:null,output:null,source:'Тариф не задан',estimated:true})};
   });
  }
