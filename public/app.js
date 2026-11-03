@@ -1,6 +1,6 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
-import {scenePoster,characterPortrait} from './show-art.js';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=portraits2';
+import {scenePoster,characterPortrait} from './show-art.js?v=portraits2';
 import {STORY_CORE_ROLES,storyBible} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
@@ -210,13 +210,13 @@ function renderShowCast(){
  $('showCastCount').textContent=members.length+' из '+scene.roles.length+' ролей';
  $('showCast').replaceChildren(...scene.roles.map(([name,description],index)=>{
   const card=document.createElement('div');card.className='show-role'+(showAssigned[index]?' show-role-active':'');
-  const avatar=document.createElement('span');avatar.className='show-role-avatar';avatar.innerHTML=characterPortrait(scene.id,index);
+  const avatar=document.createElement('span');avatar.className='show-role-avatar';avatar.style.cssText='display:block;width:100%;height:auto;aspect-ratio:3/4;position:relative;overflow:hidden';avatar.innerHTML=characterPortrait(scene.id,index);
   const body=document.createElement('div');body.className='show-role-body';
   const strong=document.createElement('strong');strong.textContent=name;
-  const desc=document.createElement('small');desc.textContent=description;
+  const desc=document.createElement('small');desc.textContent=description;desc.title=description;
   body.append(strong,desc);
   const label=document.createElement('label');label.className='show-role-model';
-  const title=document.createElement('span');title.textContent='Исполнитель';
+  const title=document.createElement('span');title.textContent='Исполнитель';title.className='sr-only';
   const select=document.createElement('select');select.dataset.slot=String(index);select.setAttribute('aria-label','Кто играет '+name);
   select.add(new Option('— Свободная роль —',''));
   for(const model of members)select.add(new Option(model.name,model.id));
@@ -233,9 +233,9 @@ function renderShowCast(){
   };
   label.append(title,select);
   const pick=document.createElement('button');pick.type='button';pick.className='show-role-choice';
-  pick.textContent=showAssigned[index]?'✓ В составе':'Выбрать персонажа';
+  pick.textContent=showAssigned[index]?'✓ В составе':'+ В состав';pick.setAttribute('aria-label',(showAssigned[index]?'В составе: ':'Выбрать персонажа: ')+name);
   pick.disabled=running||!!showAssigned[index];pick.onclick=()=>selectShowRole(index);
-  card.append(avatar,body,pick,label);
+  avatar.append(pick);card.append(avatar,body,label);
   return card;
  }));
  $('showRandomCast').disabled=running;

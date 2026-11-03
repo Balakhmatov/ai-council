@@ -306,7 +306,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=show64/);
+  assert.match(html.body,/uiux32\.css\?v=show65/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show64/);
+  assert.match(html.body,/app\.js\?v=show65/);
  }finally{await t.close();}
 });
 
@@ -868,6 +868,18 @@ test('Original story canon, show art and compact dialogue scripts are served on 
    const r=await t.asset(path);
    assert.equal(r.status,200,path);
    assert.match(r.body,new RegExp(marker));
+  }
+ }finally{await t.close();}
+});
+
+test('portrait theme and every illustration atlas are served at versioned browser URLs',async()=>{
+ const t=await setup();
+ try{
+  const html=await t.asset('/');assert.match(html.body,/noir\.css\?v=portraits2/);
+  const css=await t.asset('/noir.css?v=portraits2');assert.equal(css.status,200);assert.equal(css.type,'text/css');
+  for(const file of ['show-posters','show-cast-crime','show-cast-worlds','show-cast-stories','show-heist-cast','show-heist-poster']){
+   const image=await t.asset('/assets/'+file+'.webp?v=portraits2');
+   assert.equal(image.status,200,file);assert.equal(image.type,'image/webp',file);assert.ok(image.body.startsWith('RIFF'),file+' must contain actual image bytes');
   }
  }finally{await t.close();}
 });

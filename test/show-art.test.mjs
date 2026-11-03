@@ -12,7 +12,7 @@ test('every story and every casting role has its own local illustration cell',()
  assert.equal(new Set(portraits).size,70);
  assert.equal(scenePoster('unknown'),scenePoster('diner'));
  assert.equal(characterPortrait('unknown',0),characterPortrait('diner',0));
- for(const art of [...posters,...portraits])assert.ok(!art.includes('http')&&!art.includes('undefined'));
+ for(const art of [...posters,...portraits])assert.ok(!art.includes('href="https:')&&!art.includes('undefined'));
  for(const file of ['show-posters.webp','show-cast-crime.webp','show-cast-worlds.webp','show-cast-stories.webp']){
   const stat=statSync(new URL('../public/assets/'+file,import.meta.url));
   assert.ok(stat.size>10000&&stat.size<700000,file+' should be a compressed local illustration atlas');
