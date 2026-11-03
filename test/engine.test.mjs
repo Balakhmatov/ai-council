@@ -106,3 +106,39 @@ test('research/business Mistral receives stricter unsupported statistics instruc
   assert.equal(final.text,'Fallback final result');
   assert.equal(emitted.filter(x=>x.stage==='Первый раунд').length,2);
  });
+
+
+test('roast mode stages a genuinely abrasive model-on-model battle while protecting the user deliverable',async()=>{
+ const events=[],calls=[];
+ const request=async(a,m,signal,metadata)=>{
+  calls.push({id:a.id,system:m[0].content,user:m[1].content,step:metadata.step});
+  return metadata.stage==='final'?'Готовое решение для пользователя':'Мой ответ, конкретный аргумент '+a.id;
+ };
+ await discuss({...base,mode:'roast',rounds:3,emit:m=>events.push(m),request});
+ const first=calls.filter(c=>c.step==='Первый раунд');
+ assert.equal(first.length,2);
+ assert(first.every(c=>c.system.includes('ТОКСИЧНЫЙ БАТТЛ')));
+ assert(first.every(c=>c.system.includes('сарказм')&&c.system.includes('мат')));
+ assert.notEqual(first[0].system,first[1].system,'each agent should have a distinct battle persona');
+ assert(first.every(c=>c.user.includes('чужие ответы ещё не показаны')));
+ assert(first.every(c=>!c.user.includes('Мой ответ, конкретный аргумент')));
+ const second=calls.filter(c=>c.step==='Раунд 2');
+ assert.equal(second.length,2);
+ assert(second.every(c=>c.user.includes('назови её по имени')));
+ assert(second.every(c=>c.user.includes('[A; Первый раунд]')&&c.user.includes('[B; Первый раунд]')));
+ const third=calls.filter(c=>c.step==='Раунд 3');
+ assert(third.every(c=>c.user.includes('Раунд 2')));
+ const final=calls.find(c=>c.step==='Итоговый проект');
+ assert(final.user.includes('Подведи итог токсичной перепалки'));
+ assert(final.user.includes('убери оскорбления и мат'));
+ assert(events.at(-1).final);
+ assert.equal(events.at(-1).text,'Готовое решение для пользователя');
+ assert(!calls.some(c=>c.step==='Голосование'||c.step==='Проверка согласия'));
+});
+test('non-toxic discussion modes never inherit the roast persona or profanity directive',async()=>{
+ const calls=[];
+ await discuss({...base,mode:'judge',emit:()=>{},request:async(a,m)=>{calls.push(m);return 'Идея';}});
+ assert(calls.length>0);
+ assert(calls.every(([system])=>!system.content.includes('ТОКСИЧНЫЙ БАТТЛ')));
+ assert(calls.every(([system])=>!system.content.includes('Твой стиль: злой редактор')));
+});
