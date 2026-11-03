@@ -18,3 +18,11 @@ test('every story and every casting role has its own local illustration cell',()
   assert.ok(stat.size>10000&&stat.size<700000,file+' should be a compressed local illustration atlas');
  }
 });
+
+test('heist uses an independent crime-film poster and seven independent suited portraits',()=>{
+ assert.ok(scenePoster('heist').includes('cinema-poster-heist'));
+ const portraits=Array.from({length:7},(_,i)=>characterPortrait('heist',i));
+ assert.equal(new Set(portraits).size,7);
+ assert.ok(portraits.every(p=>p.includes('cinema-character-heist')));
+ assert.ok(!characterPortrait('diner',0).includes('cinema-character-heist'));
+});

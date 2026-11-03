@@ -1,10 +1,12 @@
 // Generated artwork is served locally. Each regular atlas cell is its own illustration.
 const STORY_ART_ORDER=['diner','heist','court','villains','spaceship','bunker','boardroom','detective','reality','time'];
 export function scenePoster(id){
+ if(id==='heist')return '<span class="cinema-poster-art cinema-poster-heist" aria-hidden="true"></span>';
  const index=Math.max(0,STORY_ART_ORDER.indexOf(id));
  return '<span class="cinema-poster-art" style="--art-x:'+(index%5)*25+'%;--art-y:'+Math.floor(index/5)*100+'%" aria-hidden="true"></span>';
 }
 export function characterPortrait(id,slot){
+ if(id==='heist')return '<span class="cinema-character-art cinema-character-heist" style="--art-x:'+(Math.max(0,Math.min(6,slot))/6*100)+'%" aria-hidden="true"></span>';
  const index=Math.max(0,STORY_ART_ORDER.indexOf(id));
  const group=index<2?'crime':index<6?'worlds':'stories';
  const row=index<2?index:index<6?index-2:index-6;
