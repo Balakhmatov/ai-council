@@ -212,6 +212,7 @@ function setExperience(next){
  if(experience==='show'){
   $('showDiscussion').checked=true;
   $('showDiscussion').parentElement.hidden=true;
+  messages=[];lastTaskContext=null;syncResultActions();
   $('researchPanel').hidden=true;
   if(!Object.keys(showAssigned).length)randomShowCast();
   renderShowScenarios();
@@ -221,6 +222,7 @@ function setExperience(next){
   $('feed').append(Object.assign(document.createElement('p'),{textContent:'🎬 Выберите сюжет и запустите шоу. Здесь появятся короткие реплики персонажей.',className:'show-empty'}));
  }else{
   $('showDiscussion').parentElement.hidden=false;
+  messages=[];lastTaskContext=null;syncResultActions();
   $('status').textContent='Опишите задачу, и Кворум соберёт решение.';
   renderMessages();
  }
@@ -264,6 +266,8 @@ function update(){
  document.querySelectorAll('.profile-option,.task-option,.mode').forEach(b=>b.disabled=running);
  $('ambience').disabled=running;
  if(experience==='show')renderShowCast();
+ document.querySelectorAll('.show-scenario').forEach(b=>b.disabled=running);
+ $('showExtra').disabled=running;
  for(const id of ['Council','Show'])$('experience'+id).disabled=running;
 }
 $('rounds').onchange=update;$('length').onchange=update;
@@ -1253,18 +1257,25 @@ async function request(a,chat,signal,stage={}){
 }
 $('start').onclick=async()=>{
  if(!access){$('loginOpen').click();return;}
- const task=$('task').value.trim();if(!task){$('status').textContent='Сначала опишите задачу.';return;}
- const members=agents.filter(a=>chosen.has(a.id));const moderator=members.find(a=>a.id===$('judge').value)||members[0];
+ const isShow=experience==='show',scene=showScenario(showScenarioId);
+ const extra=$('showExtra').value.trim();
+ const task=isShow?scene.title+': '+scene.description+(extra?' Режиссёрский поворот: '+extra:''):$('task').value.trim();
+ if(!task){$('status').textContent='Сначала опишите задачу.';return;}
+ const members=agents.filter(a=>chosen.has(a.id));
+ if(isShow)ensureShowCast();
+ const cast=isShow?showCast(scene,showAssigned):[];
+ if(isShow&&cast.length!==members.length){$('status').textContent='Каждой выбранной нейросети нужна своя роль.';return;}
+ const moderator=members.find(a=>a.id===$('judge').value)||members[0];
  running=true;stopRequested=false;telegramContext?.app.enableClosingConfirmation?.();messages=[];events=[];controller=new AbortController();
  const {profile:currentProfile,task:currentSubtask}=resolveProfile(profileId,taskId);
- lastTaskContext={prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
+ lastTaskContext=isShow?{prompt:task,profile:'Шоу',specialization:scene.title}:{prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
  $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;$('researchPanel').hidden=true;$('researchSources').replaceChildren();$('researchSearchWidget').replaceChildren();
  $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
- document.querySelectorAll('aside input,aside select,aside button,#task,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
- update();$('status').textContent='Нейросети работают над вашей задачей.';
+ document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showRandomCast,.show-scenario,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
+ update();$('status').textContent=isShow?'Шоу начинается. Персонажи вступают в диалог.':'Нейросети работают над вашей задачей.';
  try{
   let token=await ensureSession();
-   const startBody={participants:members.map(a=>a.id),rounds:Number($('rounds').value),mode,profile:profileId,subtask:taskId||'unspecified'};
+   const startBody={participants:members.map(a=>a.id),rounds:isShow?2:Number($('rounds').value),mode:isShow?'show':mode,profile:isShow?'show':profileId,subtask:isShow?scene.id:taskId||'unspecified'};
    try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
    catch(error){
     if(error.status!==401||adminToken)throw error;
@@ -1274,10 +1285,15 @@ $('start').onclick=async()=>{
     activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});
    }
   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
-  const {profile,task:subtask}=resolveProfile(profileId,taskId);
-  await discuss({agents:members,judge:moderator,mode,ambience,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
-   researchProvider:$('factCheck').checked&&needsSources(task)?verifyTaskSources:null,onResearch:showResearch});
-  $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
+  if(isShow){
+   await runShow({agents:members,scenario:scene,cast,extra,turns:2,request,emit,signal:controller.signal,onProgress:progress});
+   $('status').textContent='🎬 Сцена завершена. Можно поменять кастинг или выбрать другую историю.';
+  }else{
+   const {profile,task:subtask}=resolveProfile(profileId,taskId);
+   await discuss({agents:members,judge:moderator,mode,ambience,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
+    researchProvider:$('factCheck').checked&&needsSources(task)?verifyTaskSources:null,onResearch:showResearch});
+   $('status').textContent='Готово. Итог ниже; подробности обсуждения доступны по переключателю.';
+  }
   if(messages.some(m=>m.error))$('status').textContent+=' Часть ответов завершилась ошибкой.';
  }catch(e){
   if(e.status===402&&access){access={...access,remainingFreeTasks:0};renderAccess();}
@@ -1286,8 +1302,8 @@ $('start').onclick=async()=>{
   if(activeTask){
    const {profile,task:subtask}=resolveProfile(profileId,taskId);
    const historyPayload={
-    prompt:$('task').value,profile:profile.name,ambience,
-    specialization:subtask?.[1]||'',messages:messages.map(({name,nickname,stage,text,final,error})=>({name,nickname,stage,text,final:!!final,error:!!error}))
+    prompt:isShow?task:$('task').value,profile:isShow?'Шоу':profile.name,ambience:isShow?'none':ambience,
+    specialization:isShow?scene.title:subtask?.[1]||'',messages:messages.map(({name,nickname,stage,text,final,error,show})=>({name,nickname,stage,text,final:!!final,error:!!error,show:!!show}))
    };
    try{const finished=await api('/api/task/finish',{method:'POST',token:await ensureSession(),body:{
      taskId:activeTask.taskId,cancelled:stopRequested,...(activeTask.historyEnabled?{history:historyPayload}:{})
@@ -1296,7 +1312,7 @@ $('start').onclick=async()=>{
   }
   await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
+  document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showRandomCast,.show-scenario,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
   update();
  }
 };
