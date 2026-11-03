@@ -81,7 +81,7 @@ export async function runShow({agents,scenario,cast,extra='',turns=2,request,emi
    if(signal?.aborted)throw new DOMException('Остановлено','AbortError');
    const part=cast[i],agent=agents.find(a=>a.id===part.provider);
    const isLast=act===turns&&i===cast.length-1;
-   const recent=past.slice(-4).map(m=>m.name+': '+m.text).join('\n');
+   const recent=past.slice(-4).map(m=>m.nickname+': '+m.text).join('\n');
    const system='Ты играешь вымышленного персонажа '+part.name+' ('+part.description+'). Настоящая языковая модель за ролью: '+agent.name+'. СЦЕНА: '+scene.setting+' ЖАНР: '+scene.genre+'. Остальные персонажи:\n'+members+'\nЭто короткая драматическая перепалка, не аналитический совет и не монолог. ПИШИ ТОЛЬКО ОДНУ РЕПЛИКУ: 1–3 коротких предложения, не более 45 слов и 300 символов. Можно одну короткую ремарку в скобках. Без заголовков, таблиц, списков, приветствий и объяснений. Реагируй на последнюю реплику и развивай конфликт конкретным поступком, угрозой интриги или остроумным возражением. Не описывай действия других участников и не заканчивай сцену досрочно. Реплики должны отличаться у персонажей по характеру.';
    const user='Название: '+scene.title+'\nЗавязка: '+scene.description+'\nСкрытое осложнение: '+scene.twist+'\nУказание режиссёра: '+String(extra||'').slice(0,340)+'\nАкт: '+act+' из '+turns+'; реплика '+(i+1)+' из '+cast.length+'.\nПоследние реплики:\n'+(recent||'[Сцена начинается, ты говоришь первым.]')+'\nПродолжи сцену только за '+part.name+'.'+(isLast?' Это финальная реплика: закончи ярким поворотом, но без пространного эпилога.':'');
    let line;
