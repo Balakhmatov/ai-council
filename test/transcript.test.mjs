@@ -37,3 +37,15 @@ test('saved task copy correctly includes voting protocols, errors and consensus 
  assert.match(s,/ошибка/);
  assert.match(s,/Правки/);
 });
+
+
+test('full transcript keeps theatrical alias and the real AI provider for each scene character',()=>{
+ const copy=formatTranscript({prompt:'Три стартапа',ambience:'cinema',messages:[
+  {name:'OpenAI',nickname:'Винс «Контраргумент»',stage:'Раунд 2',text:'Идея слабая, потому что нет покупателей'},
+  {name:'Grok',nickname:'Бешеный Фрэнк',stage:'Раунд 2',text:'Возражаю'},
+  {name:'Итог',stage:'Готовое решение',text:'Готовый план',final:true}
+ ]});
+ assert.match(copy,/Винс «Контраргумент» \(OpenAI\) — Раунд 2/);
+ assert.match(copy,/Бешеный Фрэнк \(Grok\) — Раунд 2/);
+ assert.match(copy,/Готовый план/);
+});
