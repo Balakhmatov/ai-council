@@ -118,7 +118,7 @@ test('roast mode stages a genuinely abrasive model-on-model battle while protect
  const first=calls.filter(c=>c.step==='Первый раунд');
  assert.equal(first.length,2);
  assert(first.every(c=>c.system.includes('ТОКСИЧНЫЙ БАТТЛ')));
- assert(first.every(c=>c.system.includes('сарказм')&&c.system.includes('мат')));
+ assert(first.every(c=>c.system.includes('саркастич')&&c.system.includes('мат')));
  assert.notEqual(first[0].system,first[1].system,'each agent should have a distinct battle persona');
  assert(first.every(c=>c.user.includes('чужие ответы ещё не показаны')));
  assert(first.every(c=>!c.user.includes('Мой ответ, конкретный аргумент')));
@@ -129,8 +129,8 @@ test('roast mode stages a genuinely abrasive model-on-model battle while protect
  const third=calls.filter(c=>c.step==='Раунд 3');
  assert(third.every(c=>c.user.includes('Раунд 2')));
  const final=calls.find(c=>c.step==='Итоговый проект');
- assert(final.user.includes('Подведи итог токсичной перепалки'));
- assert(final.user.includes('убери оскорбления и мат'));
+ assert(final.user.includes('Сначала как ведущий этой разборки'));
+ assert(final.user.includes('не добавляй в пост'));
  assert(events.at(-1).final);
  assert.equal(events.at(-1).text,'Готовое решение для пользователя');
  assert(!calls.some(c=>c.step==='Голосование'||c.step==='Проверка согласия'));
@@ -141,4 +141,41 @@ test('non-toxic discussion modes never inherit the roast persona or profanity di
  assert(calls.length>0);
  assert(calls.every(([system])=>!system.content.includes('ТОКСИЧНЫЙ БАТТЛ')));
  assert(calls.every(([system])=>!system.content.includes('Твой стиль: злой редактор')));
+});
+
+
+test('Tarantino ambience is explicit, uses original crime-cinema cues and per-provider nicknames',async()=>{
+ const {ambiences,characterName}=await import('../public/engine.js');
+ assert.equal(ambiences.cinema.label,'🎬 Тарантино');
+ assert.match(ambiences.cinema.setting,/закусочн/);
+ assert.notEqual(characterName('cinema','openai'),characterName('cinema','mistral'));
+ assert.equal(characterName('none','openai'),'');
+ const out=[],calls=[];
+ await discuss({...base,mode:'roast',ambience:'cinema',emit:m=>out.push(m),request:async(a,m)=>{
+  calls.push({provider:a.id,system:m[0].content,user:m[1].content});
+  return 'Конкретная идея';
+ }});
+ assert(calls.every(c=>c.system.includes('СЦЕНА И АНТУРАЖ')));
+ assert(calls.every(c=>c.system.includes('Винс')||c.system.includes('Мистер Ноль')),'all models see full ensemble cast');
+ assert(calls.every(c=>c.system.includes('оригинальн')),'scene must be original, not film dialogue');
+ const first=out.find(m=>m.name==='A');
+ assert(first.nickname,'unknown providers also receive fallback character names');
+ assert.match(calls.at(-1).user,/Раунд 2/);
+ assert.match(calls.at(-1).user,/Винс/);
+ assert(out.at(-1).final);
+ assert(out.at(-1).nickname);
+});
+test('ambiences work in normal discussion as presentation only, not enabling toxicity',async()=>{
+ const calls=[];
+ await discuss({...base,mode:'judge',ambience:'anime',emit:()=>{},request:async(a,m)=>{calls.push(m[0].content);return 'Готово';}});
+ assert(calls.every(system=>system.includes('оригинального аниме')));
+ assert(calls.every(system=>!system.includes('ТОКСИЧНЫЙ БАТТЛ')));
+ assert(calls.every(system=>!system.includes('ОСОБО ДЛЯ ТВОЕЙ РЕПЛИКИ')));
+});
+test('OpenAI gets an explicitly energetic roast persona, without altering normal OpenAI system prompts',async()=>{
+ const model=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'}],calls=[];
+ await discuss({...base,agents:model,judge:model[0],mode:'roast',ambience:'cinema',emit:()=>{},request:async(a,m)=>{calls.push({id:a.id,stage:m[1].content,sys:m[0].content});return 'Готово';}});
+ assert(calls.find(c=>c.id==='openai').sys.includes('ОСОБО ДЛЯ ТВОЕЙ РЕПЛИКИ'));
+ assert(calls.find(c=>c.id==='openai').sys.includes('не смягчай конфликт до делового анализа'));
+ assert(calls.find(c=>c.id==='openai'&&c.stage.includes('Готовый результат'))?.sys.includes('язвительное представление') || calls.find(c=>c.id==='openai').sys.includes('ОСОБО'));
 });
