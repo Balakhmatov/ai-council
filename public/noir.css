@@ -187,3 +187,27 @@ body[data-experience=show] .show-cast .show-role-model{margin:10px 11px!importan
 body[data-experience=show] .show-role-model select{min-height:32px;padding:5px 7px;font-size:11px}
 body[data-experience=show] .cinema-poster-art image,body[data-experience=show] .cinema-character-art image{pointer-events:none}
 @media(max-width:600px){body[data-experience=show] .show-role-body strong{font-size:19px!important}body[data-experience=show] .show-role-body small{font-size:10px!important}body[data-experience=show] .show-cast .show-role-choice{top:7px;right:7px;padding:5px 7px;font-size:9px;min-height:27px}}
+/* History belongs to the same dark cinema palette, including hover and search. */
+body[data-experience=show] .history-section{border-color:var(--cinema-line)}
+body[data-experience=show] .history-list{gap:5px}
+body[data-experience=show] .history-cluster{background:transparent;color:var(--cinema-paper);border:1px solid transparent;border-bottom-color:#80644955;border-radius:5px;padding:16px 12px;box-shadow:none;transition:background-color .15s,border-color .15s}
+body[data-experience=show] .history-cluster strong{color:#dfc9a7;font-size:14px;font-weight:550;line-height:1.5}
+body[data-experience=show] .history-cluster small{color:#a5927b;font-size:11px;line-height:1.5}
+body[data-experience=show] .history-cluster:hover:not(:disabled),body[data-experience=show] .history-cluster:active{background:#42291d66;border-color:#98744a88}
+body[data-experience=show] .history-cluster:focus-visible{background:#352319;outline:1px solid #bf9b64!important;outline-offset:1px}
+body[data-experience=show] .history-search::before{color:#ba9561}
+body[data-experience=show] .history-search input:focus{border-color:#bd945e!important;outline:1px solid #bd945e55!important}
+body[data-experience=show] .history-suggest{background:#211a14;border:1px solid #846342;border-radius:6px;box-shadow:0 12px 35px #0008}
+body[data-experience=show] .history-suggestion{background:transparent;color:#dccaac;border-radius:4px;border-color:#80644955}
+body[data-experience=show] .history-suggestion strong{color:#e1caa5}
+body[data-experience=show] .history-suggestion .history-suggest-snippet{color:#bba78e}
+body[data-experience=show] .history-suggestion .history-suggest-meta,body[data-experience=show] .history-suggest-state{color:#a48a6c}
+body[data-experience=show] .history-suggestion:hover,body[data-experience=show] .history-suggestion:focus-visible{background:#493021}
+body[data-experience=show] .history-suggestion mark{color:#ffe0a5;background:#70502c;border-radius:2px}
+body[data-experience=show] .history-more{background:#241b14;border-color:#806449;color:#dac3a1}
+body[data-experience=show] .history-link-box{border-color:var(--cinema-line)}
+body[data-experience=show] .history-link-toggle{color:#c6a573}
+body[data-experience=show] .history-dialog .section-title{background:#1e1914;border-color:var(--cinema-line)}
+body[data-experience=show] .history-prompt{border-color:var(--cinema-line);color:#d9c5a7}
+body[data-experience=show] .history-detail .message{background:transparent;border-color:var(--cinema-line);color:#d9c5a7}
+body[data-experience=show] ::selection{color:#fff0d2;background:#7a392d}
