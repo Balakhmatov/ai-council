@@ -1,6 +1,7 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
 import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
 import {scenePoster} from './show-art.js';
+import {STORY_CORE_ROLES} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -161,11 +162,14 @@ function ensureShowCast(){
 }
 function randomShowCast(){
  const ids=orderedChosen().map(a=>a.id);
- const slots=showScenario(showScenarioId).roles.map((_,i)=>i);
- for(let i=slots.length-1;i>0;i--){
+ const core=STORY_CORE_ROLES[showScenarioId]||[0,1,2];
+ const rest=showScenario(showScenarioId).roles.map((_,i)=>i).filter(i=>!core.includes(i));
+ // Random casting never accidentally leaves the central secret-holder out of a three-actor story.
+ for(let i=rest.length-1;i>0;i--){
   const values=new Uint32Array(1);crypto.getRandomValues(values);
-  const j=values[0]%(i+1);[slots[i],slots[j]]=[slots[j],slots[i]];
+  const j=values[0]%(i+1);[rest[i],rest[j]]=[rest[j],rest[i]];
  }
+ const slots=[...core,...rest];
  showAssigned=Object.fromEntries(ids.map((id,i)=>[slots[i],id]));
  $('showCastMode').textContent='Случайное распределение · можно изменить вручную';
 }
