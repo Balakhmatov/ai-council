@@ -8,7 +8,8 @@ reconciliation with fresh receipts. Historical calls retain their stored price.
 | Model / route | Input | Cache read | Output | Cache write 5m | Cache write 1h |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | gpt-6-luna / OpenAI | USD 0.10 | USD 0.01 | USD 0.50 | — | — |
-| mistral-large-2512 / Mistral | USD 0.50 | USD 0.05 | USD 1.50 | — | — |
+| mistral-large-4 / Mistral Large 4 (active) | USD 0.70 | USD 0.07 | USD 2.10 | — | — |
+| mistral-large-2512 / Mistral Large 3 (historical) | USD 0.50 | USD 0.05 | USD 1.50 | — | — |
 | grok-4.7 / DDTokens, existing heavy group estimate | CNY 0.60 | CNY 0.15 | CNY 1.80 | — | — |
 | gemini-4-argon-high / DDTokens Gemini(Antigravity)4 ×0.6 | RUB 15.192 | unknown | RUB 75.96 | — | — |
 | claude-sonnet-5-5 / DDTokens Claude(Fool) ×1 | RUB 25.32 | RUB 1.266 | RUB 126.60 | RUB 31.65 | RUB 50.64 |
