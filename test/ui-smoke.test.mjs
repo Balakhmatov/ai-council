@@ -133,7 +133,7 @@ test('stop button clearly discloses that user cancellation does not refund quota
  const html=readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
  const app=readFileSync(new URL('../public/app.js',import.meta.url),'utf8');
  assert.match(html,/id="stopAction"/);
- assert.match(html,/id="stop"[^>]*>Остановить задачу/);
+ assert.match(html,/id="stop"[^>]*>Остановить шоу/);
  assert.match(html,/При остановке квота не возвращается/);
  assert.match(app,/stopRequested=true/);
  assert.match(app,/controller\?\.abort\(\)/);
