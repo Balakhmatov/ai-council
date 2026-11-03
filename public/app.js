@@ -1,7 +1,7 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
 import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
 import {scenePoster} from './show-art.js';
-import {STORY_CORE_ROLES} from './show-stories.js';
+import {STORY_CORE_ROLES,storyBible} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -140,9 +140,12 @@ function renderShowScenarios(){
  $('showScenarioCards').replaceChildren(...SHOW_SCENARIOS.map(createShowCard));
  const scene=showScenario(showScenarioId);
  const title=document.createElement('strong');title.textContent=scene.emoji+' '+scene.title;
- const text=document.createElement('p');text.textContent=scene.setting;
+ const book=storyBible(scene.id);
+ const text=document.createElement('p');text.textContent=book.place;
+ const conflict=document.createElement('p');conflict.textContent=book.conflict;
+ const stakes=document.createElement('p');stakes.className='show-stakes';stakes.textContent='На кону: '+book.stakes;
  const twist=document.createElement('small');twist.textContent='Интрига: '+scene.twist;
- $('showScenarioDetails').replaceChildren(title,text,twist);
+ $('showScenarioDetails').replaceChildren(title,text,conflict,stakes,twist);
 }
 function orderedChosen(){return agents.filter(a=>chosen.has(a.id)&&available.has(a.id));}
 function ensureShowCast(){
