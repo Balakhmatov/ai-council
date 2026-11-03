@@ -84,7 +84,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     const value=readFileSync('/var/lib/quorum/deployed-revision','utf8').trim();
     if(/^[0-9a-f]{40}$/.test(value))revision=value;
    }catch{}
-   return json(200,{ok:true,revision});
+   return json(200,{ok:true,revision,mistralModel:models.mistral||null});
   }
   if(path==='/api/telegram/webhook'){
    if(req.method!=='POST')return fail(405,'Нужен POST');
