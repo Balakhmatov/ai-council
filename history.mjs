@@ -36,7 +36,8 @@ export function createHistoryStore({file='',now=Date.now}={}){
    if(!m||typeof m!=='object'||typeof m.text!=='string'||m.text.length>80000||
     typeof m.name!=='string'||m.name.length>100||typeof m.stage!=='string'||m.stage.length>150)
     throw Error('Некорректные сообщения');
-   return {name:m.name,stage:m.stage,text:m.text,final:!!m.final,error:!!m.error};
+   const nickname=typeof m.nickname==='string'?m.nickname.trim().slice(0,80):'';
+   return {name:m.name,...(nickname?{nickname}:{}),stage:m.stage,text:m.text,final:!!m.final,error:!!m.error};
   });
  }
  function record(identity,taskId,payload){
@@ -46,12 +47,13 @@ export function createHistoryStore({file='',now=Date.now}={}){
   if(typeof prompt!=='string'||!prompt.trim()||prompt.length>20000)throw Error('Некорректная задача');
   const profile=typeof payload.profile==='string'?payload.profile.slice(0,60):'';
   const specialization=typeof payload.specialization==='string'?payload.specialization.slice(0,100):'';
+  const ambience=['none','cinema','gangster','yard','anime','cyberpunk'].includes(payload?.ambience)?payload.ambience:'none';
   const messages=validateMessages(payload.messages);
   if(!messages.length)return null;
   const account=state.accounts[identity]||{};
   if(account[taskId])return account[taskId];
   const item={taskId,createdAt:new Date(now()).toISOString(),title:prompt.trim().replace(/\s+/g,' ').slice(0,110),
-   prompt,profile,specialization,messages};
+   prompt,profile,specialization,ambience,messages};
   account[taskId]=item;state.accounts[identity]=account;save();
   return {taskId:item.taskId,createdAt:item.createdAt,title:item.title,profile,specialization};
  }
