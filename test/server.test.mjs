@@ -306,7 +306,7 @@ test('public Quorum serves its enhanced UI stylesheet rather than returning 404'
   assert.match(css.body,/\.pricing-offer-sub/);
   const html=await t.asset('/');
   assert.equal(html.status,200);
-  assert.match(html.body,/uiux32\.css\?v=landing59/);
+  assert.match(html.body,/uiux32\.css\?v=roast60/);
   assert.match(html.body,/id="pricingDialog"/);
  }finally{await t.close();}
 });
@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=landing57/);
+  assert.match(html.body,/app\.js\?v=roast60/);
  }finally{await t.close();}
 });
 
@@ -755,4 +755,23 @@ test('product analytics admin route reports real authenticated users and complet
   assert.equal(report.data.billing.revenueRub,0);
   assert(!JSON.stringify(report.data).includes('dashboard-user@example.com'));
  }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+
+test('toxic AI debate is accepted as a distinct normal-priced task without bypassing authentication',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-test'});
+ try{
+  const body={participants:['openai','mistral'],rounds:3,mode:'roast'};
+  assert.equal((await t.send('/api/task/start',body)).status,401);
+  const user=(await t.login('roast-user@example.com')).data;
+  const accessBefore=(await t.send('/api/access',undefined,user.token)).data;
+  const task=await t.send('/api/task/start',body,user.token);
+  assert.equal(task.status,200);
+  assert.match(task.data.taskId,/^[0-9a-f]{48}$/);
+  const accessAfter=(await t.send('/api/access',undefined,user.token)).data;
+  assert.equal(accessAfter.remainingFreeTasks,accessBefore.remainingFreeTasks-2);
+  const wrong=await t.send('/api/task/start',{...body,mode:'fake-roast'},user.token);
+  assert.equal(wrong.status,400);
+  assert.equal((await t.send('/api/task/finish',{taskId:task.data.taskId},user.token)).status,200);
+ }finally{await t.close();}
 });
