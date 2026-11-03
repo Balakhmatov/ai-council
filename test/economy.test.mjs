@@ -258,3 +258,19 @@ test('paid model refund restores the same paid balance and cannot run twice',()=
  assert.equal(economy.access(id).purchasedTasks,4);
  assert.equal(economy.finish(task.taskId,id),null);
 });
+
+
+test('Large 4 uses current Mistral rates without rewriting historical Large 3 call accounting',()=>{
+ const e=createEconomy({env:{}});
+ e.updateExchangeRates(fx);
+ const old=e.record('mistral','mistral-large-2512',{prompt_tokens:1000000,completion_tokens:1000000});
+ const current=e.record('mistral','mistral-large-4',{prompt_tokens:1000000,completion_tokens:1000000,prompt_tokens_details:{cached_tokens:200000}});
+ assert.equal(old.costRub,(0.5+1.5)*82.5);
+ assert.equal(current.costRub,(0.8*0.7+0.2*0.07+2.1)*82.5);
+ const prices=e.prices({mistral:'mistral-large-4'});
+ const p=prices.find(x=>x.provider==='mistral');
+ assert.equal(p.input,0.7*82.5);
+ assert.equal(p.output,2.1*82.5);
+ assert.equal(p.cached,0.07*82.5);
+ assert.equal(e.summary().totals.unknownCostCalls,0);
+});
