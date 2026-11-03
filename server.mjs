@@ -326,7 +326,10 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       ?[{...body.messages[0],content:timeContext+'\n\n'+body.messages[0].content},...body.messages.slice(1)]
       :[{role:'system',content:timeContext},...body.messages];
     // GPT-6 reasoning tokens count towards the completion limit.
-    const longFinal=body.stage==='final';
+    const isShowTask=economy.activeTaskAccess(body.taskId,visitorHash)?.mode==='show';
+    const showFormat=isShowTask||body.format==='show';
+    if(showFormat&&(body.messages.length!==2||body.messages[0].role!=='system'||body.messages[1].role!=='user'||body.messages.some(m=>m.content.length>4600)))return fail(400,'Слишком длинный контекст шоу');
+    const longFinal=body.stage==='final'&&!showFormat;
     const maxWords=[120,250,500,300,600,1000].includes(body.maxWords)?body.maxWords:300;
     const ballotStage=['Голосование','Проверка согласия'].includes(body.step);
     // Voting is machine-readable: keep it short and never apply discussion word caps.
@@ -337,10 +340,18 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       :{model,messages,max_tokens:longFinal?7000:intermediateTokens};
     const headers={'Content-Type':'application/json',Authorization:`Bearer ${key}`};
     if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';
+    // Show: one short dialogue line, with a HARD output+reasoning token budget.
+    // Unlike Council, the browser sends only recent lines, never the full transcript.
+    if(showFormat){
+     const cap=body.provider==='openai'?1600:body.provider==='mistral'?1450:body.provider==='gemini'?1100:body.provider==='grok'?900:600;
+     if(body.provider==='openai'&&model.startsWith('gpt-6')){
+      payload.reasoning_effort='low';payload.max_completion_tokens=cap;delete payload.max_tokens;
+     }else{payload.max_tokens=cap;if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';}
+    }
     if(body.provider==='mistral'&&model==='mistral-large-4'){
-     payload.reasoning_effort=ballotStage?'low':'medium';
+     payload.reasoning_effort=showFormat?'low':ballotStage?'low':'medium';
      // Reasoning tokens may consume the completion budget before user-visible text.
-     payload.max_tokens=longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
+     payload.max_tokens=showFormat?1450:longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
     }
     if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
