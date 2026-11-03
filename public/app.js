@@ -1234,7 +1234,7 @@ function readableStoredMessage(m){
 }
 function renderMessage(m){
  const type=agents.find(a=>a.name===m.name)?.id||(m.final?'final':'service');
- const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'')+(m.show?' show-message':'');
+ const card=document.createElement('article');card.className='message provider-'+type+(m.final?' final':'')+(m.error?' error':'')+(m.show?' show-message':'')+(m.narrator?' narrator':'')+(m.silent?' silent':'');
  const head=document.createElement('div');head.className='message-head';
  const identity=document.createElement('span');identity.className='model-identity';
  const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
@@ -1307,7 +1307,7 @@ $('start').onclick=async()=>{
   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   if(isShow){
    await runShow({agents:members,scenario:scene,cast,extra,scenes:Number($('showScenes').value),tonality:$('showTone').value,request,emit,signal:controller.signal,onProgress:progress});
-   $('status').textContent='🎬 Сцена завершена. Можно поменять кастинг или выбрать другую историю.';
+   $('status').textContent='🎬 История завершена — развязка и эпилог внизу. Можно изменить кастинг и переснять.';
   }else{
    const {profile,task:subtask}=resolveProfile(profileId,taskId);
    await discuss({agents:members,judge:moderator,mode,ambience,rounds:Number($('rounds').value),words:wordsForPreset($('length').value),task,professional:profile.name+'. '+profile.criteria,specialty:subtask?subtask[1]+'. '+subtask[2]:'Любая задача в указанном направлении.',request,emit,signal:controller.signal,onProgress:progress,
