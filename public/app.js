@@ -1,5 +1,6 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
 import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js';
+import {scenePoster} from './show-art.js';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -125,7 +126,7 @@ function createShowCard(scene){
  const b=document.createElement('button');b.type='button';b.className='show-scenario show-palette-'+scene.palette;b.dataset.scenario=scene.id;
  b.setAttribute('aria-pressed',String(scene.id===showScenarioId));
  const poster=document.createElement('span');poster.className='show-poster';poster.setAttribute('aria-hidden','true');
- const glyph=document.createElement('span');glyph.className='show-poster-glyph';glyph.textContent=scene.emoji;poster.append(glyph);
+ poster.innerHTML=scenePoster(scene.id);
  const body=document.createElement('span');body.className='show-scenario-body';
  const genre=document.createElement('small');genre.textContent=scene.genre;
  const title=document.createElement('strong');title.textContent=scene.title;
