@@ -182,7 +182,7 @@ test('round and named response length selectors appear under task input, separat
  assert.match(html,/<option value="short" selected>Коротко/);
  assert.match(app,/wordsForPreset\(\$\('length'\)\.value\)/);
  assert.match(app,/limitIntermediate\(result.text/);
- assert.match(app,/maxWords:wordsForPreset/);
+ assert.match(app,/maxWords:stage\.format==='show'\?45:wordsForPreset/);
  assert.match(app,/renderMarkdown\(text\)/);
  assert.match(app,/Первый раунд/);
 });
@@ -385,7 +385,7 @@ test('discussion ambience is a separate live setting with scene nicknames and tr
  assert.match(engine,/label:'🧢 Блатной двор'/);
  assert.match(engine,/label:'⚡ Аниме'/);
  assert.match(app,/Object\.entries\(ambiences\)/);
- assert.match(app,/ambience:'none'|let mode='consensus',ambience='none'/);
+ assert.match(app,/ambience='none'/);
  assert.match(app,/ambience,rounds:Number\(\$\('rounds'\)\.value\)/);
  assert.match(app,/m\.nickname\?m\.nickname\+' · '\+m\.name:m\.name/);
  assert.match(css,/\.ambience-setting\{/);
@@ -399,8 +399,8 @@ test('Show stays independent of Council, includes ten visual scenes and model-to
  const show=readFileSync(new URL('../public/show.js',import.meta.url),'utf8');
  for(const id of ['experienceCouncil','experienceShow','councilPanel','showPanel','showScenarioCards','showScenarioDetails','showCast','showRandomCast','showExtra'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/app\\.js\\?v=show62/);
- assert.match(html,/uiux32\\.css\\?v=show62/);
+ assert.match(html,/app\.js\?v=show62/);
+ assert.match(html,/uiux32\.css\?v=show62/);
  assert.match(app,/import \{SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow\} from '\.\/show\.js'/);
  assert.match(app,/const isShow=experience==='show'/);
  assert.match(app,/await runShow\(/);
