@@ -21,9 +21,28 @@ function tailWithin(items,budget){
  for(let i=items.length-1;i>=0;i--){const line=items[i];if(size+line.length+1>budget)break;out.unshift(line);size+=line.length+1;}
  return out.join('\n');
 }
+export const EPILOGUE_FORMAT='ОТВЕТ: только готовый художественный эпилог по-русски. Верни строго JSON {"epilogue":"текст финального кадра на русском языке"}. Не включай анализ задачи, пересказ инструкций, план ответа, рассуждения или служебные комментарии. Не пиши текст вне JSON.';
+export function visibleShowText(raw){
+ let text=String(raw||'').trim();
+ text=text.replace(/<(think|analysis)\b[^>]*>[\s\S]*?<\/\1>/gi,'');
+ const closing=/<\/(?:think|analysis)>/gi;let match,last=-1;
+ while((match=closing.exec(text)))last=match.index+match[0].length;
+ if(last>=0)text=text.slice(last);
+ text=text.replace(/<(?:think|analysis)\b[^>]*>[\s\S]*$/gi,'').trim();
+ return text;
+}
+export function parseShowEpilogue(raw){
+ const text=visibleShowText(raw).replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+ const data=JSON.parse(text);
+ if(typeof data.epilogue!=='string')throw Error('Missing final epilogue');
+ const final=visibleShowText(data.epilogue);
+ const russian=(final.match(/[А-Яа-яЁё]/g)||[]).length,latin=(final.match(/[A-Za-z]/g)||[]).length;
+ if(russian<4||latin>Math.max(12,russian*.4)||/we need|need to answer|chain.of.thought|let['’]s think|нужно написать (?:эпилог|ответ)|анализ задачи/i.test(final))throw Error('Invalid epilogue format or language');
+ return final;
+}
 export function parseLiveReply(raw){
- const text=String(raw||'').trim();
- if(!text||/points_insufficient|insufficient_quota/.test(text))throw Error('No usable actor reply');
+ const text=visibleShowText(raw);
+ if(!text||/points_insufficient|insufficient_quota|we need (?:to |answer)|need to answer|chain.of.thought|system prompt/i.test(text))throw Error('No usable actor reply');
  const clean=text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
  if(!clean.startsWith('{'))return {speech:text,action:null};
  const data=JSON.parse(clean);
@@ -75,18 +94,19 @@ function resolveAction(actor,action,actors,state,random){
 function nextActor(actors,state,counts,last,pending,history,random){
  let choices=actors.filter(a=>aliveHere(state.get(a.name)));
  if(choices.length>1)choices=choices.filter(a=>a.name!==last);
- const responding=choices.find(a=>a.name===pending);
- if(responding)return responding;
- const mentioned=choices.filter(a=>String(history.at(-1)?.text||'').includes(a.name));
- if(mentioned.length)return mentioned[Math.floor(clampRandom(random)*mentioned.length)];
  const minimum=Math.min(...choices.map(a=>counts.get(a.name)||0));
+ // A real action can earn an immediate response, but verbal name-dropping cannot starve the cast.
+ const responding=choices.find(a=>a.name===pending&&(counts.get(a.name)||0)<=minimum+1);
+ if(responding)return responding;
  const leastUsed=choices.filter(a=>(counts.get(a.name)||0)===minimum);
+ const mentioned=leastUsed.filter(a=>String(history.at(-1)?.text||'').includes(a.name));
+ if(mentioned.length)return mentioned[Math.floor(clampRandom(random)*mentioned.length)];
  return leastUsed[Math.floor(clampRandom(random)*leastUsed.length)];
 }
 export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone,speech,clip,silenceLine,random=Math.random}){
  const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
  const state=new Map(actors.map(a=>[a.name,{alive:true,present:true,injured:false,bound:false}]));
- const counts=new Map(),silences=new Map(),failures=new Map(),dialogue=[],all=[],facts=[];
+ const counts=new Map(),silences=new Map(),failures=new Map(),successes=new Map(),dialogue=[],all=[],facts=[];
  const output=e=>{all.push(e);emit(e);};
  let pending=null,last=null;
  const maxTurns=Math.min(4,actors.length),director=String(extra||'').slice(0,5000);
@@ -138,7 +158,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords,maxChars:2400,liveShow:true});
     const reply=parseLiveReply(raw);
     event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:clip(reply.speech,maxChars),show:true};
-    output(event);dialogue.push(event);
+    output(event);dialogue.push(event);successes.set(part.provider,(successes.get(part.provider)||0)+1);
     const action=resolveAction(part,reply.action,actors,state,random);
     if(action){
      facts.push(action.text);pending=action.target;
@@ -155,15 +175,16 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
   onProgress({stage,status:'done'});
  }
  abort(signal);onProgress({stage:'Эпилог',status:'working'});
- const narrator=actors.slice().sort((a,b)=>(failures.get(a.provider)||0)-(failures.get(b.provider)||0))[0];
+ const answered=actors.filter(a=>successes.has(a.provider));
+ const narrator=(answered.length?answered:actors).slice().sort((a,b)=>(failures.get(a.provider)||0)-(failures.get(b.provider)||0))[0];
  const stateText=describeState(actors,state);
  const endingContext='ПОДТВЕРЖДЁННЫЕ СОБЫТИЯ:\n'+(tailWithin(facts,3000)||'Нет.')+'\nСОСТОЯНИЕ ПЕРСОНАЖЕЙ:\n'+stateText;
  let ending='';
  try{
-  ending=clip(parseLiveReply(await request(narrator.agent,[
-   {role:'system',content:'Ты режиссёр эпилога криминальной драмы. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки.'},
+  ending=clip(parseShowEpilogue(await request(narrator.agent,[
+   {role:'system',content:'Ты режиссёр эпилога криминальной драмы. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки. '+EPILOGUE_FORMAT},
    {role:'user',content:endingContext+'\nСОСТОЯВШИЙСЯ РАЗГОВОР:\n'+tailWithin(dialogue.filter(e=>!e.silent).map(e=>e.nickname+': '+e.text),Math.max(0,9300-endingContext.length))}
-  ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:220,maxChars:1800,liveShow:true})).speech,1800);
+  ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:220,maxChars:1800,liveShow:true,outputSchema:'epilogue'})),1800);
  }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
  if(!ending)ending=!dialogue.some(e=>!e.silent&&!e.narrator)?'Участники не смогли ответить. Разговор не состоялся.':facts.length?facts.join('\n')+'\n\n'+stateText:dialogue.some(e=>!e.silent)?'Разговор оборвался без общей развязки. Состоявшиеся реплики сохранены выше.':'Участники не смогли ответить. Разговор не состоялся.';
  output({id:narrator.provider,name:narrator.agent.name,nickname:'Эпилог',stage:'Эпилог',show:true,final:true,text:ending});

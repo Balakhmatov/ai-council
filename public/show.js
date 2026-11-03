@@ -1,4 +1,4 @@
-import {runLiveShow,ACTOR_FICTION_CONTEXT} from './show-live.js?v=fiction1';
+import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=finalfix1';
 import {ambiences} from './engine.js';
 import {storyBible,storyBeat} from './show-stories.js';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
@@ -220,10 +220,10 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
  if(narrator){
   try{
    const answer=await request(narrator.agent,[
-    {role:'system',content:'Ты сценарист-эпилогист. Напиши ОДИН конкретный последний кадр в 1–3 предложениях (до 75 слов). Не говори от имени персонажей, не меняй виновного и победителя, не вводи новых загадок. Покажи последствие поступков. Без предисловий и пустого философствования.'},
+    {role:'system',content:'Ты сценарист-эпилогист. Напиши ОДИН конкретный последний кадр в 1–3 предложениях (до 75 слов). Не говори от имени персонажей, не меняй виновного и победителя, не вводи новых загадок. Покажи последствие поступков. Без предисловий и пустого философствования. '+EPILOGUE_FORMAT},
     {role:'user',content:'История: '+book.place+'. Правда: '+book.truth+'. Итог, который ДОЛЖЕН остаться каноном: '+ending+'. Последние реплики:\n'+context+'\nУказания режиссёра: '+director.slice(0,1300)+'\nДобавь только последний видимый кадр после развязки.'}
-   ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:75});
-   epilogue=clipShowLine(answer,480);
+   ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:75,maxChars:900,rawShow:true,outputSchema:'epilogue'});
+   epilogue=clipShowLine(parseShowEpilogue(answer),480);
   }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
  }
  // Authored stories retain their resolution even if the epilogue provider fails.

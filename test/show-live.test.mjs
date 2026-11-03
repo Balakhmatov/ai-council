@@ -35,7 +35,7 @@ test('diner chooses each of three incidents; heist has no mandatory plot, secret
 });
 test('mixed line lengths keep a larger turn available and dialogue does not leak service JSON',async()=>{
  const speech='Это ещё не признание. '.repeat(30);
- const {calls,events}=await simulate('heist',{request:(a,m,s,stage)=>stage.stage==='final'?'Никто не согласился уступить.':JSON.stringify({speech,action:null})});
+ const {calls,events}=await simulate('heist',{request:(a,m,s,stage)=>stage.stage==='final'?JSON.stringify({epilogue:'Никто не согласился уступить.'}):JSON.stringify({speech,action:null})});
  const intermediate=calls.filter(c=>c.stage.stage==='intermediate');
  assert.deepEqual([...new Set(intermediate.map(c=>c.stage.maxWords))].sort((a,b)=>a-b),[45,90,160]);
  assert.ok(events.some(e=>!e.narrator&&!e.final&&e.text.length>360));
@@ -44,7 +44,7 @@ test('mixed line lengths keep a larger turn available and dialogue does not leak
 test('confirmed death persists, removes the victim from speaking order and reaches epilogue',async()=>{
  let first=true;let victim;
  const {calls,events}=await simulate('heist',{request:(a,m,s,stage)=>{
-  if(stage.stage==='final')return 'Выжившие остаются рядом с телом. Доверия больше нет.';
+  if(stage.stage==='final')return JSON.stringify({epilogue:'Выжившие остаются рядом с телом. Доверия больше нет.'});
   if(first){first=false;victim='Мисс Белая';return JSON.stringify({speech:'Ты доигралась.',action:{kind:'kill',target:victim}});}
   return reply();
  }});
@@ -56,7 +56,7 @@ test('confirmed death persists, removes the victim from speaking order and reach
 test('injury and binding survive later turns; a bound actor cannot attack',async()=>{
  let turn=0;
  const {calls,events}=await simulate('heist',{request:(a,m,s,stage)=>{
-  if(stage.stage==='final')return 'Связанная участница остаётся за столом; никто не доверяет организатору.';
+  if(stage.stage==='final')return JSON.stringify({epilogue:'Связанная участница остаётся за столом; никто не доверяет организатору.'});
   turn++;
   if(turn===1)return JSON.stringify({speech:'Сначала послушай меня.',action:{kind:'hit',target:'Мисс Белая'}});
   if(turn===3)return JSON.stringify({speech:'Теперь не дёргайся.',action:{kind:'bind',target:'Мисс Белая'}});
@@ -68,7 +68,7 @@ test('injury and binding survive later turns; a bound actor cannot attack',async
  assert.ok(calls.at(-1).m[1].content.includes('Мисс Белая: ранена, связана'));
 });
 test('long director notes and long dialogue stay inside server input limits',async()=>{
- const {calls}=await simulate('diner',{scenes:5,extra:'А'.repeat(5000),request:(a,m,s,stage)=>stage.stage==='final'?'Они разошлись без соглашения.':JSON.stringify({speech:'Объясни свою версию. '.repeat(80),action:null})});
+ const {calls}=await simulate('diner',{scenes:5,extra:'А'.repeat(5000),request:(a,m,s,stage)=>stage.stage==='final'?JSON.stringify({epilogue:'Они разошлись без соглашения.'}):JSON.stringify({speech:'Объясни свою версию. '.repeat(80),action:null})});
  assert.ok(calls.every(c=>c.m.every(m=>m.content.length<=9500)));
  assert.ok(calls[0].m[1].content.includes('А'.repeat(5000)));
 });
@@ -95,8 +95,30 @@ test('all stories explicitly frame actor dialogue as fictional without applying 
  const {ACTOR_FICTION_CONTEXT}=await import('../public/show-live.js');
  for(const scenario of SHOW_SCENARIOS){
   const calls=[];
-  await runShow({agents,scenario,cast:showCast(scenario,{0:'openai',1:'mistral',2:'grok'}),scenes:3,random:()=>0,emit:()=>{},request:async(a,m,s,stage)=>{calls.push({m,stage});return stage.stage==='final'?'Разговор завершён без общего решения.':reply();}});
+  await runShow({agents,scenario,cast:showCast(scenario,{0:'openai',1:'mistral',2:'grok'}),scenes:3,random:()=>0,emit:()=>{},request:async(a,m,s,stage)=>{calls.push({m,stage});return stage.stage==='final'?JSON.stringify({epilogue:'Разговор завершён без общего решения.'}):reply();}});
   assert.ok(calls.filter(c=>c.stage.stage==='intermediate').every(c=>c.m[0].content.includes(ACTOR_FICTION_CONTEXT)));
   assert.ok(!calls.at(-1).m[0].content.includes(ACTOR_FICTION_CONTEXT));
  }
+});
+
+test('mutual name-dropping cannot exclude the other five selected actors',async()=>{
+ const crew=Array.from({length:7},(_,i)=>({id:'model'+i,name:'Model '+i}));
+ const scenario=showScenario('diner'),events=[];
+ await runShow({agents:crew,scenario,cast:showCast(scenario,Object.fromEntries(crew.map((a,i)=>[i,a.id]))),scenes:3,random:()=>0,emit:e=>events.push(e),request:async(a,m,s,stage)=>stage.stage==='final'?JSON.stringify({epilogue:'Разговор остался незавершённым.'}):JSON.stringify({speech:'Тони, ответь Джимми. Джимми, отвечай Тони.',action:null})});
+ const speaking=events.filter(e=>!e.narrator&&!e.final&&!e.silent);
+ const counts=crew.map(a=>speaking.filter(e=>e.id===a.id).length);
+ assert.ok(counts.every(n=>n>=1),JSON.stringify(counts));
+ assert.ok(Math.max(...counts)-Math.min(...counts)<=1,JSON.stringify(counts));
+});
+
+test('epilogue accepts only the final Russian field and rejects service analysis',async()=>{
+ const {parseShowEpilogue,parseLiveReply}=await import('../public/show-live.js');
+ const final='У двери остаётся пустой чемодан. Разговор оборвался без соглашения.';
+ assert.equal(parseShowEpilogue('<think>internal planning</think>'+JSON.stringify({epilogue:final})),final);
+ assert.equal(parseShowEpilogue(JSON.stringify({analysis:'internal planning',epilogue:final})),final);
+ for(const raw of ['We need answer the request in Russian. Need to write the ending.',JSON.stringify({epilogue:'We need to write the ending.'}),'<think>unfinished analysis',JSON.stringify({speech:final})])assert.throws(()=>parseShowEpilogue(raw));
+ assert.throws(()=>parseLiveReply('We need answer the request in Russian.'));
+ const {events}=await simulate('diner',{request:(a,m,s,stage)=>stage.stage==='final'?'We need answer the request in Russian.':reply()});
+ assert.ok(!events.at(-1).text.includes('We need'));
+ assert.ok(/[А-Яа-яЁё]/.test(events.at(-1).text));
 });

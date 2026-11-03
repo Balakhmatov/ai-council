@@ -117,7 +117,7 @@ test('diner improvisation keeps other roles private and never sends authored plo
  const crew=Array.from({length:7},(_,i)=>({id:'actor'+i,name:'Model '+i}));
  const parts=showCast(scenario,Object.fromEntries(crew.map((a,i)=>[i,a.id])));
  const calls=[],events=[],book=STORY_BIBLE.diner;
- await runShow({agents:crew,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async(a,m,s,stage)=>{calls.push({a,m,stage});return stage.stage==='final'?'Участники спорят, но общего решения не приняли.':'Я пока не верю твоей версии. Объясни ещё раз.';}});
+ await runShow({agents:crew,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async(a,m,s,stage)=>{calls.push({a,m,stage});return stage.stage==='final'?JSON.stringify({epilogue:'Участники спорят, но общего решения не приняли.'}):'Я пока не верю твоей версии. Объясни ещё раз.';}});
  const dialogue=calls.filter(c=>c.stage.stage==='intermediate');
  assert.ok(dialogue.length>0);
  for(const call of dialogue){

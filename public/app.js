@@ -1,5 +1,5 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=fiction1';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=finalfix1';
 import {scenePoster,characterPortrait} from './show-art.js?v=portraits2';
 import {STORY_CORE_ROLES,storyBible} from './show-stories.js';
 import {profiles,resolveProfile} from './profiles.js';
@@ -1355,10 +1355,10 @@ function emit(m){
  syncResultActions();
 }
 async function request(a,chat,signal,stage={}){
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,maxWords:stage.format==='show'?(stage.maxWords||45):wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,outputSchema:stage.outputSchema,maxWords:stage.format==='show'?(stage.maxWords||45):wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  // JSON ballots are a control protocol, not a prose response. Never truncate them.
- return stage.format==='show'?(stage.liveShow?result.text:clipShowLine(result.text,stage.maxChars||360)):stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
+ return stage.format==='show'?((stage.liveShow||stage.rawShow)?result.text:clipShowLine(result.text,stage.maxChars||360)):stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
   ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));
 }
 $('start').onclick=async()=>{

@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show69/);
+  assert.match(html.body,/app\.js\?v=show70/);
  }finally{await t.close();}
 });
 
@@ -916,5 +916,19 @@ test('model selection belongs to the authenticated account and respects tariff l
   const owner=(await t.login('owner@example.com')).data.token;
   assert.equal((await t.send('/api/preferences/models',{models:seven},owner)).status,200);
   assert.deepEqual((await t.send('/api/preferences/models',undefined,owner)).data.models,seven);
+ }finally{await t.close();}
+});
+
+test('Qwen Show disables thinking and the API returns only a validated Russian epilogue',async()=>{
+ let output='<think>internal planning</think>'+JSON.stringify({epilogue:'У двери остаётся пустой чемодан. Никто не получил обещанной гарантии.'});
+ const t=await setup({QWEN_API_KEY:'test',QWEN_MODEL:'qwen3.8-flash'},{upstream:async()=>Response.json({choices:[{message:{content:output,reasoning_content:'must not be forwarded'}}]})});
+ try{
+  const body={provider:'qwen',stage:'final',format:'show',outputSchema:'epilogue',maxWords:220,messages:[{role:'system',content:'Напиши эпилог по-русски.'},{role:'user',content:'Разговор окончен.'}]};
+  const good=await t.send('/api/chat',body,'admin-test-only');assert.equal(good.status,200);
+  assert.equal(JSON.parse(t.calls.at(-1).options.body).enable_thinking,false);
+  assert.ok(!good.data.text.includes('internal planning')&&!good.data.text.includes('must not'));
+  assert.ok(JSON.parse(good.data.text).epilogue.includes('пустой чемодан'));
+  output='We need answer the request in Russian. Need to write an ending.';
+  const bad=await t.send('/api/chat',body,'admin-test-only');assert.equal(bad.status,502);assert.ok(!JSON.stringify(bad.data).includes('We need'));
  }finally{await t.close();}
 });

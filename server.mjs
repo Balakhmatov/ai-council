@@ -1,3 +1,4 @@
+import {visibleShowText,parseShowEpilogue} from './public/show-live.js';
 import http from 'node:http';
 import {createEmailAuth} from './email-auth.mjs';
 import {createPasswordAuth} from './password-auth.mjs';
@@ -363,6 +364,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
       payload.reasoning_effort='low';payload.max_completion_tokens=cap;delete payload.max_tokens;
      }else{payload.max_tokens=cap;if(body.provider==='grok'&&model==='grok-4.7')payload.reasoning_effort='low';}
     }
+    if(showFormat&&body.provider==='qwen')payload.enable_thinking=false;
     if(body.provider==='mistral'&&model==='mistral-large-4'){
      payload.reasoning_effort=showFormat?'low':ballotStage?'low':'medium';
      // Reasoning tokens may consume the completion budget before user-visible text.
@@ -378,7 +380,12 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
      }
     const data=await upstream.json();const raw=body.provider==='claude'?data.content:data.choices?.[0]?.message?.content;
     // Large 4 can interleave thinking and text chunks. Forward only answer text.
-    const text=typeof raw==='string'?raw:Array.isArray(raw)?raw.filter(c=>c&&c.type==='text'&&typeof c.text==='string').map(c=>c.text).join('\n'):'';
+    const extracted=typeof raw==='string'?raw:Array.isArray(raw)?raw.filter(c=>c&&c.type==='text'&&typeof c.text==='string').map(c=>c.text).join('\n'):'';
+    let text=showFormat?visibleShowText(extracted):extracted;
+    if(showFormat&&body.outputSchema==='epilogue'){
+     try{text=JSON.stringify({epilogue:parseShowEpilogue(text)});}
+     catch{log(model,'error',data.usage,502,'invalid_epilogue','Нет готового эпилога на русском языке');return fail(502,'Модель не сформировала готовый эпилог.');}
+    }
     if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502,'empty_response','Ответ не содержит текстового содержимого');return fail(502,'Модель вернула пустой ответ');}
     log(model,'ok',data.usage,200);
     economy.success(body.taskId);
