@@ -112,9 +112,9 @@ for(const a of agents){
  label.append(avatar,data,input);$('agents').append(label);
 }
 for(const [id,[title,description]] of Object.entries(modes)){
- const b=document.createElement('button');b.type='button';b.className='mode'+((id==='judge'||id==='roles')?' mode-secondary':'');b.dataset.id=id;
+ const b=document.createElement('button');b.type='button';b.className='mode'+((id==='judge'||id==='roles')?' mode-secondary':'')+(id==='roast'?' mode-roast':'');b.dataset.id=id;
  const name=document.createElement('span');name.textContent=title;const small=document.createElement('small');small.textContent=description;
- b.append(name,small);b.onclick=()=>{mode=id;update();};$('modes').append(b);
+ b.append(name,small);b.onclick=()=>{mode=id;if(mode==='roast')$('showDiscussion').checked=true;update();};$('modes').append(b);
 }
 function update(){
  const premium=!!(access?.admin||access?.subscriptionActive);
@@ -129,6 +129,8 @@ function update(){
  const preferred=chooseModerator(chosen,old,{manual:moderatorChosenByUser});
  if(preferred)$('judge').value=preferred;
  document.querySelectorAll('.mode').forEach(b=>b.classList.toggle('active',b.dataset.id===mode));
+ $('roastModeNote').hidden=mode!=='roast';
+ $('discussionChoiceLabel').textContent=mode==='roast'?'Показывать токсичную перепалку моделей':'Показывать обсуждение моделей';
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
  $('budget').textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
  const mq=$('mobileQuorumText');
