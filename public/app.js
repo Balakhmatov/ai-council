@@ -25,7 +25,7 @@ const agents=MODEL_PRIORITY.map(id=>({id,...agentDetails[id]}));
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
 let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
-let experience='council',showScenarioId='diner',showAssigned={},mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
+let experience='show',showScenarioId='diner',showAssigned={},mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
 let landingExploring=false;
@@ -41,7 +41,7 @@ function syncLanding(){
  // Only an explicit click to explore (or a deep link to admin/payment) opens the workspace.
  const url=new URLSearchParams(location.search);
  const openWorkspace=landingExploring||url.has('admin')||url.has('payment');
- document.body.classList.toggle('landing-visible',!openWorkspace);
+ document.body.classList.remove('landing-visible'); // Show-only homepage
 }
 $('landingTry').onclick=()=>{
  landingExploring=true;syncLanding();window.scrollTo({top:0,behavior:'instant'});
@@ -140,7 +140,7 @@ function renderShowScenarios(){
  const scene=showScenario(showScenarioId);
  const title=document.createElement('strong');title.textContent=scene.emoji+' '+scene.title;
  const text=document.createElement('p');text.textContent=scene.setting;
- const twist=document.createElement('small');twist.textContent='Поворот: '+scene.twist;
+ const twist=document.createElement('small');twist.textContent='Интрига: '+scene.twist;
  $('showScenarioDetails').replaceChildren(title,text,twist);
 }
 function orderedChosen(){return agents.filter(a=>chosen.has(a.id)&&available.has(a.id));}
@@ -169,6 +169,16 @@ function randomShowCast(){
  showAssigned=Object.fromEntries(ids.map((id,i)=>[slots[i],id]));
  $('showCastMode').textContent='Случайное распределение · можно изменить вручную';
 }
+function selectShowRole(index){
+ if(running||showAssigned[index])return;
+ ensureShowCast();
+ const slots=Object.keys(showAssigned).map(Number);
+ if(!slots.length)return;
+ const from=slots[slots.length-1];
+ showAssigned[index]=showAssigned[from];delete showAssigned[from];
+ $('showCastMode').textContent='Ручной выбор персонажей';
+ renderShowCast();
+}
 function renderShowCast(){
  ensureShowCast();
  const scene=showScenario(showScenarioId),members=orderedChosen();
@@ -196,7 +206,11 @@ function renderShowCast(){
    $('showCastMode').textContent='Ручной кастинг';
    renderShowCast();
   };
-  label.append(title,select);card.append(avatar,body,label);
+  label.append(title,select);
+  const pick=document.createElement('button');pick.type='button';pick.className='show-role-choice';
+  pick.textContent=showAssigned[index]?'✓ В составе':'Выбрать персонажа';
+  pick.disabled=running||!!showAssigned[index];pick.onclick=()=>selectShowRole(index);
+  card.append(avatar,body,pick,label);
   return card;
  }));
  $('showRandomCast').disabled=running;
@@ -235,6 +249,9 @@ $('experienceCouncil').onclick=()=>setExperience('council');
 $('experienceShow').onclick=()=>setExperience('show');
 $('showRandomCast').onclick=()=>{randomShowCast();renderShowCast();};
 renderShowScenarios();
+$('showExtra').addEventListener('input',()=>{$('showExtraCount').textContent=$('showExtra').value.length.toLocaleString('ru-RU')+' / 5 000 символов';});
+$('showScenes').addEventListener('change',update);
+$('showTone').addEventListener('change',update);
 
 function update(){
  const premium=!!(access?.admin||access?.subscriptionActive);
@@ -253,11 +270,12 @@ function update(){
  $('ambienceHint').textContent=ambiences[ambience]?.description||ambiences.none.description;
  $('discussionChoiceLabel').textContent=mode==='roast'?'Показывать токсичную перепалку моделей':'Показывать обсуждение моделей';
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
- $('budget').textContent=experience==='show'?chosen.size+' модели · 2 короткие сцены · '+(chosen.size*2)+' API-реплик · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
+ const showScenes=Number($('showScenes').value)||4,showCallCount=showScenes*Math.min(4,chosen.size)+1;
+ $('budget').textContent=experience==='show'?chosen.size+' модели · '+showScenes+' сцены · до '+showCallCount+' вызовов · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
  const mq=$('mobileQuorumText');
- if(mq) mq.textContent=chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
+ if(mq) mq.textContent=experience==='show'?chosen.size+' ИИ · '+showScenes+' сцены · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
  const enough=access?.admin||access?.remainingFreeTasks>=chosen.size;
- $('start').textContent=access?(experience==='show'?'Запустить шоу':'Получить результат'):'Войти и начать';
+ $('start').textContent=access?'Запустить историю':'Войти и запустить';
  $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||!connected||(!!access&&!enough);
  document.querySelectorAll('.agent').forEach((label,i)=>{
   const a=agents[i],ok=available.has(a.id),input=label.querySelector('input');
@@ -269,6 +287,7 @@ function update(){
  if(experience==='show')renderShowCast();
  document.querySelectorAll('.show-scenario').forEach(b=>b.disabled=running);
  $('showExtra').disabled=running;
+ $('showScenes').disabled=running;$('showTone').disabled=running;
  for(const id of ['Council','Show'])$('experience'+id).disabled=running;
 }
 $('rounds').onchange=update;$('length').onchange=update;
@@ -1272,11 +1291,11 @@ $('start').onclick=async()=>{
  lastTaskContext=isShow?{prompt:task,profile:'Шоу',specialization:scene.title}:{prompt:task,profile:currentProfile.name,specialization:currentSubtask?.[1]||''};
  $('feed').replaceChildren();syncResultActions();$('progress').hidden=true;$('researchPanel').hidden=true;$('researchSources').replaceChildren();$('researchSearchWidget').replaceChildren();
  $('stopAction').hidden=false;$('stop').disabled=false;$('stop').textContent='Остановить задачу';
- document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showRandomCast,.show-scenario,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
+ document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showScenes,#showTone,#showRandomCast,.show-scenario,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=true);
  update();$('status').textContent=isShow?'Шоу начинается. Персонажи вступают в диалог.':'Нейросети работают над вашей задачей.';
  try{
   let token=await ensureSession();
-   const startBody={participants:members.map(a=>a.id),rounds:isShow?2:Number($('rounds').value),mode:isShow?'show':mode,profile:isShow?'show':profileId,subtask:isShow?scene.id:taskId||'unspecified'};
+   const startBody={participants:members.map(a=>a.id),rounds:isShow?Number($('showScenes').value):Number($('rounds').value),mode:isShow?'show':mode,profile:isShow?'show':profileId,subtask:isShow?scene.id:taskId||'unspecified'};
    try{activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});}
    catch(error){
     if(error.status!==401||adminToken)throw error;
@@ -1287,7 +1306,7 @@ $('start').onclick=async()=>{
    }
   access={...access,remainingFreeTasks:activeTask.remainingFreeTasks};renderAccess();
   if(isShow){
-   await runShow({agents:members,scenario:scene,cast,extra,turns:2,request,emit,signal:controller.signal,onProgress:progress});
+   await runShow({agents:members,scenario:scene,cast,extra,scenes:Number($('showScenes').value),tonality:$('showTone').value,request,emit,signal:controller.signal,onProgress:progress});
    $('status').textContent='🎬 Сцена завершена. Можно поменять кастинг или выбрать другую историю.';
   }else{
    const {profile,task:subtask}=resolveProfile(profileId,taskId);
@@ -1313,7 +1332,7 @@ $('start').onclick=async()=>{
   }
   await refreshAccess().catch(()=>{});
   running=false;telegramContext?.app.disableClosingConfirmation?.();$('stopAction').hidden=true;
-  document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showRandomCast,.show-scenario,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
+  document.querySelectorAll('aside input,aside select,aside button,#task,#showExtra,#showScenes,#showTone,#showRandomCast,.show-scenario,#example,#settingsOpen,#rounds,#length,#factCheck,#ambience').forEach(e=>e.disabled=false);
   update();
  }
 };
@@ -1330,5 +1349,4 @@ $('export').onclick=()=>{
  const url=URL.createObjectURL(new Blob([output],{type:'text/markdown;charset=utf-8'}));
  const a=document.createElement('a');a.href=url;a.download='quorum-result.md';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 };
-update();
-
+update();setExperience('show');
