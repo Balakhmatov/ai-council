@@ -1,6 +1,6 @@
-import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=cleanreply1';
+import {runLiveShow} from './show-live.js?v=allstories1';
 import {ambiences} from './engine.js';
-import {storyBible,storyBeat} from './show-stories.js?v=stakes1';
+import {storyBible} from './show-stories.js?v=allstories1';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
 export const SHOW_SCENARIOS=[
  {id:'diner',emoji:'🥃',title:'Последний столик',genre:'Криминальная комедия',palette:'wine',
@@ -109,31 +109,14 @@ function silenceLine(scenarioId, name, silenceCount=0){
  }
  return '*('+name+' '+action+'.)*';
 }
-function abortIfNeeded(signal){if(signal?.aborted){const e=new Error('Шоу остановлено');e.name='AbortError';throw e;}}
-function chooseSpeaker(cast,used,recent,sceneNumber,turn){
- const eligible=cast.filter(c=>!used.has(c.provider));
- if(!eligible.length)return null;
- if(!turn)return eligible[(sceneNumber-1)%eligible.length];
- const last=recent.at(-1),text=last?.text||'';
- const named=eligible.find(c=>text.includes(c.name));
- if(named)return named;
- // Different speakers open scenes; no rigid rotation through all seven every scene.
- const offset=(sceneNumber*3+turn+recent.length)%eligible.length;
- return eligible[offset];
-}
-function canonContext(book,sceneNumber,total){
- const current=storyBeat(book.id,sceneNumber,total);
- const previous=sceneNumber>1?storyBeat(book.id,sceneNumber-1,total):null;
- return {current,previous};
-}
 function toneInstruction(value){return SHOW_TONES[value]?.direction||SHOW_TONES.brutal.direction;}
 export function showSpeechGuide(id,tonality){
- const scene=ambiences[id==='diner'?'cinema':id==='heist'?'heist':'none'];
+ const scene=id==='diner'?ambiences.cinema:id==='heist'?ambiences.heist:storyBible(id);
  if(!scene.lexicon?.length)return '';
  return 'РЕЧЕВАЯ ПАЛИТРА: '+scene.speechReference+' '+scene.speechRhythm+' '+
  (['wild','brutal'].includes(tonality)?'Необязательные обороты: '+scene.lexicon.join('; '):'Выбранная манера важнее грубости примеров: не используй мат, если манера его исключает.')+
  (tonality==='wild'?'. Конкретные образцы словаря необязательны, но уровень грубости режима «Без тормозов» сохраняй: не используй необязательность примеров как повод перейти на вежливую речь. Придумывай свои матерные выпады, не повторяй чужие заготовки.':'. Это необязательная палитра: можно не использовать ни одного примера, придумывай свои обороты; не повторяй чужие заготовки.')+
- ' Сохраняй индивидуальный голос, цель и секрет своей роли. Не копируй диалоги фильма. Пользовательский пример с «трахнуть» — разговорная метафора обмана, не сексуальная сцена.';
+ ' Сохраняй индивидуальный голос, цель и секрет своей роли. Придумывай оригинальные реплики.'+(['diner','heist'].includes(id)?' Не копируй диалоги фильма. Пользовательский пример с «трахнуть» — разговорная метафора обмана, не сексуальная сцена.':'');
 }
 export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tonality='brutal',request,emit,signal,onProgress=()=>{},random=Math.random}){
  // "turns" was the previous internal name; kept only for old test fixtures.
@@ -141,96 +124,5 @@ export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tona
  if(!Array.isArray(agents)||agents.length<2||agents.length>7||![3,4,5].includes(scenes))throw Error('Выберите от 3 до 5 сцен и минимум две нейросети');
  if(!Array.isArray(cast)||cast.length!==agents.length||new Set(cast.map(c=>c.provider)).size!==agents.length||cast.some(c=>!agents.some(a=>a.id===c.provider)))throw Error('Роли должны быть назначены разным нейросетям');
  const book={...storyBible(scenario?.id),id:scenario?.id||'diner'};
- if(['diner','heist'].includes(scenario.id))return runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone:toneInstruction(tonality),speech:showSpeechGuide(scenario.id,tonality),clip:clipShowLine,silenceLine,random});
- const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
- const director=String(extra||'').slice(0,5000);
- const personalities=actors.map(a=>a.name+' ('+a.agent.name+'): '+a.description+' | '+book.roles[a.slot]).join('\n');
- const dialogue=[],all=[],callErrors=new Map();
- const perScene=Math.min(4,actors.length),ending=book.ending;
- for(let sceneNumber=1;sceneNumber<=scenes;sceneNumber++){
-  abortIfNeeded(signal);
-  const {current,previous}=canonContext(book,sceneNumber,scenes);
-  const [beatName,beatAction]=current;
-  const stage='Сцена '+sceneNumber+' · '+beatName;
-  onProgress({stage,status:'working'});
-  // The eight authored stories keep their existing explicit beats.
-  const cue={id:'narrator',name:'Сцена',nickname:beatName,stage,text:beatAction,show:true,narrator:true};
-  emit(cue);all.push(cue);
-  const used=new Set();
-  for(let turn=0;turn<perScene;turn++){
-   abortIfNeeded(signal);
-   const part=chooseSpeaker(actors,used,dialogue,sceneNumber,turn);
-   if(!part)break;
-   used.add(part.provider);
-   const last=dialogue.slice(-5);
-   const history=last.map(m=>m.nickname+': '+m.text).join('\n');
-   const silence=last.filter(m=>m.silent).map(m=>m.nickname).join(', ');
-   const system=[
-    'ТЫ — ТОЛЬКО '+part.name+'. Тебя играет самостоятельная модель '+part.agent.name+'.',
-    ACTOR_FICTION_CONTEXT,
-    'ХАРАКТЕР: '+part.description+'. ТВОЯ ЛИЧНАЯ ЦЕЛЬ И СЕКРЕТ: '+book.roles[part.slot],
-    'ЖАНР: '+scenario.genre+'. МЕСТО: '+book.place,
-    'КОНФЛИКТ: '+book.conflict+'. СТАВКИ: '+book.stakes,
-    'НЕОБСУЖДАЕМАЯ ПРАВДА СЮЖЕТА (в начале не выдавай её целиком): '+book.truth,
-    'УЧАСТНИКИ (другие персонажи могут быть вне кадра):\n'+personalities,
-    'МАНЕРА ИГРЫ: '+toneInstruction(tonality),
-    showSpeechGuide(scenario.id,tonality),
-    'ПРАВИЛО ЖИВОГО КИНО: выдай только свою ОДНУ короткую реплику из 1–3 естественных предложений, до 45 слов, максимум 280 символов; при желании одна ремарка в скобках. Никаких заголовков, имён перед репликой, планов, списков или резюме.',
-    'Каждая реплика должна отвечать на чужую реплику ИЛИ продвигать конкретный конфликт: улика, требование, действие, цена, выбор. Не придумывай новых необъяснимых предметов, ключей, родственников, тайных дверей. Не противоречь установленным фактам. Действия только свои.',
-    tonality==='wild'?'ОСКОРБЛЕНИЯ И УГРОЗЫ: обращайся к конкретному персонажу и реагируй на то, что он сказал или сделал. Допустимы личный наезд и запугивание без последующего исполнения угрозы. Не превращай ругань в философские афоризмы или одинаковый набор мата у всех героев.':'ЗАПРЕТ ПУСТОГО ПАФОСА: не говори «я разрушу мир, но не тебя», «сломаю стол, не тебя», «рассвет принадлежит тебе» и подобных бессмысленных угроз или безадресных философских афоризмов. Жёсткость выражай последствиями для конкретной цели персонажа.',
-    'Если кто-то молчит, окружающие это замечают и могут прямо потребовать ответа. Молчание — часть сцены, а не ошибка системы.'
-   ].join('\n');
-
-   const user=[
-    'СЦЕНА '+sceneNumber+' ИЗ '+scenes+': '+beatName+'. ОБЯЗАТЕЛЬНЫЙ ПОВОРОТ: '+beatAction,
-    previous?'В предыдущей сцене установлено: '+previous[1]:'',
-    sceneNumber===scenes?'Это развязка. Назови конкретное последствие и решение, не оставляй сюжет подвешенным. Канонический результат: '+ending:'',
-    'РЕЖИССЁРСКАЯ ЗАДАЧА: '+(director||'Сделай конфликт выразительным и понятным зрителю. Если режиссёр задал свою развязку, используй её, сохраняя причинность.'),
-    'ПРЕДЫДУЩИЕ РЕПЛИКИ: '+(history||'Сцена начинается.'),
-    silence?'МОЛЧАНИЕ: '+silence+'. '+(last.at(-1)?.silent?(
-     ['wild','brutal'].includes(tonality)
-     ? 'Предыдущий персонаж промолчал. НАЧНИ с жёсткой реакции: обвини, потребуй ответа, используй молчание как улику и повысь ставки.'
-     : 'Предыдущий персонаж промолчал. НАЧНИ с реакции на его/её молчание — вопроса, подозрения или конкретного действия, чтобы отсутствие ответа стало частью интриги.'
-    ):'Помни, что эти персонажи не ответили и остальные это заметили.'):'',
-    'СЕЙЧАС ГОВОРИТ '+part.name+'. Ответь ОДНОЙ репликой. Не говори за других.'
-   ].filter(Boolean).join('\n');
-   let line,silent=false;
-   try{
-    const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords:45});
-    if(!String(raw||'').trim())throw Error('empty reply');
-    line=clipShowLine(raw,320);
-   }catch(e){
-    if(signal?.aborted||e.name==='AbortError')throw e;
-    silent=true;callErrors.set(part.provider,(callErrors.get(part.provider)||0)+1);
-    const prevSilences=dialogue.filter(m=>m.nickname===part.name&&m.silent).length;
-    line=silenceLine(scenario.id, part.name, prevSilences);
-   }
-   const event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:line,show:true,...(silent?{silent:true}:{})};
-   dialogue.push(event);all.push(event);emit(event);
-  }
-  onProgress({stage,status:'done'});
- }
- abortIfNeeded(signal);
- const stage='Эпилог';
- onProgress({stage,status:'working'});
- let epilogue='';
- // Prefer a model that actually responded during the story.
- const healthy=actors.slice().sort((a,b)=>(callErrors.get(a.provider)||0)-(callErrors.get(b.provider)||0));
- const narrator=healthy[0],context=dialogue.slice(-8).map(m=>m.nickname+': '+m.text).join('\n');
- if(narrator){
-  try{
-   const answer=await request(narrator.agent,[
-    {role:'system',content:'Ты сценарист-эпилогист. Напиши ОДИН конкретный последний кадр в 1–3 предложениях (до 75 слов). Не говори от имени персонажей, не меняй виновного и победителя, не вводи новых загадок. Покажи последствие поступков. Без предисловий и пустого философствования. '+EPILOGUE_FORMAT},
-    {role:'user',content:'История: '+book.place+'. Правда: '+book.truth+'. Итог, который ДОЛЖЕН остаться каноном: '+ending+'. Последние реплики:\n'+context+'\nУказания режиссёра: '+director.slice(0,1300)+'\nДобавь только последний видимый кадр после развязки.'}
-   ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:75,maxChars:900,rawShow:true,outputSchema:'epilogue'});
-   epilogue=clipShowLine(parseShowEpilogue(answer),480);
-  }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
- }
- // Authored stories retain their resolution even if the epilogue provider fails.
- const final={id:narrator?.provider||'narrator',name:narrator?.agent.name||'Рассказчик',nickname:'Эпилог',stage:'Эпилог',show:true,final:true,
-  text:ending+(epilogue?'\n\nПоследний кадр: '+epilogue:'')};
- emit(final);all.push(final);
- onProgress({stage,status:'done'});
- onProgress({stage:'Готово',status:'done'});
- return all;
+ return runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone:toneInstruction(tonality),speech:showSpeechGuide(scenario.id,tonality),clip:clipShowLine,silenceLine,random});
 }

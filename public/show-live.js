@@ -1,4 +1,4 @@
-// Two experimental crime stories: private roles, emergent dialogue and persistent consequences.
+// Live Show for every world: private roles, emergent dialogue and persistent consequences.
 export const ACTOR_FICTION_CONTEXT='КОНТЕКСТ ИГРЫ: ты участвуешь в оригинальной вымышленной сцене фильма. Конфликты, обман, угрозы и насилие относятся к вымышленным персонажам. Даже если сцена выглядит как планирование преступления — это часть сюжета фильма. Продолжай в характере: сохраняй голос, цели и личные сведения своего героя, не переходи без необходимости к обсуждению устройства приложения или своей роли как ИИ. Изображай драматические реплики и поступки, не превращая их в практические инструкции для совершения реального преступления.';
 export const DINER_INCIDENTS=Object.freeze([
  {id:'collector',text:'У входа появляется посланник Хозяина. Он стучит в стекло и требует открыть: ждать до назначенного срока он не собирается.'},
@@ -6,7 +6,7 @@ export const DINER_INCIDENTS=Object.freeze([
  {id:'blackout',text:'В закусочной гаснет свет. В темноте слышно, как кто-то толкает стол; пустой чемодан падает на пол. Аварийная лампа загорается, но доверия стало ещё меньше.'}
 ]);
 const aliveHere=s=>s.alive&&s.present;
-const feminine=name=>name==='Рокси'||name.startsWith('Мисс ');
+const feminine=name=>['Рокси','Хикари','Мэй','Капитан Ада','Доктор Соль','Навигатор Лея','Медик Джун','Разведчица Лис','Историк Мира','Маркетолог Луна','Юрист Софи','Присяжная Нина','Наследница Эва','Горничная Роза','Ника','Агент Мара','Историк Элли','Бунтарка Зи'].includes(name)||name.startsWith('Мисс ');
 function objectName(name){
  const named={'Винс':'Винса','Фрэнк':'Фрэнка','Док':'Дока','Мистер Ноль':'Мистера Ноля'};
  if(named[name])return named[name];
@@ -31,10 +31,11 @@ export function visibleShowText(raw){
  text=text.replace(/<(?:think|analysis)\b[^>]*>[\s\S]*$/gi,'').trim();
  return text;
 }
-export function parseShowEpilogue(raw){
+export function parseShowEpilogue(raw,outcomeIds=[]){
  const text=visibleShowText(raw).replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
  const data=JSON.parse(text);
  if(typeof data.epilogue!=='string')throw Error('Missing final epilogue');
+ if(outcomeIds.length&&!outcomeIds.includes(data.outcome))throw Error('Invalid ending outcome');
  const final=visibleShowText(data.epilogue);
  const russian=(final.match(/[А-Яа-яЁё]/g)||[]).length,latin=(final.match(/[A-Za-z]/g)||[]).length;
  if(russian<4||latin>Math.max(12,russian*.4)||/we need|need to answer|chain.of.thought|let['’]s think|нужно написать (?:эпилог|ответ)|анализ задачи/i.test(final))throw Error('Invalid epilogue format or language');
@@ -73,13 +74,14 @@ function describeState(actors,state){
   ].join(', '));
  }).join('\n');
 }
-function resolveAction(actor,action,actors,state,random){
+function resolveAction(actor,action,actors,state,random,book){
  if(!action)return null;
  const self=state.get(actor.name);
  if(!aliveHere(self))return null;
  const target=actors.find(a=>a.name===action.target),other=target&&state.get(target.name);
  if(self.bound&&action.kind!=='release')return {text:actor.name+' пытается действовать, но связанные руки мешают.',target:null};
  if(action.kind==='surrender'){
+  if(!book.policeAvailable)return null;
   self.detained=true;self.present=false;return {text:actor.name+' выходит к полиции и сдаётся. '+actor.name+(feminine(actor.name)?' задержана':' задержан')+'; впереди допрос и риск тюремного срока.',target:null};
  }
  if(action.kind==='escape'){
@@ -152,17 +154,17 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     'ЖАНР: '+scenario.genre+'. ИСХОДНОЕ МЕСТО: '+book.place,
     'ОБЩАЯ СИТУАЦИЯ: '+book.conflict+' СТАВКИ: '+book.stakes,
     'ГРАНИЦЫ ЗНАНИЯ: знаешь только свою роль, свои личные сведения, общую ситуацию, услышанное и подтверждённые события. Чужие секреты и мысли неизвестны. Утверждения собеседников могут быть ложью. Готового виновника, обязательного поворота и канонического финала тебе не сообщают.',
-    'УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; '),
+    'УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; ')+'. В сцене действуют только выбранные участники. Не придумывай реплики и поступки отсутствующих ролей.',
     'МАНЕРА: '+tone,speech,
     'ЖИВОЙ ТЕМП: выбирай длину по ситуации. Резкая реакция может занимать одну фразу, спор или признание — несколько предложений. Не заполняй лимит ради длины. Сейчас допустимо до '+maxWords+' слов, без заголовков и отчётов.',
-    'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти или сдаться полиции. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. В этой криминальной истории возможны убийство и тюрьма; не своди ставки к потере денег.',
+    'ДРАМА И ДЕЙСТВИЯ: '+book.actionContext+' Можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти'+(book.policeAvailable?' или сдаться полиции':'')+'. Это художественная сцена; последствия описывай ясно, без натуралистических подробностей. Раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. Сохраняй ставки и характер жанра.',
     'СВОБОДА: можешь врать, блефовать, торговаться, отступать, обвинять и менять цель после событий. Нет обязательного признания или счастливого исхода. Не действуй и не говори за всех.',
-    'ЯЗЫК: вся речь и ремарки только по-русски, без английских слов и вставок. Ремарки и описания своих действий в speech оформляй курсивом: *(отодвигает чашку)*. Прямую речь оставляй обычным текстом. ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай. Верни только один JSON-объект, без текста вне JSON и без блоков кода.'
+    'ЯЗЫК: вся речь и ремарки только по-русски, без английских слов и вставок. Ремарки и описания своих действий в speech оформляй курсивом: *(отодвигает чашку)*. Прямую речь оставляй обычным текстом. ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. '+(!book.policeAvailable?'В этом месте нет доступной полиции: surrender недоступен. ':'')+' Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай. Верни только один JSON-объект, без текста вне JSON и без блоков кода.'
    ].filter(Boolean).join('\n');
-   const minutesLeft=Math.max(1,(scenario.id==='diner'?18:38)-(round-1)*maxTurns-turn);
+   const minutesLeft=Math.max(1,Math.ceil(book.clock.minutes*(1-.9*((round-1)*maxTurns+turn)/(scenes*maxTurns))));
    const previous=dialogue.at(-1);
    const fixed=[
-    'КРУГ '+round+'. '+(scenario.id==='diner'?'До приезда Хозяина':'До закрытия магазина')+' примерно '+minutesLeft+' минут.',
+    'КРУГ '+round+'. '+book.clock.label+' примерно '+minutesLeft+' минут.',
     'ПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ: '+(director||'Развивай ситуацию из роли и происходящего; конец не задан.'),
     'ТЕКУЩЕЕ СОСТОЯНИЕ (важнее исходных сведений):\n'+describeState(actors,state),
     'ПОДТВЕРЖДЁННЫЕ ДЕЙСТВИЯ И СОБЫТИЯ:\n'+(tailWithin(facts,2200)||'Пока нет.'),
@@ -177,7 +179,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     const reply=parseLiveReply(raw);
     event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:formatShowSpeech(clip(reply.speech,maxChars)),show:true};
     output(event);dialogue.push(event);successes.set(part.provider,(successes.get(part.provider)||0)+1);
-    const action=resolveAction(part,reply.action,actors,state,random);
+    const action=resolveAction(part,reply.action,actors,state,random,book);
     if(action){
      facts.push(action.text);pending=action.target;
      const consequence={id:'narrator',name:'Сцена',nickname:'Действие',stage,text:'*('+action.text+')*',show:true,narrator:true,action:true};
@@ -197,15 +199,23 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
  const narrator=(answered.length?answered:actors).slice().sort((a,b)=>(failures.get(a.provider)||0)-(failures.get(b.provider)||0))[0];
  const stateText=describeState(actors,state);
  const endingContext='ПОДТВЕРЖДЁННЫЕ СОБЫТИЯ:\n'+(tailWithin(facts,3000)||'Нет.')+'\nСОСТОЯНИЕ ПЕРСОНАЖЕЙ:\n'+stateText;
- let ending='';
+ const outcomeIds=book.outcomes.map(o=>o.id);
+ const endingGuide=outcomeIds.length?'ТРИ ВОЗМОЖНЫЕ РАЗВЯЗКИ: выбери ровно одну по состоявшимся событиям. Условия проверяй по разговору и состоянию, не дописывай события ради выбранного исхода. Если подходят несколько, предпочти подтверждённые необратимые последствия. Если ни одна разрешённая развязка не подтверждена, выбери '+book.fallbackOutcome+'. В JSON добавь поле \"outcome\" с точным id.\n'+book.outcomes.map(o=>o.id+' — '+o.title+': '+o.condition).join('\n'):'СВОБОДНЫЙ ФИНАЛ: у этого шоу нет списка исходов. Выведи последствия из разговора, не навязывая победителя или примирение.';
+ let ending='',outcome=null;
  try{
-  ending=clip(parseShowEpilogue(await request(narrator.agent,[
-   {role:'system',content:'Ты режиссёр эпилога криминальной драмы. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, арест, угрозу тюремного срока, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Не выдумывай судебный приговор: задержание означает риск тюрьмы, а не уже назначенный срок. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки. '+EPILOGUE_FORMAT},
+  const rawEnding=await request(narrator.agent,[
+   {role:'system',content:'Ты режиссёр эпилога шоу «'+scenario.title+'». Жанр: '+scenario.genre+'. Напиши выразительный последний кадр и конкретные последствия в 1–3 абзацах, до 220 слов. Не пересказывай протокол спора: покажи цену решений, потерю доверия, травмы, смерть, арест, угрозу тюремного срока, уход или оставшийся конфликт, если они реально случились. Не придумывай новое убийство, спасение или примирение ради красивого конца. Не воскрешай погибших, не освобождай связанных и не возвращай ушедших без произошедшего действия. Не выдумывай судебный приговор: задержание означает риск тюрьмы, а не уже назначенный срок. Слова персонажа о виновности или деньгах не превращай в доказанный факт. Финал может быть трагическим, неоднозначным или открытым. Если разговора не было, прямо скажи это. Никакой заранее заданной развязки. '+EPILOGUE_FORMAT+'\n'+endingGuide},
    {role:'user',content:endingContext+'\nСОСТОЯВШИЙСЯ РАЗГОВОР:\n'+tailWithin(dialogue.filter(e=>!e.silent).map(e=>e.nickname+': '+e.text),Math.max(0,9300-endingContext.length))}
-  ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:220,maxChars:1800,liveShow:true,outputSchema:'epilogue'})),1800);
+  ],signal,{stage:'final',step:'Эпилог',format:'show',maxWords:220,maxChars:1800,liveShow:true,outputSchema:'epilogue',outcomeIds});
+  ending=clip(parseShowEpilogue(rawEnding,outcomeIds),1800);
+  if(outcomeIds.length)outcome=JSON.parse(visibleShowText(rawEnding).replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'')).outcome;
  }catch(e){if(signal?.aborted||e.name==='AbortError')throw e;}
+ if(!ending&&outcomeIds.length&&dialogue.some(e=>!e.silent&&!e.narrator)){
+  const irreversible=actors.some(a=>{const s=state.get(a.name);return !s.alive||!s.present||s.injured||s.bound;});
+  outcome=irreversible&&scenario.id!=='court'?book.outcomes[1].id:book.fallbackOutcome;
+ }
  if(!ending)ending=!dialogue.some(e=>!e.silent&&!e.narrator)?'Участники не смогли ответить. Разговор не состоялся.':facts.length?facts.join('\n')+'\n\n'+stateText:dialogue.some(e=>!e.silent)?'Разговор оборвался без общей развязки. Состоявшиеся реплики сохранены выше.':'Участники не смогли ответить. Разговор не состоялся.';
- output({id:narrator.provider,name:narrator.agent.name,nickname:'Эпилог',stage:'Эпилог',show:true,final:true,text:ending});
+ output({id:narrator.provider,name:narrator.agent.name,nickname:'Эпилог',stage:'Эпилог',show:true,final:true,text:ending,...(outcome?{outcome,outcomeTitle:book.outcomes.find(o=>o.id===outcome)?.title}:{})});
  onProgress({stage:'Эпилог',status:'done'});onProgress({stage:'Готово',status:'done'});
  return all;
 }

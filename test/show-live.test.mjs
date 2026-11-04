@@ -23,7 +23,7 @@ test('diner chooses each of three incidents; heist has no mandatory plot, secret
   const {calls,events,parts}=await simulate(id);
   for(const {a,m}of calls){
    const prompt=m.map(e=>e.content).join('\n');
-   assert.ok(!prompt.includes(STORY_BIBLE[id].truth));assert.ok(!prompt.includes(STORY_BIBLE[id].ending));
+   assert.ok(!prompt.includes('НЕОБСУЖДАЕМАЯ ПРАВДА СЮЖЕТА'));
    assert.ok(!prompt.includes('ОБЯЗАТЕЛЬНЫЙ ПОВОРОТ'));
    if(m[0].content.includes('ТЫ — ТОЛЬКО')){
     const own=parts.find(p=>p.provider===a.id);
@@ -174,4 +174,55 @@ test('only parenthetical directions are italic after malformed model emphasis',a
  const {formatShowSpeech}=await import('../public/show-live.js');
  assert.equal(formatShowSpeech('(Смотрит в окно) *Отвечай сейчас. (Тихо)* И без фокусов.'),'*(Смотрит в окно)* Отвечай сейчас. *(Тихо)* И без фокусов.');
  assert.equal(formatShowSpeech('*(Отодвигает чашку.)* Ответь мне.'),'*(Отодвигает чашку.)* Ответь мне.');
+});
+
+test('all ten shows isolate private roles, hide ending options and use their own clock and genre',async()=>{
+ const {SHOW_SCENARIOS}=await import('../public/show.js');
+ for(const scenario of SHOW_SCENARIOS){
+  const book=STORY_BIBLE[scenario.id];
+  const {calls,parts}=await simulate(scenario.id,{scenes:5,extra:'А'.repeat(5000)});
+  for(const call of calls.filter(c=>c.stage.stage==='intermediate')){
+   const own=parts.find(p=>p.provider===call.a.id),prompt=call.m.map(m=>m.content).join('\n');
+   assert.ok(prompt.includes(book.roles[own.slot]),scenario.id);
+   for(const part of parts.filter(p=>p.slot!==own.slot))assert.ok(!prompt.includes(book.roles[part.slot]),scenario.id+' private role leaked');
+   assert.ok(call.m[0].content.includes(book.actionContext));
+   assert.ok(call.m[1].content.includes(book.clock.label));
+   assert.ok(!call.m[0].content.includes('ТРИ ВОЗМОЖНЫЕ РАЗВЯЗКИ'));
+   for(const option of book.outcomes)assert.ok(!prompt.includes(option.condition));
+   assert.equal(call.stage.outputSchema,'actor');
+  }
+  assert.ok(calls.every(c=>c.m.every(m=>m.content.length<=9500)),scenario.id+' context budget');
+  const final=calls.at(-1);
+  assert.equal(final.stage.outputSchema,'epilogue');
+  assert.ok(final.m[0].content.includes(scenario.genre));
+  assert.deepEqual(final.stage.outcomeIds,book.outcomes.map(o=>o.id));
+  assert.ok(final.m[0].content.includes(book.endingMode==='three'?'ТРИ ВОЗМОЖНЫЕ РАЗВЯЗКИ':'СВОБОДНЫЙ ФИНАЛ'));
+ }
+});
+
+test('each of the fifteen ending directions can be returned and none is selected before the epilogue',async()=>{
+ const {parseShowEpilogue}=await import('../public/show-live.js');
+ for(const [id,book] of Object.entries(STORY_BIBLE).filter(([,b])=>b.endingMode==='three')){
+  for(const option of book.outcomes){
+   const {events,calls}=await simulate(id,{request:(a,m,s,stage)=>stage.stage==='final'?JSON.stringify({epilogue:'Разговор изменил отношения участников. Последствия остались с ними.',outcome:option.id}):reply()});
+   const final=events.at(-1);
+   assert.equal(final.outcome,option.id);assert.equal(final.outcomeTitle,option.title);
+   assert.ok(!events.slice(0,-1).some(e=>e.outcome));
+   assert.ok(calls.at(-1).m[0].content.includes(option.condition));
+  }
+  for(const outcome of [undefined,'invented_ending'])assert.throws(()=>parseShowEpilogue(JSON.stringify({epilogue:'Конфликт пока не разрешён.',outcome}),book.outcomes.map(o=>o.id)));
+ }
+});
+
+test('failed epilogue preserves irreversible consequences rather than forcing a successful ending',async()=>{
+ for(const id of ['diner','court','spaceship','bunker','detective']){
+  let first=true;
+  const {parts,events}=await simulate(id,{request:(a,m,s,stage)=>{
+   if(stage.stage==='final')throw Error('unavailable');
+   if(first){first=false;return JSON.stringify({speech:'Я ухожу.',action:{kind:'escape',target:''}});}
+   return reply();
+  }});
+  assert.ok(events.at(-1).text.includes(parts[0].name+' покидает комнату'));
+  assert.equal(events.at(-1).outcome,id==='court'?STORY_BIBLE[id].fallbackOutcome:STORY_BIBLE[id].outcomes[1].id);
+ }
 });

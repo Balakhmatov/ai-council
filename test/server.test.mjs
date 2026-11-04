@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show73/);
+  assert.match(html.body,/app\.js\?v=show74/);
  }finally{await t.close();}
 });
 
@@ -962,5 +962,15 @@ test('Show never forwards invalid English or protocol after a failed correction'
   assert.equal(result.status,502);assert.equal(attempts,2);assert.ok(!JSON.stringify(result.data).includes('Broken'));
   const info=(await t.send('/api/admin',undefined,'admin-test-only')).data.accounting;
   assert.equal(info.totals.requests,2);assert.ok(info.totals.costRub>0);
+ }finally{await t.close();}
+});
+
+test('Show epilogue preserves a valid branch id and rejects an invented or missing ending',async()=>{
+ let outcome='standoff';
+ const t=await setup({}, {upstream:async()=>Response.json({choices:[{message:{content:JSON.stringify({epilogue:'Чемодан остался пустым. Спор не разрешён.',outcome})}}],usage:{prompt_tokens:100,completion_tokens:50}})});
+ try{
+  const talk={provider:'openai',format:'show',stage:'final',outputSchema:'epilogue',outcomeIds:['settlement','rupture','standoff'],messages:[{role:'system',content:'Эпилог по-русски.'},{role:'user',content:'Разговор окончен.'}]};
+  const good=await t.send('/api/chat',talk,'admin-test-only');assert.equal(good.status,200);assert.equal(JSON.parse(good.data.text).outcome,'standoff');
+  for(outcome of ['invented',undefined])assert.equal((await t.send('/api/chat',talk,'admin-test-only')).status,502);
  }finally{await t.close();}
 });

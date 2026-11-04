@@ -1,7 +1,7 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=cleanreply1';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=allstories1';
 import {scenePoster,characterPortrait} from './show-art.js?v=portraits2';
-import {STORY_CORE_ROLES,storyBible} from './show-stories.js?v=stakes1';
+import {STORY_CORE_ROLES,storyBible} from './show-stories.js?v=allstories1';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -208,7 +208,8 @@ function renderShowScenarios(){
  const conflict=document.createElement('p');conflict.textContent=book.conflict;
  const stakes=document.createElement('p');stakes.className='show-stakes';stakes.textContent='На кону: '+book.stakes;
  const twist=document.createElement('small');twist.textContent='Интрига: '+scene.twist;
- $('showScenarioDetails').replaceChildren(title,text,conflict,stakes,twist);
+ const ending=document.createElement('small');ending.textContent=book.endingMode==='three'?'Финал: одна из трёх развязок — по событиям шоу.':'Финал: свободный — по событиям шоу.';
+ $('showScenarioDetails').replaceChildren(title,text,conflict,stakes,twist,ending);
 }
 $('scenesAll').onclick=()=>$('scenesDialog').showModal();
 $('scenesClose').onclick=()=>$('scenesDialog').close();
@@ -1329,7 +1330,7 @@ function renderMessage(m){
  const dot=document.createElement('span');dot.className='model-dot';dot.setAttribute('aria-hidden','true');
  const name=document.createElement('strong');name.textContent=m.final&&!m.show?'Готовый результат':m.nickname?m.nickname+' · '+m.name:m.name;
  identity.append(dot,name);
- const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final&&!m.show?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage;
+ const stage=document.createElement('small');stage.className='stage-pill';stage.textContent=m.final&&!m.show?'Итоговый ответ · '+(m.nickname?m.nickname+' / ':'')+(agents.find(a=>a.id===m.id)?.name||'модель'):m.stage==='Независимая идея'?'Первый раунд':m.stage+(m.outcomeTitle?' · '+m.outcomeTitle:'');
  const text=readableStoredMessage(m);
  const copy=document.createElement('button');
  copy.type='button';copy.className='copy-action copy-single';
@@ -1362,7 +1363,7 @@ function emit(m){
  syncResultActions();
 }
 async function request(a,chat,signal,stage={}){
- const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,outputSchema:stage.outputSchema,maxWords:stage.format==='show'?(stage.maxWords||45):wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
+ const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,outputSchema:stage.outputSchema,outcomeIds:stage.outcomeIds,maxWords:stage.format==='show'?(stage.maxWords||45):wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
  if(result.metering)responseMetering.set(a.id,result.metering);
  adminTechnicalLoaded=false;

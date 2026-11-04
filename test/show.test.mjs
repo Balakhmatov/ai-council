@@ -1,29 +1,28 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {SHOW_SCENARIOS,SHOW_TONES,showScenario,showCast,clipShowLine,runShow} from '../public/show.js';
-import {STORY_BIBLE,storyBeat} from '../public/show-stories.js';
+import {STORY_BIBLE} from '../public/show-stories.js';
 
 const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'grok',name:'Grok'}];
 const scene=showScenario('villains');
 const cast=showCast(scene,{0:'mistral',1:'grok',2:'openai'});
 
-test('ten show worlds have original distinct plot bibles with a concrete truth, consequences, and character motives',()=>{
+test('ten show worlds have private motives, genre stakes and five free versus five three-way endings',()=>{
  assert.equal(SHOW_SCENARIOS.length,10);
  assert.equal(new Set(SHOW_SCENARIOS.map(s=>s.id)).size,10);
  for(const s of SHOW_SCENARIOS){
-  assert(s.title&&s.description&&s.setting&&s.genre&&s.emoji);
-  assert.equal(s.roles.length,7);
   const b=STORY_BIBLE[s.id];
-  assert(b.place.length>45&&b.conflict.length>50&&b.truth.length>50&&b.ending.length>70&&b.stakes.length>50);
-  assert.equal(b.roles.length,7);
-  assert.equal(b.beats.length,5);
-  assert(b.beats.every(a=>a.length===2&&a[1].length>40));
+  assert(s.title&&s.description&&s.setting&&s.genre&&s.emoji);
+  assert.equal(s.roles.length,7);assert.equal(b.roles.length,7);
+  assert(b.place.length>45&&b.conflict.length>50&&b.stakes.length>50);
+  assert(b.roles.every(r=>r.length>35));assert(b.clock.minutes>0&&b.clock.label);
+  assert(!('truth'in b)&&!('ending'in b)&&!('beats'in b));
+  assert.equal(b.outcomes.length,b.endingMode==='three'?3:0);
+  assert.equal(new Set(b.outcomes.map(o=>o.id)).size,b.outcomes.length);
+  if(b.endingMode==='three')assert(b.outcomes.some(o=>o.id===b.fallbackOutcome));
  }
- assert(STORY_BIBLE.villains.truth.includes('Акира'));
- assert(STORY_BIBLE.villains.ending.includes('общественному совету'));
- assert.equal(storyBeat('villains',3,3)[0],'Развязка');
- assert.equal(storyBeat('villains',4,4)[0],'Развязка');
- assert.equal(storyBeat('villains',5,5)[0],'Развязка');
+ assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='three').length,5);
+ assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='free').length,5);
  assert.equal(Object.keys(SHOW_TONES).length,5);
 });
 test('a fictional role can be played by any model, independent of the role name',()=>{
@@ -48,14 +47,13 @@ test('Show alternates speakers between scenes and does not do a fixed full roste
  assert.equal(calls.length,10,'3 scenes x 3 actors + epilogue');
  assert.equal(calls.filter(c=>c.stage.stage==='intermediate').length,9);
  assert.equal(calls.filter(c=>c.stage.stage==='final').length,1);
- assert.equal(out.filter(m=>m.narrator).length,3);
+ assert.equal(out.filter(m=>m.narrator).length,1);
  assert.equal(out.filter(m=>m.final).length,1);
- assert(out.at(-1).text.includes('Акира'));
- assert(out.at(-1).text.includes('общественному совету'));
+ assert(out.at(-1).text.includes('без общей развязки'));
  assert(calls.every(c=>c.chat.length===2));
  assert(calls.every(c=>c.chat[0].content.length<9500&&c.chat[1].content.length<9500));
- assert(calls.filter(c=>c.stage.stage==='intermediate').every(c=>c.stage.maxWords===45&&c.stage.format==='show'));
- assert(calls.some(c=>c.chat[0].content.includes('ЗАПРЕТ ПУСТОГО ПАФОСА')));
+ assert(calls.filter(c=>c.stage.stage==='intermediate').every(c=>[45,90,160].includes(c.stage.maxWords)&&c.stage.format==='show'));
+ assert(calls.some(c=>c.chat[0].content.includes('ГРАНИЦЫ ЗНАНИЯ')));
  assert(calls.some(c=>c.chat[1].content.includes('СЕЙЧАС ГОВОРИТ')));
  assert(calls.some(c=>c.chat[1].content.includes('Последние')||c.chat[1].content.includes('ПРЕДЫДУЩИЕ РЕПЛИКИ')));
  assert(calls.some(c=>c.chat[0].content.includes('жёсткие решения')));
@@ -83,14 +81,14 @@ test('silence becomes a cinematic action and later actors can react, never a vis
  assert(silences.every(m=>m.text.startsWith('*(')&&m.text.endsWith(')*')&&m.text.includes(m.nickname)&&!m.error));
  assert(out.every(m=>!m.text.includes('Service unavailable')));
  assert(out.at(-1).final);
- assert(out.at(-1).text.includes('купол'));
- assert(calls.some(c=>c.chat[1].content.includes('МОЛЧАНИЕ:')));
+ assert(!out.at(-1).text.includes('ключ общественному совету'));
+ assert(calls.some(c=>c.chat[1].content.includes('Предыдущий персонаж промолчал')));
 });
-test('when all actors fail, the story still resolves and returns an authored epilogue',async()=>{
+test('when all actors fail, no story resolution is invented',async()=>{
  const out=[];
  await runShow({agents:actors,scenario:scene,cast,scenes:3,request:async()=>{throw Error('provider down')},emit:m=>out.push(m)});
  assert(out.at(-1).final);
- assert(out.at(-1).text.includes('Зеро передаёт ключ'));
+ assert(out.at(-1).text.includes('Разговор не состоялся'));
  assert(out.filter(m=>m.silent).length===9);
 });
 test('Show stops cleanly on abort and rejects unfinished casting',async()=>{
@@ -117,7 +115,7 @@ test('diner improvisation keeps other roles private and never sends authored plo
  const crew=Array.from({length:7},(_,i)=>({id:'actor'+i,name:'Model '+i}));
  const parts=showCast(scenario,Object.fromEntries(crew.map((a,i)=>[i,a.id])));
  const calls=[],events=[],book=STORY_BIBLE.diner;
- await runShow({agents:crew,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async(a,m,s,stage)=>{calls.push({a,m,stage});return stage.stage==='final'?JSON.stringify({epilogue:'Участники спорят, но общего решения не приняли.'}):'Я пока не верю твоей версии. Объясни ещё раз.';}});
+ await runShow({agents:crew,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async(a,m,s,stage)=>{calls.push({a,m,stage});return stage.stage==='final'?JSON.stringify({epilogue:'Участники спорят, но общего решения не приняли.',outcome:'standoff'}):'Я пока не верю твоей версии. Объясни ещё раз.';}});
  const dialogue=calls.filter(c=>c.stage.stage==='intermediate');
  assert.ok(dialogue.length>0);
  for(const call of dialogue){
@@ -130,8 +128,8 @@ test('diner improvisation keeps other roles private and never sends authored plo
  }
  for(const call of calls){
   const prompt=call.m.map(m=>m.content).join('\n');
-  assert.ok(!prompt.includes(book.truth));assert.ok(!prompt.includes(book.ending));
-  for(const [,beat]of book.beats)assert.ok(!prompt.includes(beat),'future scene leaked');
+  assert.ok(!prompt.includes('Канонический результат'));
+  if(call.stage.stage!=='final')for(const option of book.outcomes)assert.ok(!prompt.includes(option.condition),'ending leaked to actor');
  }
  assert.equal(events.filter(e=>e.narrator&&!e.incident&&!e.action).length,1,'only the shared opening situation is narrated before emergent events');
  assert.equal(events.at(-1).text,'Участники спорят, но общего решения не приняли.');
@@ -143,6 +141,6 @@ test('diner actors learn events from spoken dialogue and failure never invents a
  assert.ok(calls[1][1].content.includes('Я отдаю свою долю Рокси'));
  const events=[];
  await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async()=>{throw Error('unavailable')}});
- assert.ok(!events.at(-1).text.includes(STORY_BIBLE.diner.ending));
+ assert.ok(!events.at(-1).text.includes('Джимми вскрывает тайник'));
  assert.ok(events.at(-1).text.includes('Участники не смогли ответить'));
 });

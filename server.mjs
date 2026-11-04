@@ -399,7 +399,11 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
      }
     }
     if(showFormat&&body.outputSchema==='epilogue'){
-     try{text=JSON.stringify({epilogue:parseShowEpilogue(text)});}
+     try{
+      const outcomeIds=body.outcomeIds??[];
+      if(!Array.isArray(outcomeIds)||![0,3].includes(outcomeIds.length)||outcomeIds.some(id=>typeof id!=='string'||!/^[a-z_]{1,32}$/.test(id)))throw Error('Invalid outcomes');
+      text=JSON.stringify({epilogue:parseShowEpilogue(text,outcomeIds),...(outcomeIds.length?{outcome:JSON.parse(text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'')).outcome}:{})});
+     }
      catch{log(model,'error',data.usage,502,'invalid_epilogue','Нет готового эпилога на русском языке');return fail(502,'Модель не сформировала готовый эпилог.');}
     }
     if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502,'empty_response','Ответ не содержит текстового содержимого');return fail(502,'Модель вернула пустой ответ');}
