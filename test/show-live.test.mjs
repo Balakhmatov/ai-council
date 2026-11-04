@@ -162,3 +162,16 @@ test('live prompts omit removed instructions and display actions in italics',asy
   assert.ok(events.some(e=>e.text==='*(Отодвигает чашку.)* Ответь мне. *(Смотрит на дверь.)*'));
  }
 });
+
+test('actor parser extracts repeated fenced JSON and refuses truncated protocol or English inserts',()=>{
+ const speech='(Смотрит на дверь.) Кто забрал деньги?';
+ assert.equal(parseLiveReply(speech+'\n```json\n'+JSON.stringify({speech,action:{kind:'hit',target:'Тони'}})+'\n```').speech,speech);
+ assert.equal(parseLiveReply('Вводная '+JSON.stringify({speech:'Ответь мне.',action:null})+' служебный хвост').speech,'Ответь мне.');
+ for(const raw of ['Речь. ```json\n{"speech":"Оборвано', '{"speech":"I know the answer","action":null}', JSON.stringify({speech:'Мы едем в trunk к Хозяину.',action:null}), JSON.stringify({speech:'Я не accountant, ясно?',action:null})])assert.throws(()=>parseLiveReply(raw));
+});
+
+test('only parenthetical directions are italic after malformed model emphasis',async()=>{
+ const {formatShowSpeech}=await import('../public/show-live.js');
+ assert.equal(formatShowSpeech('(Смотрит в окно) *Отвечай сейчас. (Тихо)* И без фокусов.'),'*(Смотрит в окно)* Отвечай сейчас. *(Тихо)* И без фокусов.');
+ assert.equal(formatShowSpeech('*(Отодвигает чашку.)* Ответь мне.'),'*(Отодвигает чашку.)* Ответь мне.');
+});

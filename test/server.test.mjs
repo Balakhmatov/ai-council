@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show72/);
+  assert.match(html.body,/app\.js\?v=show73/);
  }finally{await t.close();}
 });
 
@@ -930,5 +930,37 @@ test('Qwen Show disables thinking and the API returns only a validated Russian e
   assert.ok(JSON.parse(good.data.text).epilogue.includes('пустой чемодан'));
   output='We need answer the request in Russian. Need to write an ending.';
   const bad=await t.send('/api/chat',body,'admin-test-only');assert.equal(bad.status,502);assert.ok(!JSON.stringify(bad.data).includes('We need'));
+ }finally{await t.close();}
+});
+
+test('Show repairs mixed English once, meters both attempts, and persists costs across restart',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-show-billing-'));
+ const env={ACCOUNTING_FILE:join(dir,'accounting.json'),MISTRAL_API_KEY:'test',MISTRAL_MODEL:'mistral-large-4'};
+ let attempts=0;
+ let t=await setup(env,{upstream:async()=>Response.json({choices:[{message:{content:JSON.stringify({speech:++attempts===1?'Мы поедем в trunk.':'Мы поедем в багажнике.',action:null})}}],usage:{prompt_tokens:1200,completion_tokens:100}})});
+ try{
+  const task=(await t.send('/api/task/start',{participants:['openai','mistral'],rounds:3,mode:'show'},'admin-test-only')).data;
+  const answer=await t.send('/api/chat',{provider:'mistral',taskId:task.taskId,format:'show',outputSchema:'actor',stage:'intermediate',step:'Сцена 1',maxWords:90,messages:[{role:'system',content:'Играй по-русски, верни JSON.'},{role:'user',content:'Продолжи.'}]},'admin-test-only');
+  assert.equal(answer.status,200);assert.equal(JSON.parse(answer.data.text).speech,'Мы поедем в багажнике.');assert.equal(attempts,2);
+  assert.deepEqual(JSON.parse(t.calls[0].options.body).response_format,{type:'json_object'});
+  assert.ok(JSON.parse(t.calls[1].options.body).messages.at(-1).content.includes('Перепиши ответ'));
+  const info=(await t.send('/api/admin',undefined,'admin-test-only')).data.accounting;
+  assert.equal(info.totals.requests,2);assert.equal(info.totals.errors,1);assert.ok(info.totals.costRub>0);
+  assert.equal(answer.data.metering.costRub,info.totals.costRub);
+  assert.equal(info.discussions[0].requests,2);assert.equal(info.discussions[0].costRub,info.totals.costRub);
+  assert.equal((await t.send('/api/admin/logs',undefined,'admin-test-only')).data.calls.length,2);
+  await t.close();t=await setup(env);
+  assert.equal((await t.send('/api/admin',undefined,'admin-test-only')).data.accounting.totals.costRub,info.totals.costRub);
+ }finally{await t.close();rmSync(dir,{recursive:true,force:true});}
+});
+
+test('Show never forwards invalid English or protocol after a failed correction',async()=>{
+ let attempts=0;
+ const t=await setup({MISTRAL_API_KEY:'test',MISTRAL_MODEL:'mistral-large-4'},{upstream:async()=>{attempts++;return Response.json({choices:[{message:{content:'Broken ```json {"speech":"English only'}}],usage:{prompt_tokens:100,completion_tokens:20}});}});
+ try{
+  const result=await t.send('/api/chat',{provider:'mistral',format:'show',outputSchema:'actor',stage:'intermediate',step:'Сцена 1',messages:[{role:'system',content:'Верни JSON.'},{role:'user',content:'Продолжи.'}]},'admin-test-only');
+  assert.equal(result.status,502);assert.equal(attempts,2);assert.ok(!JSON.stringify(result.data).includes('Broken'));
+  const info=(await t.send('/api/admin',undefined,'admin-test-only')).data.accounting;
+  assert.equal(info.totals.requests,2);assert.ok(info.totals.costRub>0);
  }finally{await t.close();}
 });

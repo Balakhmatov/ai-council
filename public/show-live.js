@@ -40,15 +40,30 @@ export function parseShowEpilogue(raw){
  if(russian<4||latin>Math.max(12,russian*.4)||/we need|need to answer|chain.of.thought|let['’]s think|нужно написать (?:эпилог|ответ)|анализ задачи/i.test(final))throw Error('Invalid epilogue format or language');
  return final;
 }
+export function formatShowSpeech(text){
+ return String(text).replace(/(?<!\*)\*(?!\*)/g,'').replace(/(?<!\w)_(?!_)|(?<!_)_(?!\w)/g,'').replace(/\(([^()\n]+)\)/g,'*($1)*');
+}
 export function parseLiveReply(raw){
  const text=visibleShowText(raw);
  if(!text||/points_insufficient|insufficient_quota|we need (?:to |answer)|need to answer|chain.of.thought|system prompt/i.test(text))throw Error('No usable actor reply');
- const clean=text.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
- if(!clean.startsWith('{'))return {speech:text,action:null};
- const data=JSON.parse(clean);
- if(typeof data.speech!=='string'||!data.speech.trim())throw Error('Missing speech');
- const a=data.action;
- return {speech:data.speech,action:a&&['hit','bind','kill','release','escape','surrender'].includes(a.kind)?{kind:a.kind,target:typeof a.target==='string'?a.target:''}:null};
+ let data;
+ // A provider may repeat its prose before a fenced JSON object. Extract only the protocol.
+ for(let start=text.indexOf('{');start>=0;start=text.indexOf('{',start+1)){
+  let depth=0,quoted=false,escaped=false;
+  for(let end=start;end<text.length;end++){
+   const c=text[end];
+   if(quoted){if(escaped)escaped=false;else if(c==='\\')escaped=true;else if(c==='"')quoted=false;continue;}
+   if(c==='"'){quoted=true;continue;}
+   if(c==='{')depth++;
+   if(c==='}'&&!--depth){try{const parsed=JSON.parse(text.slice(start,end+1));if(typeof parsed.speech==='string')data=parsed;}catch{}break;}
+  }
+  if(data)break;
+ }
+ if(!data&&/```|[{}]|"(?:speech|action)"\s*:/.test(text))throw Error('Broken actor protocol');
+ const speech=visibleShowText(data?.speech??text);
+ if(!speech||/[A-Za-z]{3,}/.test(speech)||!/[А-Яа-яЁё]/.test(speech)||/```|[{}]|"(?:speech|action)"\s*:/.test(speech))throw Error('Invalid actor format or language');
+ const a=data?.action;
+ return {speech,action:a&&['hit','bind','kill','release','escape','surrender'].includes(a.kind)?{kind:a.kind,target:typeof a.target==='string'?a.target:''}:null};
 }
 function describeState(actors,state){
  return actors.map(a=>{
@@ -142,7 +157,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     'ЖИВОЙ ТЕМП: выбирай длину по ситуации. Резкая реакция может занимать одну фразу, спор или признание — несколько предложений. Не заполняй лимит ради длины. Сейчас допустимо до '+maxWords+' слов, без заголовков и отчётов.',
     'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти или сдаться полиции. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. В этой криминальной истории возможны убийство и тюрьма; не своди ставки к потере денег.',
     'СВОБОДА: можешь врать, блефовать, торговаться, отступать, обвинять и менять цель после событий. Нет обязательного признания или счастливого исхода. Не действуй и не говори за всех.',
-    'Ремарки и описания своих действий в speech оформляй курсивом: *(отодвигает чашку)*. Прямую речь оставляй обычным текстом. ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай.'
+    'ЯЗЫК: вся речь и ремарки только по-русски, без английских слов и вставок. Ремарки и описания своих действий в speech оформляй курсивом: *(отодвигает чашку)*. Прямую речь оставляй обычным текстом. ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай. Верни только один JSON-объект, без текста вне JSON и без блоков кода.'
    ].filter(Boolean).join('\n');
    const minutesLeft=Math.max(1,(scenario.id==='diner'?18:38)-(round-1)*maxTurns-turn);
    const previous=dialogue.at(-1);
@@ -158,9 +173,9 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
    const user=fixed+'\nПРЕДЫДУЩИЕ РЕПЛИКИ:\n'+(history||'Разговор начинается.');
    let event;
    try{
-    const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords,maxChars:2400,liveShow:true});
+    const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords,maxChars:2400,liveShow:true,outputSchema:'actor'});
     const reply=parseLiveReply(raw);
-    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:clip(reply.speech,maxChars).replace(/(?<!\*)\(([^()\n]+)\)(?!\*)/g,'*($1)*'),show:true};
+    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:formatShowSpeech(clip(reply.speech,maxChars)),show:true};
     output(event);dialogue.push(event);successes.set(part.provider,(successes.get(part.provider)||0)+1);
     const action=resolveAction(part,reply.action,actors,state,random);
     if(action){

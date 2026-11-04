@@ -1,5 +1,5 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=actions1';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=cleanreply1';
 import {scenePoster,characterPortrait} from './show-art.js?v=portraits2';
 import {STORY_CORE_ROLES,storyBible} from './show-stories.js?v=stakes1';
 import {profiles,resolveProfile} from './profiles.js';
@@ -900,6 +900,9 @@ function renderAccounting(info){
  const box=$('adminAccounting');box.replaceChildren();
  const title=node('h3','Расходы на модели');
  box.append(title);
+ const refresh=node('button','Обновить расходы','quiet');refresh.type='button';
+ refresh.onclick=async()=>{refresh.disabled=true;try{await loadTechnicalMonitor();}catch(e){refresh.disabled=false;$('adminStatus').textContent=e.message;}};
+ box.append(refresh);
  const fx=info.fx;
  const rateLine=node('div',null,'account-rate');
  const fxText=fx?
@@ -1182,7 +1185,7 @@ function showAdminTab(isProduct){
   $(id).classList.toggle('active',active);$(id).setAttribute('aria-selected',String(active));
  }
  if(!isProduct&&!adminTechnicalLoaded){
-  adminTechnicalLoaded=true;loadTechnicalMonitor().catch(e=>{$('adminStatus').textContent=e.message;});
+  adminTechnicalLoaded=true;loadTechnicalMonitor().catch(e=>{adminTechnicalLoaded=false;$('adminStatus').textContent=e.message;});
  }
 }
 $('adminProductTab').onclick=()=>showAdminTab(true);
@@ -1335,7 +1338,9 @@ function renderMessage(m){
  copy.onclick=()=>copyText(text,copy);
  head.append(identity,stage,copy);
  const body=renderMarkdown(text);body.classList.add('message-text');
- card.append(head,body);return card;
+ card.append(head,body);
+ if(access?.admin&&m.metering){const bill=m.metering;card.append(node('small',bill.costRub==null?'Стоимость ответа неизвестна: нет токенов или тарифа':'Расход API: '+rub(bill.costRub),'hint'));}
+ return card;
 }
 function syncResultActions(){
  $('copyAll').disabled=messages.length===0;
@@ -1347,7 +1352,9 @@ function renderMessages(){
  syncResultActions();
 }
 $('showDiscussion').onchange=renderMessages;
+const responseMetering=new Map();
 function emit(m){
+ if(!m.narrator&&responseMetering.has(m.id)){m.metering=responseMetering.get(m.id);responseMetering.delete(m.id);}
  messages.push(m);
  // Append instead of rebuilding the entire feed: preserving iOS/Android touch selections
  // while further AI responses arrive.
@@ -1357,6 +1364,8 @@ function emit(m){
 async function request(a,chat,signal,stage={}){
  const result=await api('/api/chat',{method:'POST',token:await ensureSession(),body:{provider:a.id,messages:chat,taskId:activeTask?.taskId,stage:stage.stage,step:stage.step,format:stage.format,outputSchema:stage.outputSchema,maxWords:stage.format==='show'?(stage.maxWords||45):wordsForPreset($('length').value)},signal:AbortSignal.any([signal,AbortSignal.timeout(120000)])});
  if(typeof result.text!=='string'||!result.text.trim())throw Error('Модель вернула пустой ответ');
+ if(result.metering)responseMetering.set(a.id,result.metering);
+ adminTechnicalLoaded=false;
  // JSON ballots are a control protocol, not a prose response. Never truncate them.
  return stage.format==='show'?((stage.liveShow||stage.rawShow)?result.text:clipShowLine(result.text,stage.maxChars||360)):stage.stage==='final'||['Голосование','Проверка согласия'].includes(stage.step)
   ?result.text:limitIntermediate(result.text,wordsForPreset($('length').value));

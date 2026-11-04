@@ -1,4 +1,4 @@
-import {visibleShowText,parseShowEpilogue} from './public/show-live.js';
+import {visibleShowText,parseShowEpilogue,parseLiveReply} from './public/show-live.js';
 import http from 'node:http';
 import {createEmailAuth} from './email-auth.mjs';
 import {createPasswordAuth} from './password-auth.mjs';
@@ -330,7 +330,8 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    const callStarted=now();let upstreamLogged=false;
-   const log=(model,status,usage=null,httpStatus=null,errorType=null,errorDetail=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:body.step,status,usage,httpStatus,errorType,errorDetail,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};
+   let metering=null,repairing=false;
+   const log=(model,status,usage=null,httpStatus=null,errorType=null,errorDetail=null)=>{if(upstreamLogged)return;upstreamLogged=true;try{metering=economy.logCall({taskId:body.taskId,provider:body.provider,model,stage:body.stage,step:String(body.step||'')+(repairing?' · исправление':''),status,usage,httpStatus,errorType,errorDetail,durationMs:now()-callStarted});}catch(e){console.error('Quorum accounting failed',e);}};
    try{
     const model=models[body.provider],key=keyFor(body.provider);
     await fx.refresh();
@@ -371,6 +372,9 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
      payload.max_tokens=showFormat?Math.max(1450,flexibleShowCap):longFinal?9000:ballotStage?2200:Math.max(3000,Math.ceil(intermediateTokens*1.8));
     }
     if(body.provider==='claude'){delete headers.Authorization;headers['x-api-key']=key;headers['anthropic-version']='2023-06-01';payload={model,max_tokens:showFormat?Math.max(600,flexibleShowCap):longFinal?7000:intermediateTokens,system:messages.filter(m=>m.role==='system').map(m=>m.content).join('\n'),messages:messages.filter(m=>m.role!=='system')};}
+    if(showFormat&&body.outputSchema==='actor'&&['openai','mistral'].includes(body.provider))payload.response_format={type:'json_object'};
+    let totalCostRub=0,costComplete=true;
+    for(let attempt=0;attempt<2;attempt++){
     const upstream=await fetchImpl(routes[body.provider][0],{method:'POST',redirect:'error',headers,body:JSON.stringify(payload),signal:AbortSignal.any([controller.signal,AbortSignal.timeout(110000)])});
     if(!upstream.ok){
        let reason='';try{const errorBody=(await upstream.text()).slice(0,4096);const parsed=JSON.parse(errorBody);reason=String(parsed?.error?.message||parsed?.message||parsed?.error?.type||'');}catch{}
@@ -382,6 +386,18 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     // Large 4 can interleave thinking and text chunks. Forward only answer text.
     const extracted=typeof raw==='string'?raw:Array.isArray(raw)?raw.filter(c=>c&&c.type==='text'&&typeof c.text==='string').map(c=>c.text).join('\n'):'';
     let text=showFormat?visibleShowText(extracted):extracted;
+    if(showFormat&&body.outputSchema==='actor'){
+     try{text=JSON.stringify(parseLiveReply(text));}
+     catch{
+      log(model,'error',data.usage,502,'invalid_actor','Неверный формат или язык реплики');
+      totalCostRub+=metering?.costRub||0;costComplete&&=metering?.costRub!=null;
+      if(attempt===1)return fail(502,'Модель не сформировала реплику на русском языке.');
+      upstreamLogged=false;repairing=true;
+      const correction='Перепиши ответ целиком по-русски. Замени все английские слова русскими. Верни только JSON {"speech":"русская реплика с ремарками в скобках","action":null}, сохрани действие, если оно было. Никакого текста вне JSON.\nОтвет для исправления:\n'+text.slice(0,6000);
+      payload.messages=[...payload.messages,{role:'user',content:correction}];
+      continue;
+     }
+    }
     if(showFormat&&body.outputSchema==='epilogue'){
      try{text=JSON.stringify({epilogue:parseShowEpilogue(text)});}
      catch{log(model,'error',data.usage,502,'invalid_epilogue','Нет готового эпилога на русском языке');return fail(502,'Модель не сформировала готовый эпилог.');}
@@ -389,7 +405,10 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     if(typeof text!=='string'||!text.trim()){log(model,'error',data.usage,502,'empty_response','Ответ не содержит текстового содержимого');return fail(502,'Модель вернула пустой ответ');}
     log(model,'ok',data.usage,200);
     economy.success(body.taskId);
-    json(200,{text});
+    totalCostRub+=metering?.costRub||0;costComplete&&=metering?.costRub!=null;
+    json(200,{text,...(isAdmin?{metering:{costRub:costComplete?totalCostRub:null,input:metering?.input,output:metering?.output,model}}:{})});
+    break;
+    }
    }catch(error){const timeout=error?.name==='TimeoutError'||error?.cause?.name==='TimeoutError';const aborted=error?.name==='AbortError';const type=timeout?'timeout':aborted?'client_aborted':error instanceof SyntaxError?'invalid_json':'network_error';if(!upstreamLogged)log(models[body.provider],'error',null,timeout?504:502,type,timeout?'Превышено 110 секунд':type==='invalid_json'?'Некорректный JSON провайдера':String(error?.cause?.code||error?.code||error?.name||'Network failure').slice(0,80));if(!res.destroyed)fail(timeout?504:502,timeout?'Модель не ответила за 110 секунд.':'Ошибка соединения с моделью.');}finally{active--;accountActive.set(visitorHash,Math.max(0,(accountActive.get(visitorHash)||1)-1));}return;
   }
   if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end();}

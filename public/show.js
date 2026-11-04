@@ -1,4 +1,4 @@
-import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=actions1';
+import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=cleanreply1';
 import {ambiences} from './engine.js';
 import {storyBible,storyBeat} from './show-stories.js?v=stakes1';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
