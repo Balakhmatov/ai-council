@@ -99,14 +99,14 @@ test('Show stops cleanly on abort and rejects unfinished casting',async()=>{
  assert.equal(count,0);
 });
 
-test('crime Show prompts include optional speech palette without overriding restrained tone',async()=>{
+test('crime Show prompts use individual speech cases without overriding restrained tone',async()=>{
  for(const tonality of ['brutal','restrained']){
   const scenario=showScenario('heist'),prompts=[];
   await runShow({agents:actors,scenario,cast:showCast(scenario,{0:'openai',1:'mistral',2:'grok'}),scenes:3,tonality,emit:()=>{},request:async(a,m)=>{prompts.push(m[0].content);return 'Сначала объясни, почему планы не совпадают.';}});
   const dialogue=prompts.filter(p=>p.includes('ТЫ — ТОЛЬКО'));
   assert.ok(dialogue.length>0);
-  assert.ok(dialogue.every(p=>p.includes('РЕЧЕВАЯ ПАЛИТРА')&&p.includes('можно не использовать ни одного примера')));
-  if(tonality==='restrained')assert.ok(dialogue.every(p=>!p.includes('полная хуйня')&&p.includes('Выбранная манера важнее')));
+  assert.ok(dialogue.every(p=>p.includes('РАЗВЁРНУТЫЕ РЕЧЕВЫЕ ОБРАЗЦЫ')&&!p.includes('РЕЧЕВАЯ ПАЛИТРА:')));
+  if(tonality==='restrained')assert.ok(dialogue.every(p=>!p.includes('полная хуйня')&&p.includes('Грубость ограничена выбранной манерой')));
  }
 });
 
@@ -180,7 +180,7 @@ test('all 98 characters have researched ten-sentence archetypes passed only to t
   await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:()=>{},request:async(agent,m,signal,stage)=>{
    if(stage.stage!=='final'){
     const own=parts.find(p=>p.provider===agent.id);
-    assert(m[0].content.includes('ЛИЧНЫЙ РЕЧЕВОЙ АРХЕТИП: '+voices[own.slot]));
+    assert(m[0].content.includes('ЛИЧНЫЙ РЕЧЕВОЙ АРХЕТИП: '+CHARACTER_VOICE_PROFILES[scenario.id][own.slot].sentences.filter(line=>!line.startsWith('Пример ')).join(' ')));
     assert(m[0].content.includes('ПРИОРИТЕТ ГОЛОСА:'));
     for(const [slot,voice] of voices.entries())if(slot!==own.slot)assert(!m[0].content.includes(voice));
     assert(m.every(message=>message.content.length<=9500),'actor context fits server limit');
@@ -240,4 +240,45 @@ test("every actor has quote anchors without other actors anchors in its prompt",
   }});
   assert.equal(seen.size,7,'all seven voices exercised in '+scenario.id);
  }
+});
+
+
+test('all 98 voices have three substantial source-labelled speech cases and distinct adaptations',()=>{
+ const ids=new Set(),adaptations=new Set();let count=0;
+ for(const profiles of Object.values(CHARACTER_VOICE_PROFILES))for(const profile of profiles){
+  assert.equal(profile.speechSamples.length,3,profile.name);
+  for(const sample of profile.speechSamples){
+   assert(!ids.has(sample.id));ids.add(sample.id);
+   assert(sample.sourceContext.length>=70);assert(sample.speechMove.length>=40);
+   assert(sample.lexicon.length>=3);assert(sample.adaptation.length>=100);
+   assert(!adaptations.has(sample.adaptation));adaptations.add(sample.adaptation);
+   assert(sample.evidenceKind);assert.equal(new URL(sample.source.url).protocol,'https:');count++;
+  }
+ }
+ assert.equal(count,294);
+});
+
+test('all speech cases reach only their actor without source plots or shared genre templates over eight scenes',async()=>{
+ const crew=['openai','mistral','grok','claude','gemini','qwen','deepseek'].map(id=>({id,name:id}));
+ let seen=0;
+ for(const scenario of SHOW_SCENARIOS){
+  const profiles=CHARACTER_VOICE_PROFILES[scenario.id],parts=showCast(scenario,Object.fromEntries(crew.map((agent,slot)=>[slot,agent.id]))),speakers=new Set();
+  await runShow({agents:crew,scenario,cast:parts,scenes:8,extra:'пожелание '.repeat(500),emit:()=>{},request:async(agent,m,signal,stage)=>{
+   if(stage.stage!=='final'){
+    const own=parts.find(p=>p.provider===agent.id),profile=profiles[own.slot];speakers.add(own.slot);
+    assert(m[0].content.includes('РАЗВЁРНУТЫЕ РЕЧЕВЫЕ ОБРАЗЦЫ'));
+    assert(!m[0].content.includes('РЕЧЕВАЯ ПАЛИТРА:'));
+    for(const sample of profile.speechSamples){
+     assert(m[0].content.includes(sample.adaptation));
+     assert(m[0].content.includes(sample.speechMove));
+     assert(!m[0].content.includes(sample.sourceContext),'do not feed outside plot as facts');
+    }
+    for(const other of profiles)if(other!==profile)for(const sample of other.speechSamples)assert(!m[0].content.includes(sample.adaptation));
+    assert(m.every(message=>message.content.length<=9500),scenario.id+' context limit');
+   }
+   return stage.stage==='final'?JSON.stringify({epilogue:'Участники остались при своих решениях.'}):JSON.stringify({speech:'Я услышал возражение, теперь назови свою цену.',action:null});
+  }});
+  assert.equal(speakers.size,7);seen+=speakers.size;
+ }
+ assert.equal(seen,98);
 });
