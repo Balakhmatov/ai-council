@@ -241,15 +241,13 @@ test('historical, satirical and franchise casts retain private roles and their f
  assert.equal(STORY_BIBLE.anime.endingMode,'three');assert.equal(STORY_BIBLE.kombat.endingMode,'free');
 });
 
-test('real-world anime and tournament disputes replace the mystical station and name-erasure plots',async()=>{
+test('anime moral dilemma and the tournament contract are explicit without automatic destruction or a countdown',async()=>{
  const anime=STORY_BIBLE.anime,kombat=STORY_BIBLE.kombat;
- assert.ok(anime.conflict.includes('распознавания')||anime.place.includes('распознавания'));
- assert.ok(anime.stakes.includes('частная жизнь'));assert.ok(kombat.conflict.includes('лечение'));assert.ok(kombat.place.includes('контракт'));
+ assert.ok(anime.conflict.includes('прекратить войны')&&anime.conflict.includes('пять крупнейших городов'));
+ assert.ok(anime.conflict.includes('ничего ещё не разрушено'));assert.ok(kombat.conflict.includes('лечение'));
  for(const id of ['anime','kombat']){
   const {calls}=await simulate(id);
-  for(const call of calls.filter(c=>c.stage.stage==='intermediate')){
-   const prompt=call.m.map(m=>m.content).join('\n');assert.doesNotMatch(prompt,/украденных завтра|мелового перрона|сотрёт имя победителя|песок поднимается вверх/);
-  }
+  for(const call of calls.filter(c=>c.stage.stage==='intermediate'))assert.doesNotMatch(call.m.map(m=>m.content).join('\n'),/украденных завтра|мелового перрона|сотрёт имя победителя|песок поднимается вверх/);
  }
 });
 
@@ -265,4 +263,25 @@ test('all shows use decision-driven pressure instead of an automatic minute coun
   }
  }
  for(const id of ['afterlife','olympus']){assert.equal(showScenario(id).roles.length,7);assert.ok(STORY_BIBLE[id].speechRhythm.includes('Комедия'));}
+});
+
+test('Batman starts captive, can be released, persists in state, and consumes no extra model turn',async()=>{
+ let first=true;
+ const {calls,events}=await simulate('villains',{request:(a,m,s,stage)=>{
+  if(stage.stage==='final')return JSON.stringify({epilogue:'Бэтмен свободен от пут. Захватчики не пришли к общему решению.'});
+  if(first){first=false;assert.ok(m[1].content.includes('Бэтмен: невредим, связан'));return JSON.stringify({speech:'Пленник не принадлежит тебе. Освобождаю его.',action:{kind:'release',target:'Бэтмен'}});}
+  assert.ok(m[1].content.includes('Бэтмен: невредим, свободен'));return reply();
+ }});
+ assert.equal(calls.length,10);assert.ok(events.some(e=>e.action&&e.text.includes('освобождает Бэтмена')));
+ assert.ok(!events.some(e=>e.nickname==='Бэтмен'));assert.ok(calls.at(-1).m[1].content.includes('Бэтмен: невредим, свободен'));
+});
+
+test('confirmed death of captive Batman persists and cannot be undone by a later release action',async()=>{
+ let turn=0;
+ const {calls,events}=await simulate('villains',{request:(a,m,s,stage)=>{
+  if(stage.stage==='final')return JSON.stringify({epilogue:'Бэтмен погиб. Оставшиеся спорят о цене случившегося.'});
+  return JSON.stringify({speech:'Теперь ты отвечаешь за свой выбор.',action:++turn===1?{kind:'kill',target:'Бэтмен'}:{kind:'release',target:'Бэтмен'}});
+ }});
+ assert.ok(events.some(e=>e.action&&e.text.includes('Бэтмен погибает')));assert.ok(!events.some(e=>e.action&&e.text.includes('освобождает Бэтмена')));
+ assert.ok(calls.at(-1).m[1].content.includes('Бэтмен: погиб; больше не говорит'));
 });

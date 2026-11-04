@@ -29,11 +29,11 @@ test('heist uses an independent crime-film poster and seven independent suited p
 
 test('new casts use new local artwork and correct named comic portraits instead of old fictional faces',()=>{
  for(const id of ['time','reality','anime','kombat']){
-  const poster=scenePoster(id);assert.ok(poster.includes('show-'+id+'-cast.webp'));
+  const poster=scenePoster(id);assert.ok(poster.includes('show-'+id+'-scene.webp'));
   for(let i=0;i<7;i++){const portrait=characterPortrait(id,i);assert.ok(portrait.includes('show-'+id+'-cast.webp'));assert.notEqual(portrait,poster);}
  }
  const comics=['joker','thanos','doom','loki','harley','luthor','magneto'];
- for(let i=0;i<7;i++)assert.ok(characterPortrait('villains',i).includes('show-comic-'+comics[i]+'.webp'));
+ for(let i=0;i<7;i++)assert.ok(characterPortrait('villains',i).includes('show-comic-'+comics[i]+(i===5?'-generated':'')+'.webp'));
  for(const id of ['time','reality','villains','anime','kombat']){
   for(const markup of [scenePoster(id),...Array.from({length:7},(_,i)=>characterPortrait(id,i))]){
    const file=/href="\.\/assets\/([^?]+)\?/.exec(markup)[1];assert.ok(statSync(new URL('../public/assets/'+file,import.meta.url)).size>1000,file);
@@ -41,11 +41,16 @@ test('new casts use new local artwork and correct named comic portraits instead 
  }
 });
 
-test('every landscape poster contains the actual seven participants, including the two comedies',()=>{
- for(const scene of SHOW_SCENARIOS){
-  const poster=scenePoster(scene.id);
-  assert.ok(poster.includes('0 0 900 540'));
-  assert.equal((poster.match(/data-poster-slot=/g)||[]).length,7,scene.id);
-  for(let slot=0;slot<7;slot++)assert.ok(poster.includes(characterPortrait(scene.id,slot)),scene.id+' missing cast '+slot);
+test('old scene posters are restored and new posters are single complete illustrations, never portrait collages',()=>{
+ const originalOrder=['diner','heist','court','villains','spaceship','bunker','boardroom','detective','reality','time'];
+ for(const id of ['diner','court','spaceship','bunker','boardroom','detective']){
+  const i=originalOrder.indexOf(id),poster=scenePoster(id);
+  assert.ok(poster.includes('show-posters.webp'));
+  assert.ok(poster.includes([(i%5)*307.2,Math.floor(i/5)*512,307.2,512].join(' ')));
+ }
+ assert.ok(scenePoster('heist').includes('show-heist-poster.webp'));
+ for(const id of ['time','reality','anime','kombat','afterlife','olympus'])assert.ok(scenePoster(id).includes('show-'+id+'-scene.webp'));
+ for(const s of SHOW_SCENARIOS){
+  const poster=scenePoster(s.id);assert.equal((poster.match(/<image /g)||[]).length,1,s.id);assert.ok(!poster.includes('data-poster-slot'));
  }
 });

@@ -41,7 +41,7 @@ test('one reply stays compact without adding administrative truncation notices',
 });
 test('Show alternates speakers between scenes and does not do a fixed full roster round',async()=>{
  const calls=[],emitted=[];
- const out=await runShow({agents:actors,scenario:scene,cast,scenes:3,tonality:'brutal',extra:'Цена аукционного ключа',
+ const out=await runShow({agents:actors,scenario:scene,cast,scenes:3,tonality:'brutal',extra:'Судьба пленного Бэтмена',
   request:async(a,chat,signal,stage)=>{calls.push({id:a.id,chat,stage});return 'Кай, предъяви ключ. Я хочу увидеть доказательства.';},
   emit:m=>emitted.push(m)});
  assert.equal(calls.length,10,'3 scenes x 3 actors + epilogue');
@@ -143,4 +143,12 @@ test('diner actors learn events from spoken dialogue and failure never invents a
  await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:m=>events.push(m),request:async()=>{throw Error('unavailable')}});
  assert.ok(!events.at(-1).text.includes('Джимми вскрывает тайник'));
  assert.ok(events.at(-1).text.includes('Участники не смогли ответить'));
+});
+
+test('requested first four shows are ordered heroes, Mortal Kombat, toxic broadcast, comic villains',()=>{
+ assert.deepEqual(SHOW_SCENARIOS.slice(0,4).map(s=>s.id),['anime','kombat','reality','villains']);
+ const court=showScenario('court');assert.ok(court.description.includes('самостоятельные искусственные интеллекты'));
+ assert.ok(court.roles.every(([,description])=>description.includes('ИИ')));
+ assert.ok(STORY_BIBLE.court.roles.every(r=>r.includes('ИИ')));
+ assert.ok(STORY_BIBLE.olympus.conflict.includes('Афганистана'));assert.ok(STORY_BIBLE.olympus.conflict.includes('без божественных сил'));
 });

@@ -8,7 +8,7 @@ export const DINER_INCIDENTS=Object.freeze([
 const aliveHere=s=>s.alive&&s.present;
 const feminine=name=>['Рокси','Хикари','Мэй','Капитан Ада','Доктор Соль','Навигатор Лея','Медик Джун','Разведчица Лис','Историк Мира','Маркетолог Луна','Юрист Софи','Присяжная Нина','Наследница Эва','Горничная Роза','Ника','Агент Мара','Историк Элли','Бунтарка Зи','Клеопатра','Жанна д’Арк','Ксения Собчак','Харли Квинн','Сейлор Мун','Китана','Лилит','Зина, председатель дома','Гера','Афина'].includes(name)||name.startsWith('Мисс ');
 function objectName(name){
- const named={"Винс": "Винса", "Фрэнк": "Фрэнка", "Док": "Дока", "Мистер Ноль": "Мистера Ноля", "Наполеон Бонапарт": "Наполеона Бонапарта", "Клеопатра": "Клеопатру", "Чингисхан": "Чингисхана", "Уинстон Черчилль": "Уинстона Черчилля", "Иосиф Сталин": "Иосифа Сталина", "Альберт Эйнштейн": "Альберта Эйнштейна", "Жанна д’Арк": "Жанну д’Арк", "Илон Маск": "Илона Маска", "Дональд Трамп": "Дональда Трампа", "Владимир Жириновский": "Владимира Жириновского", "Павел Дуров": "Павла Дурова", "Ксения Собчак": "Ксению Собчак", "Гордон Рамзи": "Гордона Рамзи", "Канье Уэст": "Канье Уэста", "Джокер": "Джокера", "Танос": "Таноса", "Доктор Дум": "Доктора Дума", "Лекс Лютор": "Лекса Лютора", "Леви Аккерман": "Леви Аккермана", "Сайтама": "Сайтаму", "Эдвард Элрик": "Эдварда Элрика", "Скорпион": "Скорпиона", "Рейден": "Рейдена", "Лю Кан": "Лю Кана", "Джонни Кейдж": "Джонни Кейджа", "Китана": "Китану", "Шан Цзун": "Шан Цзуна", "Люцифер": "Люцифера", "Архангел Михаил": "Архангела Михаила", "Гавриил": "Гавриила", "Вельзевул": "Вельзевула", "Азраил": "Азраила", "Зина, председатель дома": "Зину, председателя дома", "Зевс": "Зевса", "Гера": "Геру", "Афина": "Афину", "Посейдон": "Посейдона", "Аид": "Аида", "Гермес": "Гермеса", "Дионис": "Диониса"};
+ const named={"Винс": "Винса", "Фрэнк": "Фрэнка", "Док": "Дока", "Мистер Ноль": "Мистера Ноля", "Наполеон Бонапарт": "Наполеона Бонапарта", "Клеопатра": "Клеопатру", "Чингисхан": "Чингисхана", "Уинстон Черчилль": "Уинстона Черчилля", "Иосиф Сталин": "Иосифа Сталина", "Альберт Эйнштейн": "Альберта Эйнштейна", "Жанна д’Арк": "Жанну д’Арк", "Илон Маск": "Илона Маска", "Дональд Трамп": "Дональда Трампа", "Владимир Жириновский": "Владимира Жириновского", "Павел Дуров": "Павла Дурова", "Ксения Собчак": "Ксению Собчак", "Гордон Рамзи": "Гордона Рамзи", "Канье Уэст": "Канье Уэста", "Джокер": "Джокера", "Танос": "Таноса", "Доктор Дум": "Доктора Дума", "Лекс Лютор": "Лекса Лютора", "Леви Аккерман": "Леви Аккермана", "Сайтама": "Сайтаму", "Эдвард Элрик": "Эдварда Элрика", "Скорпион": "Скорпиона", "Рейден": "Рейдена", "Лю Кан": "Лю Кана", "Джонни Кейдж": "Джонни Кейджа", "Китана": "Китану", "Шан Цзун": "Шан Цзуна", "Люцифер": "Люцифера", "Архангел Михаил": "Архангела Михаила", "Гавриил": "Гавриила", "Вельзевул": "Вельзевула", "Азраил": "Азраила", "Зина, председатель дома": "Зину, председателя дома", "Зевс": "Зевса", "Гера": "Геру", "Афина": "Афину", "Посейдон": "Посейдона", "Аид": "Аида", "Гермес": "Гермеса", "Дионис": "Диониса", "Бэтмен": "Бэтмена"};
  if(named[name])return named[name];
  if(name.startsWith('Мисс '))return name.replace(/ая$/,'ую');
  if(name.startsWith('Мистер '))return name.replace('Мистер ','Мистера ').replace(/Синий$/,'Синего').replace(/ый$/,'ого');
@@ -125,7 +125,9 @@ function nextActor(actors,state,counts,last,pending,history,random){
 }
 export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone,speech,clip,silenceLine,random=Math.random}){
  const actors=cast.map(c=>({...c,agent:agents.find(a=>a.id===c.provider)}));
- const state=new Map(actors.map(a=>[a.name,{alive:true,present:true,injured:false,bound:false,detained:false}]));
+ const npcs=(book.npcs||[]).map(n=>({...n}));
+ const participants=[...actors,...npcs];
+ const state=new Map(participants.map(a=>[a.name,{alive:a.alive!==false,present:a.present!==false,injured:!!a.injured,bound:!!a.bound,detained:false}]));
  const counts=new Map(),silences=new Map(),failures=new Map(),successes=new Map(),dialogue=[],all=[],facts=[];
  const output=e=>{all.push(e);emit(e);};
  let pending=null,last=null;
@@ -154,7 +156,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     'ЖАНР: '+scenario.genre+'. ИСХОДНОЕ МЕСТО: '+book.place,
     'ОБЩАЯ СИТУАЦИЯ: '+book.conflict+' СТАВКИ: '+book.stakes,
     'ГРАНИЦЫ ЗНАНИЯ: знаешь только свою роль, свои личные сведения, общую ситуацию, услышанное и подтверждённые события. Чужие секреты и мысли неизвестны. Утверждения собеседников могут быть ложью. Готового виновника, обязательного поворота и канонического финала тебе не сообщают.',
-    'УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; ')+'. В сцене действуют только выбранные участники. Не придумывай реплики и поступки отсутствующих ролей.',
+    'ГОВОРЯЩИЕ УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; ')+'. Не придумывай реплики и поступки отсутствующих ролей.'+(npcs.length?' Также присутствуют: '+npcs.map(n=>n.name).join(', ')+'. Они не говорят за кадром; физические действия с ними доступны по точному имени.':''),
     'МАНЕРА: '+tone,speech,
     'ЖИВОЙ ТЕМП: выбирай длину по ситуации. Резкая реакция может занимать одну фразу, спор или признание — несколько предложений. Не заполняй лимит ради длины. Сейчас допустимо до '+maxWords+' слов, без заголовков и отчётов.',
     'ДРАМА И ДЕЙСТВИЯ: '+book.actionContext+' Можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти'+(book.policeAvailable?' или сдаться полиции':'')+'. Это художественная сцена; последствия описывай ясно, без натуралистических подробностей. Раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. Сохраняй ставки и характер жанра.',
@@ -165,7 +167,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
    const fixed=[
     'КРУГ РАЗГОВОРА '+round+'. ДАВЛЕНИЕ СИТУАЦИИ: '+book.pressure+' Не выдумывай обратный отсчёт или новые сроки. Развивай последствия уже состоявшихся решений.',
     'ПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ: '+(director||'Развивай ситуацию из роли и происходящего; конец не задан.'),
-    'ТЕКУЩЕЕ СОСТОЯНИЕ (важнее исходных сведений):\n'+describeState(actors,state),
+    'ТЕКУЩЕЕ СОСТОЯНИЕ (важнее исходных сведений):\n'+describeState(participants,state),
     'ПОДТВЕРЖДЁННЫЕ ДЕЙСТВИЯ И СОБЫТИЯ:\n'+(tailWithin(facts,2200)||'Пока нет.'),
     previous?.silent?'Предыдущий персонаж промолчал. '+(['wild','brutal'].includes(tonality)?'НАЧНИ с жёсткой реакции: потребуй ответа, обвини или используй паузу против него.':'Отреагируй на паузу в своём характере.'):'',
     'СЕЙЧАС ГОВОРИТ '+part.name+'. Учитывай последствия и отвечай на услышанное.'
@@ -178,7 +180,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     const reply=parseLiveReply(raw);
     event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:formatShowSpeech(clip(reply.speech,maxChars)),show:true};
     output(event);dialogue.push(event);successes.set(part.provider,(successes.get(part.provider)||0)+1);
-    const action=resolveAction(part,reply.action,actors,state,random,book);
+    const action=resolveAction(part,reply.action,participants,state,random,book);
     if(action){
      facts.push(action.text);pending=action.target;
      const consequence={id:'narrator',name:'Сцена',nickname:'Действие',stage,text:'*('+action.text+')*',show:true,narrator:true,action:true};
@@ -196,7 +198,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
  abort(signal);onProgress({stage:'Эпилог',status:'working'});
  const answered=actors.filter(a=>successes.has(a.provider));
  const narrator=(answered.length?answered:actors).slice().sort((a,b)=>(failures.get(a.provider)||0)-(failures.get(b.provider)||0))[0];
- const stateText=describeState(actors,state);
+ const stateText=describeState(participants,state);
  const endingContext='ПОДТВЕРЖДЁННЫЕ СОБЫТИЯ:\n'+(tailWithin(facts,3000)||'Нет.')+'\nСОСТОЯНИЕ ПЕРСОНАЖЕЙ:\n'+stateText;
  const outcomeIds=book.outcomes.map(o=>o.id);
  const endingGuide=outcomeIds.length?'ТРИ ВОЗМОЖНЫЕ РАЗВЯЗКИ: выбери ровно одну по состоявшимся событиям. Условия проверяй по разговору и состоянию, не дописывай события ради выбранного исхода. Если подходят несколько, предпочти подтверждённые необратимые последствия. Если ни одна разрешённая развязка не подтверждена, выбери '+book.fallbackOutcome+'. В JSON добавь поле \"outcome\" с точным id.\n'+book.outcomes.map(o=>o.id+' — '+o.title+': '+o.condition).join('\n'):'СВОБОДНЫЙ ФИНАЛ: у этого шоу нет списка исходов. Выведи последствия из разговора, не навязывая победителя или примирение.';
