@@ -1,14 +1,14 @@
 // Local illustration atlases rendered as SVG images, independently of background CSS.
 const STORY_ART_ORDER=['diner','heist','court','villains','spaceship','bunker','boardroom','detective','reality','time'];
-const ART_VERSION='scenes2';
+const ART_VERSION='vertical1';
 const CROSSOVER_ATLASES={time:'show-time-cast.webp',reality:'show-reality-cast.webp',anime:'show-anime-cast.webp',kombat:'show-kombat-cast.webp',afterlife:'show-afterlife-cast.webp',olympus:'show-olympus-cast.webp'};
 const COMIC_PORTRAITS=[['joker',256,389,72,112,130,173],['thanos',240,414,88,35,89,119],['doom',256,389,61,108,103,137],['loki',256,389,59,164,128,171],['harley',256,389,75,190,103,137],['luthor',203,475,17,0,169,225],['magneto',257,399,113,46,65,87]];
 function illustration(file,cls,width,height,x,y,cellWidth,cellHeight,align='xMidYMid slice'){
  return '<svg xmlns="http://www.w3.org/2000/svg" class="'+cls+'" viewBox="'+[x,y,cellWidth,cellHeight].join(' ')+'" preserveAspectRatio="'+align+'" aria-hidden="true" style="display:block;position:static;width:100%;height:100%;overflow:hidden"><image href="./assets/'+file+'?v='+ART_VERSION+'" width="'+width+'" height="'+height+'"/></svg>';
 }
-const SCENE_POSTERS={time:'show-time-scene.webp',reality:'show-reality-scene.webp',anime:'show-anime-scene.webp',kombat:'show-kombat-scene.webp',olympus:'show-olympus-scene.webp',afterlife:'show-afterlife-scene.webp'};
+const SCENE_POSTERS={time:'show-time-poster-vertical.webp',reality:'show-reality-poster-vertical.webp',anime:'show-anime-poster-vertical.webp',kombat:'show-kombat-poster-vertical.webp',olympus:'show-olympus-poster-vertical.webp',afterlife:'show-afterlife-poster-vertical.webp'};
 export function scenePoster(id){
- if(SCENE_POSTERS[id])return illustration(SCENE_POSTERS[id],'cinema-poster-art cinema-poster-'+id,1536,1024,0,0,1536,1024);
+ if(SCENE_POSTERS[id])return illustration(SCENE_POSTERS[id],'cinema-poster-art cinema-poster-'+id,1024,1536,0,0,1024,1536,'xMidYMid meet');
  if(id==='villains')return illustration('show-villains-poster.webp','cinema-poster-art cinema-poster-villains',1024,1536,0,0,1024,1536);
  if(id==='heist')return illustration('show-heist-poster.webp','cinema-poster-art cinema-poster-heist',1024,1536,0,0,1024,1536);
  const index=Math.max(0,STORY_ART_ORDER.indexOf(id));

@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show77/);
+  assert.match(html.body,/app\.js\?v=show78/);
  }finally{await t.close();}
 });
 
@@ -875,7 +875,7 @@ test('Original story canon, show art and compact dialogue scripts are served on 
 test('portrait theme and every illustration atlas are served at versioned browser URLs',async()=>{
  const t=await setup();
  try{
-  const html=await t.asset('/');assert.match(html.body,/noir\.css\?v=selection4/);
+  const html=await t.asset('/');assert.match(html.body,/noir\.css\?v=vertical1/);
   const css=await t.asset('/noir.css?v=portraits2');assert.equal(css.status,200);assert.equal(css.type,'text/css');
   for(const file of ['show-posters','show-cast-crime','show-cast-worlds','show-cast-stories','show-heist-cast','show-heist-poster']){
    const image=await t.asset('/assets/'+file+'.webp?v=portraits2');

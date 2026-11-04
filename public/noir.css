@@ -106,7 +106,7 @@ body[data-experience=show] dialog{background:#1e1914!important;color:#e8d5b4!imp
 body[data-experience=show] dialog::backdrop{background:#090706d9;backdrop-filter:blur(6px)}
 body[data-experience=show] .scenes-dialog>.scene-heading{background:#1e1914!important}
 body[data-experience=show] .scenes-dialog h2{font:500 30px Georgia,serif}
-body[data-experience=show] .scenes-dialog .show-poster{aspect-ratio:1.6}
+body[data-experience=show] .scenes-dialog .show-poster{aspect-ratio:.85}
 body[data-experience=show] .scenes-dialog .show-scenario-body{min-height:110px}
 @media(min-width:1550px){body[data-experience=show] #showScenarioCards .show-scenario{flex-basis:calc((100% - 48px)/4)}}
 @media(max-width:1080px) and (min-width:881px){body[data-experience=show] .workspace{grid-template-columns:minmax(0,1fr) 205px;gap:20px}body[data-experience=show] .show-cast{grid-template-columns:repeat(3,minmax(0,1fr))}body[data-experience=show] .show-scenario-body strong{font-size:20px}}
@@ -154,11 +154,11 @@ body[data-experience=show] .scenes-dialog .show-scenario-body{min-height:110px}
 @media(prefers-reduced-motion:reduce){body[data-experience=show] *,body[data-experience=show] *::after{transition:none!important;scroll-behavior:auto!important}}
 /* Crop each atlas cell within its own viewport, preserving face proportions. */
 body[data-experience=show] .show-poster{aspect-ratio:.85}
-.cinema-poster-art{position:absolute;top:-20%;left:0;height:140%}
+.cinema-poster-art{position:static;display:block;width:100%;height:100%}
 body[data-experience=show] .show-role-avatar{position:relative}
 .cinema-character-art{position:absolute;width:133%;height:100%;left:-16.5%;top:0}
 .cinema-character-crime{width:100%;height:131%;left:0}
-body[data-experience=show] .scenes-dialog .cinema-poster-art{height:267%;top:-83%}
+body[data-experience=show] .scenes-dialog .cinema-poster-art{height:100%;top:auto}
 body[data-experience=show] .judge-label + .hint{display:none!important}
 body[data-experience=show] dialog h2,body[data-experience=show] dialog h3,body[data-experience=show] dialog label{color:#e2cbab!important}
 body[data-experience=show] dialog p,body[data-experience=show] dialog small{color:#b6a18a}
