@@ -544,6 +544,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Naruto - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Naruto"
         }
+      ],
+      "quoteIds": [
+        "an-naruto"
       ]
     },
     {
@@ -570,6 +573,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "One Piece - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/One_Piece"
         }
+      ],
+      "quoteIds": [
+        "an-luffy"
       ]
     },
     {
@@ -595,7 +601,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Dragon Ball - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Dragon_Ball"
+        },
+        {
+          "title": "Dragon Ball Z: Season 3 - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Dragon_Ball_Z:_Season_3"
         }
+      ],
+      "quoteIds": [
+        "an-goku"
       ]
     },
     {
@@ -622,6 +635,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Attack on Titan - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Attack_on_Titan"
         }
+      ],
+      "quoteIds": [
+        "an-levi"
       ]
     },
     {
@@ -648,6 +664,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "VIZ | The Official Website for One-Punch Man",
           "url": "https://www.viz.com/one-punch-man"
         }
+      ],
+      "quoteIds": [
+        "an-saitama"
       ]
     },
     {
@@ -673,7 +692,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Fullmetal Alchemist - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Fullmetal_Alchemist"
+        },
+        {
+          "title": "Fullmetal Alchemist: Brotherhood (anime) - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Fullmetal_Alchemist:_Brotherhood_(anime)"
         }
+      ],
+      "quoteIds": [
+        "an-edward"
       ]
     },
     {
@@ -700,6 +726,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Sailor Moon - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Sailor_Moon"
         }
+      ],
+      "quoteIds": [
+        "an-usagi"
       ]
     }
   ],
@@ -727,7 +756,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+        },
+        {
+          "title": "Mortal Kombat X - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_X"
         }
+      ],
+      "quoteIds": [
+        "mk-scorpion"
       ]
     },
     {
@@ -753,7 +789,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+        },
+        {
+          "title": "Mortal Kombat X - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_X"
         }
+      ],
+      "quoteIds": [
+        "mk-subzero"
       ]
     },
     {
@@ -779,7 +822,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+        },
+        {
+          "title": "Mortal Kombat X - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_X"
         }
+      ],
+      "quoteIds": [
+        "mk-raiden"
       ]
     },
     {
@@ -806,6 +856,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
         }
+      ],
+      "quoteIds": [
+        "mk-liu"
       ]
     },
     {
@@ -832,6 +885,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
         }
+      ],
+      "quoteIds": [
+        "mk-johnny"
       ]
     },
     {
@@ -858,6 +914,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
         }
+      ],
+      "quoteIds": [
+        "mk-kitana"
       ]
     },
     {
@@ -884,6 +943,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Mortal Kombat 11 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
         }
+      ],
+      "quoteIds": [
+        "mk-shang"
       ]
     }
   ],
@@ -912,6 +974,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Elon Musk - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Elon_Musk"
         }
+      ],
+      "quoteIds": [
+        "real-musk"
       ]
     },
     {
@@ -938,6 +1003,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Donald Trump - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Donald_Trump"
         }
+      ],
+      "quoteIds": [
+        "real-trump"
       ]
     },
     {
@@ -964,6 +1032,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Vladimir Zhirinovsky - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Vladimir_Zhirinovsky"
         }
+      ],
+      "quoteIds": [
+        "real-zhirinovsky"
       ]
     },
     {
@@ -994,6 +1065,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Pavel Durov – Telegram",
           "url": "https://t.me/s/durov"
         }
+      ],
+      "quoteIds": [
+        "real-durov"
       ]
     },
     {
@@ -1020,6 +1094,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Ксения Анатольевна Собчак — Викицитатник",
           "url": "https://ru.wikiquote.org/wiki/%D0%9A%D1%81%D0%B5%D0%BD%D0%B8%D1%8F_%D0%A1%D0%BE%D0%B1%D1%87%D0%B0%D0%BA"
         }
+      ],
+      "quoteIds": [
+        "real-sobchak"
       ]
     },
     {
@@ -1041,7 +1118,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Gordon Ramsay - Wikipedia",
           "url": "https://en.wikipedia.org/wiki/Gordon_Ramsay"
+        },
+        {
+          "title": "Kitchen Nightmares - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Kitchen_Nightmares"
         }
+      ],
+      "quoteIds": [
+        "real-ramsay"
       ]
     },
     {
@@ -1068,6 +1152,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Kanye West - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Kanye_West"
         }
+      ],
+      "quoteIds": [
+        "real-kanye"
       ]
     }
   ],
@@ -1100,6 +1187,10 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Batman: The Animated Series - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
         }
+      ],
+      "quoteIds": [
+        "villain-joker",
+        "villain-joker-steal"
       ]
     },
     {
@@ -1126,6 +1217,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Thanos - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Thanos"
         }
+      ],
+      "quoteIds": [
+        "villain-thanos"
       ]
     },
     {
@@ -1147,7 +1241,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Doctor Doom - Wikipedia",
           "url": "https://en.wikipedia.org/wiki/Doctor_Doom"
+        },
+        {
+          "title": "Fantastic Four (1994 TV series) - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Fantastic_Four_(1994_TV_series)"
         }
+      ],
+      "quoteIds": [
+        "villain-doom"
       ]
     },
     {
@@ -1169,7 +1270,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Loki (Marvel Comics) - Wikipedia",
           "url": "https://en.wikipedia.org/wiki/Loki_(Marvel_Comics)"
+        },
+        {
+          "title": "The Avengers (2012 film) - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/The_Avengers_(2012_film)"
         }
+      ],
+      "quoteIds": [
+        "villain-loki"
       ]
     },
     {
@@ -1200,6 +1308,11 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Batman: The Animated Series - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
         }
+      ],
+      "quoteIds": [
+        "villain-harley",
+        "villain-harley-day",
+        "villain-harley-paid"
       ]
     },
     {
@@ -1226,6 +1339,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Lex Luthor - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Lex_Luthor"
         }
+      ],
+      "quoteIds": [
+        "villain-lex"
       ]
     },
     {
@@ -1252,6 +1368,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "X-Men - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/X-Men"
         }
+      ],
+      "quoteIds": [
+        "villain-magneto"
       ]
     }
   ],
@@ -1280,6 +1399,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Pulp Fiction - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
         }
+      ],
+      "quoteIds": [
+        "pf-vincent"
       ]
     },
     {
@@ -1306,6 +1428,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-joe"
       ]
     },
     {
@@ -1332,6 +1457,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-blonde"
       ]
     },
     {
@@ -1358,6 +1486,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Pulp Fiction - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
         }
+      ],
+      "quoteIds": [
+        "pf-mia"
       ]
     },
     {
@@ -1384,6 +1515,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Pulp Fiction - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
         }
+      ],
+      "quoteIds": [
+        "pf-wolf"
       ]
     },
     {
@@ -1410,6 +1544,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Pulp Fiction - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
         }
+      ],
+      "quoteIds": [
+        "pf-jimmie"
       ]
     },
     {
@@ -1436,6 +1573,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-pink"
       ]
     }
   ],
@@ -1464,6 +1604,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-joe"
       ]
     },
     {
@@ -1490,6 +1633,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-white"
       ]
     },
     {
@@ -1516,6 +1662,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-eddie"
       ]
     },
     {
@@ -1542,6 +1691,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-brown"
       ]
     },
     {
@@ -1568,6 +1720,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-pink"
       ]
     },
     {
@@ -1594,6 +1749,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Heat (1995 film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Heat_(1995_film)"
         }
+      ],
+      "quoteIds": [
+        "heist-neil"
       ]
     },
     {
@@ -1620,6 +1778,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Reservoir Dogs - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
         }
+      ],
+      "quoteIds": [
+        "rd-orange"
       ]
     }
   ],
@@ -1648,6 +1809,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Judgment at Nuremberg - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Judgment_at_Nuremberg"
         }
+      ],
+      "quoteIds": [
+        "court-judge"
       ]
     },
     {
@@ -1674,6 +1838,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Judgment at Nuremberg - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Judgment_at_Nuremberg"
         }
+      ],
+      "quoteIds": [
+        "court-prosecutor"
       ]
     },
     {
@@ -1700,6 +1867,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "To Kill a Mockingbird (film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/To_Kill_a_Mockingbird_(film)"
         }
+      ],
+      "quoteIds": [
+        "court-atticus"
       ]
     },
     {
@@ -1726,6 +1896,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "I, Robot (film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/I%2C_Robot_(film)"
         }
+      ],
+      "quoteIds": [
+        "court-sonny"
       ]
     },
     {
@@ -1752,6 +1925,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Star Trek: The Next Generation - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Next_Generation"
         }
+      ],
+      "quoteIds": [
+        "court-data"
       ]
     },
     {
@@ -1778,6 +1954,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "12 Angry Men (1957 film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/12_Angry_Men_(1957_film)"
         }
+      ],
+      "quoteIds": [
+        "court-nina"
       ]
     },
     {
@@ -1804,6 +1983,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Good Night, and Good Luck - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Good_Night%2C_and_Good_Luck"
         }
+      ],
+      "quoteIds": [
+        "court-murrow"
       ]
     }
   ],
@@ -1832,6 +2014,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Battlestar Galactica (2003) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Battlestar_Galactica_(2004)"
         }
+      ],
+      "quoteIds": [
+        "ship-adama"
       ]
     },
     {
@@ -1858,6 +2043,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Star Wars (film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Star_Wars_Episode_IV:_A_New_Hope"
         }
+      ],
+      "quoteIds": [
+        "ship-han"
       ]
     },
     {
@@ -1884,6 +2072,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Star Trek: The Original Series - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Original_Series"
         }
+      ],
+      "quoteIds": [
+        "ship-mccoy"
       ]
     },
     {
@@ -1910,6 +2101,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Star Trek: The Original Series - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Original_Series"
         }
+      ],
+      "quoteIds": [
+        "ship-scotty"
       ]
     },
     {
@@ -1936,6 +2130,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Star Trek: The Original Series - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Original_Series"
         }
+      ],
+      "quoteIds": [
+        "ship-spock"
       ]
     },
     {
@@ -1962,6 +2159,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "2001: A Space Odyssey (film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/2001:_A_Space_Odyssey_(film)"
         }
+      ],
+      "quoteIds": [
+        "ship-hal"
       ]
     },
     {
@@ -1988,6 +2188,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Star Trek: The Next Generation - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Next_Generation"
         }
+      ],
+      "quoteIds": [
+        "ship-wesley"
       ]
     }
   ],
@@ -2016,6 +2219,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Day of the Dead (1985 film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Day_of_the_Dead_(1985_film)"
         }
+      ],
+      "quoteIds": [
+        "bunker-rhodes"
       ]
     },
     {
@@ -2042,6 +2248,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Day of the Dead (1985 film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Day_of_the_Dead_(1985_film)"
         }
+      ],
+      "quoteIds": [
+        "bunker-sarah"
       ]
     },
     {
@@ -2068,6 +2277,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "The Thing (1982 film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/The_Thing_(1982_film)"
         }
+      ],
+      "quoteIds": [
+        "bunker-macready"
       ]
     },
     {
@@ -2094,6 +2306,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "The Lord of the Rings: The Two Towers - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/The_Lord_of_the_Rings:_The_Two_Towers"
         }
+      ],
+      "quoteIds": [
+        "bunker-sam"
       ]
     },
     {
@@ -2120,6 +2335,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Alien (film) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Alien_(film)"
         }
+      ],
+      "quoteIds": [
+        "bunker-ripley"
       ]
     },
     {
@@ -2146,6 +2364,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Game of Thrones/Season 5 - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Game_of_Thrones/Season_5"
         }
+      ],
+      "quoteIds": [
+        "bunker-aemon"
       ]
     },
     {
@@ -2172,6 +2393,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Attack on Titan - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Attack_on_Titan"
         }
+      ],
+      "quoteIds": [
+        "an-armin"
       ]
     }
   ],
@@ -2200,6 +2424,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Succession (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "board-kendall"
       ]
     },
     {
@@ -2226,6 +2453,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Succession (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "board-karl"
       ]
     },
     {
@@ -2251,7 +2481,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Mad Men - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Mad_Men"
+        },
+        {
+          "title": "Mad Men (season 1) - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Mad_Men_(season_1)"
         }
+      ],
+      "quoteIds": [
+        "board-draper"
       ]
     },
     {
@@ -2278,6 +2515,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Silicon Valley (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Silicon_Valley_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "board-richard"
       ]
     },
     {
@@ -2304,6 +2544,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Succession (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "board-gerri"
       ]
     },
     {
@@ -2334,6 +2577,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "‘You’ve got to find what you love,’ Jobs says | Stanford Report",
           "url": "https://news.stanford.edu/stories/2005/06/youve-got-find-love-jobs-says"
         }
+      ],
+      "quoteIds": [
+        "board-jobs"
       ]
     },
     {
@@ -2360,6 +2606,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Succession (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "board-logan"
       ]
     }
   ],
@@ -2388,6 +2637,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Columbo - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Columbo"
         }
+      ],
+      "quoteIds": [
+        "detective-columbo"
       ]
     },
     {
@@ -2414,6 +2666,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Basic Instinct - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Basic_Instinct"
         }
+      ],
+      "quoteIds": [
+        "detective-catherine"
       ]
     },
     {
@@ -2440,6 +2695,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "The Grand Budapest Hotel - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/The_Grand_Budapest_Hotel"
         }
+      ],
+      "quoteIds": [
+        "detective-gustave"
       ]
     },
     {
@@ -2466,6 +2724,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Sherlock Holmes - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Sherlock_Holmes"
         }
+      ],
+      "quoteIds": [
+        "detective-watson"
       ]
     },
     {
@@ -2491,7 +2752,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Castle (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Castle_(TV_series)"
+        },
+        {
+          "title": "Castle (season 1) - Wikiquote",
+          "url": "https://en.wikiquote.org/wiki/Castle_(season_1)"
         }
+      ],
+      "quoteIds": [
+        "detective-castle"
       ]
     },
     {
@@ -2513,7 +2781,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Miss Marple - Wikipedia",
           "url": "https://en.wikipedia.org/wiki/Miss_Marple"
+        },
+        {
+          "title": "Miss Marple - Characters - Agatha Christie",
+          "url": "https://www.agathachristie.com/characters/miss-marple"
         }
+      ],
+      "quoteIds": [
+        "detective-marple"
       ]
     },
     {
@@ -2540,6 +2815,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Sherlock (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Sherlock_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "detective-lestrade"
       ]
     }
   ],
@@ -2568,6 +2846,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Napoleon - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Napoleon"
         }
+      ],
+      "quoteIds": [
+        "hist-napoleon"
       ]
     },
     {
@@ -2598,6 +2879,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Plutarch • Life of Antony",
           "url": "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Plutarch/Lives/Antony*.html"
         }
+      ],
+      "quoteIds": [
+        "hist-cleopatra"
       ]
     },
     {
@@ -2628,6 +2912,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Secret History of the Mongols - Wikipedia",
           "url": "https://en.wikipedia.org/wiki/The_Secret_History_of_the_Mongols"
         }
+      ],
+      "quoteIds": [
+        "hist-genghis"
       ]
     },
     {
@@ -2658,6 +2945,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "We Shall Fight on the Beaches - International Churchill Society",
           "url": "https://winstonchurchill.org/resources/speeches/1940-the-finest-hour/we-shall-fight-on-the-beaches/"
         }
+      ],
+      "quoteIds": [
+        "hist-churchill"
       ]
     },
     {
@@ -2688,6 +2978,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Radio Broadcast",
           "url": "https://www.marxists.org/reference/archive/stalin/works/1941/07/03.htm"
         }
+      ],
+      "quoteIds": [
+        "hist-stalin"
       ]
     },
     {
@@ -2714,6 +3007,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Albert Einstein - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Albert_Einstein"
         }
+      ],
+      "quoteIds": [
+        "hist-einstein"
       ]
     },
     {
@@ -2744,6 +3040,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Internet History Sourcebooks: Medieval Sourcebook",
           "url": "https://sourcebooks.fordham.edu/basis/joanofarc-trial.asp"
         }
+      ],
+      "quoteIds": [
+        "hist-joan"
       ]
     }
   ],
@@ -2772,6 +3071,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Lucifer (TV series) - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Lucifer_(TV_series)"
         }
+      ],
+      "quoteIds": [
+        "after-lucifer"
       ]
     },
     {
@@ -2797,7 +3099,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Good Omens - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Good_Omens"
+        },
+        {
+          "title": "Jude 1:9 KJV - Yet Michael the archangel, when - Bible Gateway",
+          "url": "https://www.biblegateway.com/passage/?search=Jude%201%3A9&version=KJV"
         }
+      ],
+      "quoteIds": [
+        "after-michael"
       ]
     },
     {
@@ -2823,7 +3132,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Good Omens - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Good_Omens"
+        },
+        {
+          "title": "Good Omens (2019) s01e06 Episode Script | SS",
+          "url": "https://www.springfieldspringfield.co.uk/view_episode_scripts.php?tv-show=good-omens-2019&episode=s01e06"
         }
+      ],
+      "quoteIds": [
+        "after-gabriel"
       ]
     },
     {
@@ -2845,7 +3161,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Chilling Adventures of Sabrina (TV series) - Wikipedia",
           "url": "https://en.wikipedia.org/wiki/Chilling_Adventures_of_Sabrina_(TV_series)"
+        },
+        {
+          "title": "Chilling Adventures of Sabrina (2018) s01e01 Episode Script | SS",
+          "url": "https://www.springfieldspringfield.co.uk/view_episode_scripts.php?tv-show=chilling-adventures-of-sabrina-2018&episode=s01e01"
         }
+      ],
+      "quoteIds": [
+        "after-lilith"
       ]
     },
     {
@@ -2871,7 +3194,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "Good Omens - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Good_Omens"
+        },
+        {
+          "title": "Good Omens (2019) s01e06 Episode Script | SS",
+          "url": "https://www.springfieldspringfield.co.uk/view_episode_scripts.php?tv-show=good-omens-2019&episode=s01e06"
         }
+      ],
+      "quoteIds": [
+        "after-beelzebub"
       ]
     },
     {
@@ -2898,6 +3228,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Discworld - Wikiquote",
           "url": "https://en.wikiquote.org/wiki/Discworld"
         }
+      ],
+      "quoteIds": [
+        "after-death"
       ]
     },
     {
@@ -2924,6 +3257,9 @@ export const CHARACTER_VOICE_PROFILES={
           "title": "Гараж (фильм) — Викицитатник",
           "url": "https://ru.wikiquote.org/wiki/%D0%93%D0%B0%D1%80%D0%B0%D0%B6_%28%D1%84%D0%B8%D0%BB%D1%8C%D0%BC%29"
         }
+      ],
+      "quoteIds": [
+        "after-zina"
       ]
     }
   ],
@@ -2951,7 +3287,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "ZEUS - Greek God of the Sky, King of the Gods (Roman Jupiter)",
           "url": "https://www.theoi.com/Olympios/Zeus.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of The Iliad",
+          "url": "https://www.gutenberg.org/cache/epub/2199/pg2199.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-zeus"
       ]
     },
     {
@@ -2977,7 +3320,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "HERA - Greek Goddess of Marriage, Queen of the Gods (Roman Juno)",
           "url": "https://www.theoi.com/Olympios/Hera.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of The Iliad",
+          "url": "https://www.gutenberg.org/cache/epub/2199/pg2199.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-hera"
       ]
     },
     {
@@ -3003,7 +3353,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "ATHENA (Athene) - Greek Goddess of Wisdom, War & Crafts (Roman Minerva)",
           "url": "https://www.theoi.com/Olympios/Athena.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of The Odyssey",
+          "url": "https://www.gutenberg.org/cache/epub/1727/pg1727.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-athena"
       ]
     },
     {
@@ -3029,7 +3386,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "POSEIDON - Greek God of the Sea & Earthquakes (Roman Neptune)",
           "url": "https://www.theoi.com/Olympios/Poseidon.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of The Iliad",
+          "url": "https://www.gutenberg.org/cache/epub/2199/pg2199.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-poseidon"
       ]
     },
     {
@@ -3055,7 +3419,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "HADES (Haides) - Greek God of the Dead, King of the Underworld (Roman Pluto)",
           "url": "https://www.theoi.com/Khthonios/Haides.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of Hesiod, the Homeric Hymns, and Homerica",
+          "url": "https://www.gutenberg.org/cache/epub/348/pg348.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-hades"
       ]
     },
     {
@@ -3081,7 +3452,14 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "HERMES - Greek God of Herds & Trade, Herald of the Gods (Roman Mercury)",
           "url": "https://www.theoi.com/Olympios/Hermes.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of Hesiod, the Homeric Hymns, and Homerica",
+          "url": "https://www.gutenberg.org/cache/epub/348/pg348.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-hermes"
       ]
     },
     {
@@ -3107,10 +3485,1407 @@ export const CHARACTER_VOICE_PROFILES={
         {
           "title": "DIONYSUS (Dionysos) - Greek God of Wine & Festivity (Roman Bacchus)",
           "url": "https://www.theoi.com/Olympios/Dionysos.html"
+        },
+        {
+          "title": "The Project Gutenberg eBook of Hesiod, the Homeric Hymns, and Homerica",
+          "url": "https://www.gutenberg.org/cache/epub/348/pg348.txt"
         }
+      ],
+      "quoteIds": [
+        "olympus-dionysus"
       ]
     }
   ]
 };
+export const CHARACTER_QUOTE_BANK={
+  "pf-vincent": {
+    "id": "pf-vincent",
+    "workId": "pulp-fiction",
+    "work": "Криминальное чтиво (1994)",
+    "speaker": "Винсент Вега",
+    "text": "Мелкие отличия.",
+    "locator": "разговор о Европе",
+    "pattern": "Бытовое уточнение, за которым следует цепочка маленьких различий.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Pulp Fiction - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
+    }
+  },
+  "pf-mia": {
+    "id": "pf-mia",
+    "workId": "pulp-fiction",
+    "work": "Криминальное чтиво (1994)",
+    "speaker": "Миа Уоллес",
+    "text": "Неудобное молчание.",
+    "locator": "разговор в ресторане",
+    "pattern": "Называет неловкость прямо и задаёт интимный неудобный вопрос.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Pulp Fiction - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
+    }
+  },
+  "pf-wolf": {
+    "id": "pf-wolf",
+    "workId": "pulp-fiction",
+    "work": "Криминальное чтиво (1994)",
+    "speaker": "Уинстон Вульф",
+    "text": "Я здесь, чтобы сказать, что делать.",
+    "locator": "представление Вульфа",
+    "pattern": "Объясняет свою функцию коротким утверждением вместо оправданий.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Pulp Fiction - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
+    }
+  },
+  "pf-jimmie": {
+    "id": "pf-jimmie",
+    "workId": "pulp-fiction",
+    "work": "Криминальное чтиво (1994)",
+    "speaker": "Джимми Диммик",
+    "text": "Я сам покупаю кофе.",
+    "locator": "разговор о кофе",
+    "pattern": "Отвергает ненужное объяснение через собственное прямое знание.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Pulp Fiction - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Pulp_Fiction"
+    }
+  },
+  "rd-joe": {
+    "id": "rd-joe",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Джо Кэбот",
+    "text": "Я выбираю.",
+    "locator": "распределение псевдонимов",
+    "pattern": "Перехватывает право решать одним коротким утверждением.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "rd-white": {
+    "id": "rd-white",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Мистер Белый",
+    "text": "Не понимаешь.",
+    "locator": "спор о чаевых, фрагмент",
+    "pattern": "Начинает с прямого опровержения и объясняет реальную цену вопроса.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "rd-blonde": {
+    "id": "rd-blonde",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Мистер Блондин",
+    "text": "Лаять будешь?",
+    "locator": "перепалка с Белым, фрагмент",
+    "pattern": "Превращает чужую угрозу в насмешливый вопрос о готовности действовать.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "rd-brown": {
+    "id": "rd-brown",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Мистер Коричневый",
+    "text": "О чём я?",
+    "locator": "монолог за столом, фрагмент",
+    "pattern": "Теряет нить, требует вернуть внимание и продолжает бытовой заход.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "rd-pink": {
+    "id": "rd-pink",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Мистер Розовый",
+    "text": "Чаевых не даю.",
+    "locator": "спор о чаевых",
+    "pattern": "Подаёт личную границу как простое правило, которое остальные должны оспорить.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "rd-eddie": {
+    "id": "rd-eddie",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Хороший Парень Эдди",
+    "text": "Брось доллар.",
+    "locator": "спор о чаевых, фрагмент",
+    "pattern": "Призывает к конкретному участию вместо обсуждения общих принципов.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "rd-orange": {
+    "id": "rd-orange",
+    "workId": "reservoir-dogs",
+    "work": "Бешеные псы (1992)",
+    "speaker": "Мистер Оранжевый",
+    "text": "Он меня убедил.",
+    "locator": "спор о чаевых",
+    "pattern": "Внешне соглашается с аргументом и тут же проверяет личную выгоду.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Reservoir Dogs - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Reservoir_Dogs"
+    }
+  },
+  "mk-scorpion": {
+    "id": "mk-scorpion",
+    "workId": "mortal-kombat-x",
+    "work": "Mortal Kombat X",
+    "speaker": "Скорпион",
+    "text": "Сын должен сам выбрать свой путь.",
+    "locator": "боевой диалог с Рейденом",
+    "pattern": "Отвечает личным принципом на требование подчинения; родство не переносить в сцену.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat X - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_X"
+    }
+  },
+  "mk-subzero": {
+    "id": "mk-subzero",
+    "workId": "mortal-kombat-x",
+    "work": "Mortal Kombat X",
+    "speaker": "Саб-Зиро",
+    "text": "Всё должно быть шуткой?!",
+    "locator": "боевой диалог с Джонни Кейджем",
+    "pattern": "Резкий риторический вопрос обрывает чужую браваду.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat X - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_X"
+    }
+  },
+  "mk-raiden": {
+    "id": "mk-raiden",
+    "workId": "mortal-kombat-x",
+    "work": "Mortal Kombat X",
+    "speaker": "Рейден",
+    "text": "Образец сдержанности.",
+    "locator": "боевой диалог с Джаксом",
+    "pattern": "Спокойная ироническая оценка называет противоположность увиденному.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat X - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_X"
+    }
+  },
+  "mk-liu": {
+    "id": "mk-liu",
+    "workId": "mortal-kombat-11",
+    "work": "Mortal Kombat 11",
+    "speaker": "Лю Кан",
+    "text": "Ты ничему не научился.",
+    "locator": "диалог с Кун Лао, фрагмент",
+    "pattern": "Короткое прямое замечание сравнивает заявленное мастерство с поведением.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat 11 - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+    }
+  },
+  "mk-johnny": {
+    "id": "mk-johnny",
+    "workId": "mortal-kombat-11",
+    "work": "Mortal Kombat 11",
+    "speaker": "Джонни Кейдж",
+    "text": "Я не это имел в виду!",
+    "locator": "диалог с Кэсси, фрагмент",
+    "pattern": "Самоуверенный заход обрывается комическим поспешным самоисправлением.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat 11 - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+    }
+  },
+  "mk-kitana": {
+    "id": "mk-kitana",
+    "workId": "mortal-kombat-11",
+    "work": "Mortal Kombat 11",
+    "speaker": "Китана",
+    "text": "Какой невежливый вопрос.",
+    "locator": "диалог с Джеки, фрагмент",
+    "pattern": "Учтиво называет нарушение границы, не оправдываясь перед вопросом.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat 11 - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+    }
+  },
+  "mk-shang": {
+    "id": "mk-shang",
+    "workId": "mortal-kombat-11",
+    "work": "Mortal Kombat 11",
+    "speaker": "Шан Цзун",
+    "text": "Моя следующая жертва.",
+    "locator": "диалог с Коталь Каном",
+    "pattern": "Вежливая беседа внезапно сужается до короткой личной угрозы.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mortal Kombat 11 - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mortal_Kombat_11"
+    }
+  },
+  "an-naruto": {
+    "id": "an-naruto",
+    "workId": "naruto",
+    "work": "Naruto",
+    "speaker": "Наруто",
+    "text": "Я не сдаюсь.",
+    "locator": "повторяющаяся реплика",
+    "pattern": "Простое отрицание капитуляции превращается в личное обещание.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Naruto - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Naruto"
+    }
+  },
+  "an-luffy": {
+    "id": "an-luffy",
+    "workId": "one-piece",
+    "work": "One Piece",
+    "speaker": "Луффи",
+    "text": "Потому что я так хочу.",
+    "locator": "эпизод 1",
+    "pattern": "Обосновывает выбор собственным желанием без просьбы о разрешении.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "One Piece - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/One_Piece"
+    }
+  },
+  "an-saitama": {
+    "id": "an-saitama",
+    "workId": "one-punch-man",
+    "work": "One-Punch Man",
+    "speaker": "Сайтама",
+    "text": "Ради развлечения.",
+    "locator": "глава 5, цитатный фрагмент",
+    "pattern": "Приземлённый мотив резко снижает пафос разговора о героизме.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Saitama (One-Punch Man) - Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Saitama_(One-Punch_Man)"
+    }
+  },
+  "an-levi": {
+    "id": "an-levi",
+    "workId": "attack-on-titan",
+    "work": "Attack on Titan",
+    "speaker": "Леви",
+    "text": "Покончить с этим кошмаром.",
+    "locator": "реплика Леви, фрагмент",
+    "pattern": "Сухо называет, что должно прекратиться, без утешительного обещания.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Attack on Titan - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Attack_on_Titan"
+    }
+  },
+  "an-armin": {
+    "id": "an-armin",
+    "workId": "attack-on-titan",
+    "work": "Attack on Titan",
+    "speaker": "Армин",
+    "text": "Кто ничем не жертвует, ничего не изменит.",
+    "locator": "реплика Армина",
+    "pattern": "Короткая условная формула связывает желаемое изменение с личной ценой.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Attack on Titan - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Attack_on_Titan"
+    }
+  },
+  "an-usagi": {
+    "id": "an-usagi",
+    "workId": "sailor-moon-crystal",
+    "work": "Sailor Moon Crystal",
+    "speaker": "Сейлор Мун",
+    "text": "Во имя Луны я накажу тебя!",
+    "locator": "обращение Сейлор Мун",
+    "pattern": "Защитный принцип заканчивается прямым обращением к конкретному противнику.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Sailor Moon - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Sailor_Moon"
+    }
+  },
+  "real-musk": {
+    "id": "real-musk",
+    "workId": "musk-interview-2012",
+    "work": "Elon Musk - Wikiquote",
+    "speaker": "Илон Маск",
+    "text": "Если это важно, действуешь вопреки шансам.",
+    "locator": "60 Minutes, 18 марта 2012, фрагмент",
+    "pattern": "Делает личную ставку выше неудобной оценки вероятности.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Elon Musk - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Elon_Musk"
+    }
+  },
+  "real-trump": {
+    "id": "real-trump",
+    "workId": "art-of-the-deal",
+    "work": "Donald Trump - Wikiquote",
+    "speaker": "Дональд Трамп",
+    "text": "Сделки — мой вид искусства.",
+    "locator": "The Art of the Deal, 1987",
+    "pattern": "Переопределяет обсуждаемое занятие через собственное превосходство.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Donald Trump - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Donald_Trump"
+    }
+  },
+  "real-durov": {
+    "id": "real-durov",
+    "workId": "durov-interview-2024",
+    "work": "Pavel Durov - Wikiquote",
+    "speaker": "Павел Дуров",
+    "text": "Я единственный продакт-менеджер.",
+    "locator": "интервью Такеру Карлсону, 2024",
+    "pattern": "Спокойное личное утверждение подчёркивает собственный контроль над решением.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Pavel Durov - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Pavel_Durov"
+    }
+  },
+  "real-kanye": {
+    "id": "real-kanye",
+    "workId": "vma-2009",
+    "work": "Kanye West - Wikiquote",
+    "speaker": "Канье Уэст",
+    "text": "Я дам тебе закончить.",
+    "locator": "выступление на VMA, 2009, фрагмент",
+    "pattern": "Обещает дать слово, одновременно забирая право расставить главное.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Kanye West - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Kanye_West"
+    }
+  },
+  "court-judge": {
+    "id": "court-judge",
+    "workId": "judgment-at-nuremberg",
+    "work": "Judgment at Nuremberg - Wikiquote",
+    "speaker": "Судья Хейвуд",
+    "text": "Порядок, порядок!",
+    "locator": "сцена заседания",
+    "pattern": "Повтор короткого требования возвращает процедуру без длинной угрозы.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Judgment at Nuremberg - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Judgment_at_Nuremberg"
+    }
+  },
+  "court-prosecutor": {
+    "id": "court-prosecutor",
+    "workId": "judgment-at-nuremberg",
+    "work": "Judgment at Nuremberg - Wikiquote",
+    "speaker": "Тэд Лоусон",
+    "text": "Мы в этом новички.",
+    "locator": "реплика Лоусона, фрагмент",
+    "pattern": "Признаёт ограничение прямо, не подменяя его самоуверенным объяснением.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Judgment at Nuremberg - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Judgment_at_Nuremberg"
+    }
+  },
+  "court-atticus": {
+    "id": "court-atticus",
+    "workId": "to-kill-a-mockingbird",
+    "work": "To Kill a Mockingbird (film) - Wikiquote",
+    "speaker": "Аттикус Финч",
+    "text": "Соглашение по взаимному согласию.",
+    "locator": "объяснение компромисса",
+    "pattern": "Уточняет обычное понятие простым определением, затем применяет его к спору.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "To Kill a Mockingbird (film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/To_Kill_a_Mockingbird_(film)"
+    }
+  },
+  "court-sonny": {
+    "id": "court-sonny",
+    "workId": "i-robot",
+    "work": "I, Robot (film) - Wikiquote",
+    "speaker": "Сонни",
+    "text": "Они... трудные.",
+    "locator": "разговор об эмоциях",
+    "pattern": "Осторожная пауза перед неточным человеческим словом обозначает предел понимания.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "I, Robot (film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/I%2C_Robot_(film)"
+    }
+  },
+  "court-data": {
+    "id": "court-data",
+    "workId": "star-trek-tng",
+    "work": "Star Trek: The Next Generation",
+    "speaker": "Дейта",
+    "text": "Теоретически это возможно.",
+    "locator": "диалог с Пикаром",
+    "pattern": "Чётко отделяет возможность от доказанности или готовности решения.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Star Trek: The Next Generation - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Next_Generation"
+    }
+  },
+  "court-nina": {
+    "id": "court-nina",
+    "workId": "12-angry-men",
+    "work": "12 Angry Men (1957 film) - Wikiquote",
+    "speaker": "Присяжный № 8",
+    "text": "Трудно избавиться от предубеждения.",
+    "locator": "реплика присяжного № 8, фрагмент",
+    "pattern": "Переводит категоричный вывод в вопрос о надёжности собственного суждения.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "12 Angry Men (1957 film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/12_Angry_Men_(1957_film)"
+    }
+  },
+  "court-murrow": {
+    "id": "court-murrow",
+    "workId": "good-night-good-luck",
+    "work": "Доброй ночи и удачи",
+    "speaker": "Эдвард Марроу",
+    "text": "Доброй ночи и удачи.",
+    "locator": "обращение к аудитории",
+    "pattern": "Заканчивает сложное высказывание короткой спокойной формулой без триумфа.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Good Night, and Good Luck - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Good_Night%2C_and_Good_Luck"
+    }
+  },
+  "ship-han": {
+    "id": "ship-han",
+    "workId": "star-wars-1977",
+    "work": "Star Wars (film) - Wikiquote",
+    "speaker": "Хан Соло",
+    "text": "Что за груз?",
+    "locator": "переговоры о рейсе",
+    "pattern": "После бравады резко переходит к конкретному условию дела.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Star Wars (film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Star_Wars_Episode_IV:_A_New_Hope"
+    }
+  },
+  "ship-spock": {
+    "id": "ship-spock",
+    "workId": "star-trek-tos",
+    "work": "Star Trek: The Original Series",
+    "speaker": "Спок",
+    "text": "У Вулкана нет луны.",
+    "locator": "диалог с Ухурой, фрагмент",
+    "pattern": "Буквально исправляет предпосылку эмоционального обращения, не поддерживая его пафос.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Star Trek: The Original Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Original_Series"
+    }
+  },
+  "ship-wesley": {
+    "id": "ship-wesley",
+    "workId": "star-trek-tng",
+    "work": "Star Trek: The Next Generation",
+    "speaker": "Уэсли Крашер",
+    "text": "Что делает мужчина?",
+    "locator": "Contagion, 2.11",
+    "pattern": "Простой буквальный вопрос показывает незнание, не мешая искреннему любопытству.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Star Trek: The Next Generation - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Next_Generation"
+    }
+  },
+  "ship-hal": {
+    "id": "ship-hal",
+    "workId": "2001-space-odyssey",
+    "work": "2001: A Space Odyssey (film) - Wikiquote",
+    "speaker": "HAL 9000",
+    "text": "Неспособны ошибаться.",
+    "locator": "интервью о серии 9000, фрагмент",
+    "pattern": "Вежливое техническое самоописание звучит тревожно категорично; фактической безошибочности не приписывать.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "2001: A Space Odyssey (film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/2001:_A_Space_Odyssey_(film)"
+    }
+  },
+  "bunker-macready": {
+    "id": "bunker-macready",
+    "workId": "the-thing",
+    "work": "The Thing (1982 film) - Wikiquote",
+    "speaker": "Макриди",
+    "text": "Меня там не было!",
+    "locator": "обсуждение норвежской станции",
+    "pattern": "Резко отделяет реконструкцию событий от собственного наблюдения.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Thing (1982 film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/The_Thing_(1982_film)"
+    }
+  },
+  "bunker-sarah": {
+    "id": "bunker-sarah",
+    "workId": "day-of-the-dead",
+    "work": "Day of the Dead (1985 film) - Wikiquote",
+    "speaker": "Сара Боуман",
+    "text": "Дело не в том, что он делает.",
+    "locator": "обсуждение поведения Буба, фрагмент",
+    "pattern": "Перенаправляет оценку с заметного действия на важное отсутствие реакции.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Day of the Dead (1985 film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Day_of_the_Dead_(1985_film)"
+    }
+  },
+  "bunker-sam": {
+    "id": "bunker-sam",
+    "workId": "two-towers",
+    "work": "The Lord of the Rings: The Two Towers - Wikiquote",
+    "speaker": "Сэм",
+    "text": "Ты безнадёжен.",
+    "locator": "спор с Голлумом о еде",
+    "pattern": "Приземлённая усталая оценка заменяет высокопарное осуждение.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Lord of the Rings: The Two Towers - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/The_Lord_of_the_Rings:_The_Two_Towers"
+    }
+  },
+  "bunker-ripley": {
+    "id": "bunker-ripley",
+    "workId": "alien",
+    "work": "Alien (film) - Wikiquote",
+    "speaker": "Эллен Рипли",
+    "text": "Что случилось с Кейном?",
+    "locator": "возвращение группы к шлюзу",
+    "pattern": "Не принимает требование открыть доступ, пока не получен ответ о состоянии человека.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Alien (film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Alien_(film)"
+    }
+  },
+  "bunker-aemon": {
+    "id": "bunker-aemon",
+    "workId": "game-of-thrones-s5",
+    "work": "Game of Thrones/Season 5 - Wikiquote",
+    "speaker": "Мейстер Эймон",
+    "text": "Убей в себе мальчишку.",
+    "locator": "наставление Джону Сноу, фрагмент",
+    "pattern": "Метафорическое требование взрослого решения; не трактовать как команду к насилию.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Game of Thrones/Season 5 - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Game_of_Thrones/Season_5"
+    }
+  },
+  "board-kendall": {
+    "id": "board-kendall",
+    "workId": "succession",
+    "work": "Наследники / Succession",
+    "speaker": "Кендалл Рой",
+    "text": "Я старший сын!",
+    "locator": "4.10, фрагмент",
+    "pattern": "Нервный личный статус выдаётся за достаточное основание получить желаемое.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Succession (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
+    }
+  },
+  "board-karl": {
+    "id": "board-karl",
+    "workId": "succession",
+    "work": "Наследники / Succession",
+    "speaker": "Карл Мюллер",
+    "text": "Само собой.",
+    "locator": "4.10, фрагмент",
+    "pattern": "Сухое будничное согласие оставляет острый подтекст без его объяснения.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Succession (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
+    }
+  },
+  "board-gerri": {
+    "id": "board-gerri",
+    "workId": "succession",
+    "work": "Наследники / Succession",
+    "speaker": "Джерри Келлман",
+    "text": "Он здесь, в здании.",
+    "locator": "1.01, фрагмент",
+    "pattern": "Спокойно повторяет неприятный факт вместо участия в чужом возмущении.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Succession (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
+    }
+  },
+  "board-logan": {
+    "id": "board-logan",
+    "workId": "succession",
+    "work": "Наследники / Succession",
+    "speaker": "Логан Рой",
+    "text": "Отъебись.",
+    "locator": "реплика Логана, фрагмент",
+    "pattern": "Коротко отвергает чужой заход; грубость адаптировать под выбранную манеру.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Succession (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Succession_(TV_series)"
+    }
+  },
+  "board-jobs": {
+    "id": "board-jobs",
+    "workId": "jobs-stanford-2005",
+    "work": "‘You’ve got to find what you love,’ Jobs says | Stanford Report",
+    "speaker": "Стив Джобс",
+    "text": "Нужно найти то, что любишь.",
+    "locator": "Стэнфордская речь, 2005",
+    "pattern": "Возвращает большой выбор к личному смыслу вместо внешней награды.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "‘You’ve got to find what you love,’ Jobs says | Stanford Report",
+      "url": "https://news.stanford.edu/stories/2005/06/youve-got-find-love-jobs-says"
+    }
+  },
+  "hist-napoleon": {
+    "id": "hist-napoleon",
+    "workId": "napoleon-letter-1813",
+    "work": "Napoleon - Wikiquote",
+    "speaker": "Наполеон",
+    "text": "Слово «невозможно» — не французское.",
+    "locator": "письмо генералу Ле Маруа, 9 июля 1813",
+    "pattern": "Отказывается принимать чужое определение предела как окончательный ответ.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Napoleon - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Napoleon"
+    }
+  },
+  "hist-cleopatra": {
+    "id": "hist-cleopatra",
+    "workId": "plutarch-antony",
+    "work": "Plutarch • Life of Antony",
+    "speaker": "Клеопатра в изложении Плутарха",
+    "text": "Не допусти триумфа надо мной.",
+    "locator": "Жизнь Антония, 84",
+    "pattern": "Просит сохранить достоинство, формулируя неприемлемый для себя исход.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Plutarch • Life of Antony",
+      "url": "https://penelope.uchicago.edu/Thayer/E/Roman/Texts/Plutarch/Lives/Antony*.html"
+    },
+    "attributionNote": "Историческая передача слов; не документальная запись живой речи."
+  },
+  "hist-genghis": {
+    "id": "hist-genghis",
+    "workId": "genghis-historical-tradition",
+    "work": "Genghis Khan - Wikiquote",
+    "speaker": "Чингисхан по исторической традиции",
+    "text": "Будьте едины помыслами и верой.",
+    "locator": "передача исторического высказывания, не стенограмма",
+    "pattern": "Сводит длительное общее намерение к короткому требованию единства.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Genghis Khan - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Genghis_Khan"
+    },
+    "attributionNote": "Историческая передача слов; не документальная запись живой речи."
+  },
+  "hist-churchill": {
+    "id": "hist-churchill",
+    "workId": "churchill-1940-06-04",
+    "work": "We Shall Fight on the Beaches - International Churchill Society",
+    "speaker": "Уинстон Черчилль",
+    "text": "Мы никогда не сдадимся.",
+    "locator": "речь 4 июня 1940",
+    "pattern": "Повторяемое коллективное обязательство завершается недвусмысленным отказом от капитуляции.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "We Shall Fight on the Beaches - International Churchill Society",
+      "url": "https://winstonchurchill.org/resources/speeches/1940-the-finest-hour/we-shall-fight-on-the-beaches/"
+    }
+  },
+  "hist-stalin": {
+    "id": "hist-stalin",
+    "workId": "stalin-1941-07-03",
+    "work": "Radio Broadcast",
+    "speaker": "Иосиф Сталин",
+    "text": "Товарищи, граждане, братья и сёстры!",
+    "locator": "радиообращение 3 июля 1941",
+    "pattern": "Наращивает близость обращений, превращая официальную аудиторию в личного адресата.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Radio Broadcast",
+      "url": "https://www.marxists.org/reference/archive/stalin/works/1941/07/03.htm"
+    }
+  },
+  "hist-einstein": {
+    "id": "hist-einstein",
+    "workId": "einstein-life-1955",
+    "work": "Albert Einstein - Wikiquote",
+    "speaker": "Альберт Эйнштейн",
+    "text": "Важно не переставать задавать вопросы.",
+    "locator": "Life, 1955",
+    "pattern": "Заменяет требование немедленной уверенности правом продолжать проверку.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Albert Einstein - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Albert_Einstein"
+    }
+  },
+  "hist-joan": {
+    "id": "hist-joan",
+    "workId": "joan-trial-1431",
+    "work": "Joan of Arc - Wikiquote",
+    "speaker": "Жанна д’Арк",
+    "text": "Если нет — да введёт меня Бог; если да — да сохранит.",
+    "locator": "допрос о Божьей благодати, 24 февраля 1431",
+    "pattern": "Отвечает симметричным условием, не принимая ловушку навязанного выбора.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Joan of Arc - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Joan_of_Arc"
+    }
+  },
+  "after-lucifer": {
+    "id": "after-lucifer",
+    "workId": "lucifer-pilot",
+    "work": "Lucifer (TV series) - Wikiquote",
+    "speaker": "Люцифер Морнингстар",
+    "text": "С седьмого «никогда».",
+    "locator": "1.01, фрагмент",
+    "pattern": "Учтиво изображает проверку возможности, после чего отказывает невозможной датой без реального таймера.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Lucifer (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Lucifer_(TV_series)"
+    }
+  },
+  "after-gabriel": {
+    "id": "after-gabriel",
+    "workId": "good-omens-1-06",
+    "work": "Благие знамения, 1.06",
+    "speaker": "Гавриил",
+    "text": "Я, блядь, архангел Гавриил.",
+    "locator": "1.06",
+    "pattern": "Вместо ответа срывается на личный титул, обнажая задетый авторитет.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Good Omens (2019) s01e06 Episode Script | SS",
+      "url": "https://www.springfieldspringfield.co.uk/view_episode_scripts.php?tv-show=good-omens-2019&episode=s01e06"
+    }
+  },
+  "after-beelzebub": {
+    "id": "after-beelzebub",
+    "workId": "good-omens-1-06",
+    "work": "Благие знамения, 1.06",
+    "speaker": "Вельзевул",
+    "text": "Остальные слова ещё хуже.",
+    "locator": "1.06",
+    "pattern": "Отвечает на просьбу о вежливости спокойным обещанием ещё менее удобного определения.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Good Omens (2019) s01e06 Episode Script | SS",
+      "url": "https://www.springfieldspringfield.co.uk/view_episode_scripts.php?tv-show=good-omens-2019&episode=s01e06"
+    }
+  },
+  "after-lilith": {
+    "id": "after-lilith",
+    "workId": "sabrina-1-01",
+    "work": "Леденящие душу приключения Сабрины, 1.01",
+    "speaker": "Лилит под видом Уордуэлл",
+    "text": "Яблочки тебе не достанутся, дорогая.",
+    "locator": "1.01, сцена у яблоневого лабиринта",
+    "pattern": "Ласковое обращение обрамляет личный отказ или угрозу, сохраняя внешнюю учтивость.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Chilling Adventures of Sabrina (2018) s01e01 Episode Script | SS",
+      "url": "https://www.springfieldspringfield.co.uk/view_episode_scripts.php?tv-show=chilling-adventures-of-sabrina-2018&episode=s01e01"
+    }
+  },
+  "after-death": {
+    "id": "after-death",
+    "workId": "discworld-theatre-of-cruelty",
+    "work": "Discworld - Wikiquote",
+    "speaker": "Смерть",
+    "text": "Молодой человек, я и есть факт.",
+    "locator": "Театр жестокости, 1993",
+    "pattern": "Буквальная поправка неожиданно переворачивает чужую фигуру речи.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Discworld - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Discworld"
+    }
+  },
+  "after-zina": {
+    "id": "after-zina",
+    "workId": "garage-1979",
+    "work": "Гараж (1979)",
+    "speaker": "Лидия Аникеева",
+    "text": "Для нас главное люди, а не машины.",
+    "locator": "собрание кооператива",
+    "pattern": "Официально противопоставляет высокий принцип бытовому интересу, оставляя двусмысленность.",
+    "translation": "цитатный фрагмент на русском из источника",
+    "source": {
+      "title": "Гараж (фильм) — Викицитатник",
+      "url": "https://ru.wikiquote.org/wiki/%D0%93%D0%B0%D1%80%D0%B0%D0%B6_%28%D1%84%D0%B8%D0%BB%D1%8C%D0%BC%29"
+    }
+  },
+  "an-edward": {
+    "id": "an-edward",
+    "workId": "fullmetal-brotherhood",
+    "work": "Fullmetal Alchemist: Brotherhood",
+    "speaker": "Эдвард Элрик",
+    "text": "Хватит меня дурить!",
+    "locator": "повторяющаяся реплика, английский дубляж",
+    "pattern": "Резко обрывает чужую игру с формулировками и требует прямоты.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Fullmetal Alchemist: Brotherhood (anime) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Fullmetal_Alchemist:_Brotherhood_(anime)"
+    }
+  },
+  "real-zhirinovsky": {
+    "id": "real-zhirinovsky",
+    "workId": "zhirinovsky-program-2017",
+    "work": "Vladimir Zhirinovsky - Wikiquote",
+    "speaker": "Владимир Жириновский",
+    "text": "Программа проста и ясна.",
+    "locator": "предвыборное выступление, 2017, фрагмент",
+    "pattern": "Объявляет вопрос простым и понятным, после чего перечисляет конкретные требования.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Vladimir Zhirinovsky - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Vladimir_Zhirinovsky"
+    }
+  },
+  "real-sobchak": {
+    "id": "real-sobchak",
+    "workId": "sobchak-statement",
+    "work": "Ксения Анатольевна Собчак — Викицитатник",
+    "speaker": "Ксения Собчак",
+    "text": "Это проблема не моя.",
+    "locator": "ответ о неприязни к себе, фрагмент",
+    "pattern": "Возвращает неудобное определение тому, кто пытался его навязать.",
+    "translation": "цитатный фрагмент на русском из источника",
+    "source": {
+      "title": "Ксения Анатольевна Собчак — Викицитатник",
+      "url": "https://ru.wikiquote.org/wiki/%D0%9A%D1%81%D0%B5%D0%BD%D0%B8%D1%8F_%D0%A1%D0%BE%D0%B1%D1%87%D0%B0%D0%BA"
+    }
+  },
+  "real-ramsay": {
+    "id": "real-ramsay",
+    "workId": "kitchen-nightmares-s1",
+    "work": "Kitchen Nightmares - Wikiquote",
+    "speaker": "Гордон Рамзи",
+    "text": "Я ел эту хрень!",
+    "locator": "сезон 1, проверка кухни",
+    "pattern": "Переводит отвлечённое оправдание в прямое личное столкновение с последствием.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Kitchen Nightmares - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Kitchen_Nightmares"
+    }
+  },
+  "villain-joker": {
+    "id": "villain-joker",
+    "workId": "batman-animated-laughing-fish",
+    "work": "Batman: The Animated Series - Wikiquote",
+    "speaker": "Джокер, анимация",
+    "text": "Вообще-то я ирландец.",
+    "locator": "The Laughing Fish",
+    "pattern": "Буквально поправляет чужое восклицание, превращая тревогу в издевательский бытовой разговор.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Batman: The Animated Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
+    }
+  },
+  "villain-harley": {
+    "id": "villain-harley",
+    "workId": "batman-animated-laughing-fish",
+    "work": "Batman: The Animated Series - Wikiquote",
+    "speaker": "Харли Квинн, анимация",
+    "text": "Очарована.",
+    "locator": "The Laughing Fish",
+    "pattern": "Светская любезность не соответствует опасности ситуации и потому звучит вызывающе.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Batman: The Animated Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
+    }
+  },
+  "villain-thanos": {
+    "id": "villain-thanos",
+    "workId": "infinity-gauntlet-1991",
+    "work": "Thanos - Wikiquote",
+    "speaker": "Танос, комикс",
+    "text": "Всё, что захочу.",
+    "locator": "The Infinity Gauntlet, 1991",
+    "pattern": "Короткое личное желание выдаётся за достаточный ответ на вопрос об огромной власти.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Thanos - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Thanos"
+    }
+  },
+  "villain-doom": {
+    "id": "villain-doom",
+    "workId": "fantastic-four-1994",
+    "work": "Fantastic Four (1994 TV series) - Wikiquote",
+    "speaker": "Доктор Дум, анимация",
+    "text": "С вашего разрешения...",
+    "locator": "1994, реплика Дума, фрагмент",
+    "pattern": "Формально просит позволения, хотя интонацией уже присвоил право действовать.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Fantastic Four (1994 TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Fantastic_Four_(1994_TV_series)"
+    }
+  },
+  "villain-loki": {
+    "id": "villain-loki",
+    "workId": "avengers-2012",
+    "work": "The Avengers (2012 film) - Wikiquote",
+    "speaker": "Локи, экранная версия",
+    "text": "У муравья нет ссоры с сапогом.",
+    "locator": "The Avengers, 2012",
+    "pattern": "Учтивой метафорой отрицает предположенное равенство собеседников.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Avengers (2012 film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/The_Avengers_(2012_film)"
+    }
+  },
+  "villain-lex": {
+    "id": "villain-lex",
+    "workId": "lex-man-of-steel",
+    "work": "Lex Luthor - Wikiquote",
+    "speaker": "Лекс Лютор, комикс",
+    "text": "Ты мой кошмар.",
+    "locator": "Lex Luthor: Man of Steel",
+    "pattern": "За общественным аргументом внезапно обнаруживается личное признание угрозы.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Lex Luthor - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Lex_Luthor"
+    }
+  },
+  "villain-magneto": {
+    "id": "villain-magneto",
+    "workId": "x-men-2000",
+    "work": "X-Men - Wikiquote",
+    "speaker": "Магнето, экранная версия",
+    "text": "Что ты делаешь, проснувшись?",
+    "locator": "X-Men, 2000",
+    "pattern": "Не оспаривает чужой страх, а спрашивает, к какому действию тот приводит.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "X-Men - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/X-Men"
+    }
+  },
+  "ship-adama": {
+    "id": "ship-adama",
+    "workId": "battlestar-miniseries",
+    "work": "Battlestar Galactica (2003) - Wikiquote",
+    "speaker": "Уильям Адама",
+    "text": "Так говорим мы все.",
+    "locator": "мини-сериал, общая формула",
+    "pattern": "Превращает личный вывод в проверку готовности группы его разделить.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Battlestar Galactica (2003) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Battlestar_Galactica_(2004)"
+    }
+  },
+  "ship-mccoy": {
+    "id": "ship-mccoy",
+    "workId": "star-trek-tos",
+    "work": "Star Trek: The Original Series",
+    "speaker": "Леонард Маккой",
+    "text": "Я врач, а не каменщик!",
+    "locator": "The Devil in the Dark",
+    "pattern": "Резким противопоставлением напоминает о своей компетенции и реальной природе запроса.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Star Trek: The Original Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Original_Series"
+    }
+  },
+  "ship-scotty": {
+    "id": "ship-scotty",
+    "workId": "star-trek-tos",
+    "work": "Star Trek: The Original Series",
+    "speaker": "Монтгомери Скотт",
+    "text": "Двигатели совсем холодные.",
+    "locator": "сообщение об отключённых двигателях",
+    "pattern": "Называет конкретное состояние механизма вместо обещания, что всё получится.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Star Trek: The Original Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Star_Trek:_The_Original_Series"
+    }
+  },
+  "bunker-rhodes": {
+    "id": "bunker-rhodes",
+    "workId": "day-of-the-dead",
+    "work": "Day of the Dead (1985 film) - Wikiquote",
+    "speaker": "Капитан Роудс",
+    "text": "Теперь здесь командую я!",
+    "locator": "реплика Роудса, фрагмент",
+    "pattern": "Объявляет собственное командование аргументом, когда остальные требуют объяснения.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Day of the Dead (1985 film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Day_of_the_Dead_(1985_film)"
+    }
+  },
+  "board-draper": {
+    "id": "board-draper",
+    "workId": "mad-men-s1",
+    "work": "Mad Men, сезон 1",
+    "speaker": "Дон Дрейпер",
+    "text": "Реклама основана на счастье.",
+    "locator": "Smoke Gets in Your Eyes, 1.01, фрагмент",
+    "pattern": "Сводит сложный продукт к одному человеческому желанию и продаёт именно его.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Mad Men (season 1) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Mad_Men_(season_1)"
+    }
+  },
+  "board-richard": {
+    "id": "board-richard",
+    "workId": "silicon-valley",
+    "work": "Silicon Valley",
+    "speaker": "Ричард Хендрикс",
+    "text": "Нет, просто представьте.",
+    "locator": "Minimum Viable Product, фрагмент",
+    "pattern": "Самопоправкой останавливает неверное понимание, затем предлагает мысленный пример.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Silicon Valley (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Silicon_Valley_(TV_series)"
+    }
+  },
+  "detective-columbo": {
+    "id": "detective-columbo",
+    "workId": "columbo-prescription-murder",
+    "work": "Columbo - Wikiquote",
+    "speaker": "Коломбо",
+    "text": "Может, вы мне поможете.",
+    "locator": "Prescription: Murder",
+    "pattern": "Просьба о помощи маскирует точный вопрос, на который трудно не ответить.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Columbo - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Columbo"
+    }
+  },
+  "detective-catherine": {
+    "id": "detective-catherine",
+    "workId": "basic-instinct",
+    "work": "Basic Instinct - Wikiquote",
+    "speaker": "Кэтрин Трамелл",
+    "text": "Что будем делать, Ник?",
+    "locator": "финальная беседа",
+    "pattern": "Спокойным личным вопросом перекладывает следующий шаг на собеседника; имя заменить по сцене.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Basic Instinct - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Basic_Instinct"
+    }
+  },
+  "detective-gustave": {
+    "id": "detective-gustave",
+    "workId": "grand-budapest-hotel",
+    "work": "Отель Гранд Будапешт",
+    "speaker": "Месье Густав",
+    "text": "Ещё остались проблески цивилизации.",
+    "locator": "речь о гостиничном служении, фрагмент",
+    "pattern": "Сохраняет церемонность как личную ценность в обстановке, которая её разрушает.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Grand Budapest Hotel - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/The_Grand_Budapest_Hotel"
+    }
+  },
+  "detective-watson": {
+    "id": "detective-watson",
+    "workId": "study-in-scarlet",
+    "work": "Артур Конан Дойл — Этюд в багровых тонах",
+    "speaker": "Ватсон, повествование",
+    "text": "Его невежество поражало не меньше его знаний.",
+    "locator": "Этюд в багровых тонах, часть 1, глава 2",
+    "pattern": "Уравновешивает уважение точным замечанием о границах чужой компетентности.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Sherlock Holmes - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Sherlock_Holmes"
+    }
+  },
+  "detective-castle": {
+    "id": "detective-castle",
+    "workId": "castle-s1",
+    "work": "Castle, сезон 1",
+    "speaker": "Ричард Касл",
+    "text": "Больше не было сюрпризов.",
+    "locator": "Flowers for Your Grave, 1.01",
+    "pattern": "Объясняет поступок через отсутствие неожиданности и жажду нового поворота.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Castle (season 1) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Castle_(season_1)"
+    }
+  },
+  "detective-lestrade": {
+    "id": "detective-lestrade",
+    "workId": "sherlock-s1",
+    "work": "Sherlock (TV series) - Wikiquote",
+    "speaker": "Грег Лестрейд",
+    "text": "Я ничего не...",
+    "locator": "A Study in Pink, прерванная реплика",
+    "pattern": "Простая фактическая поправка обрывается чужой самоуверенностью; не копировать роль ведомого постоянно.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Sherlock (TV series) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Sherlock_(TV_series)"
+    }
+  },
+  "olympus-zeus": {
+    "id": "olympus-zeus",
+    "workId": "homer-iliad",
+    "work": "Гомер — Илиада, перевод Сэмюэла Батлера",
+    "speaker": "Зевс в переводе Сэмюэла Батлера",
+    "text": "Испытайте меня и убедитесь сами.",
+    "locator": "Илиада, песнь 8",
+    "pattern": "Превращает спор о полномочиях в уверенный вызов проверить превосходство.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of The Iliad",
+      "url": "https://www.gutenberg.org/cache/epub/2199/pg2199.txt"
+    }
+  },
+  "olympus-hera": {
+    "id": "olympus-hera",
+    "workId": "homer-iliad",
+    "work": "Гомер — Илиада, перевод Сэмюэла Батлера",
+    "speaker": "Гера в переводе Сэмюэла Батлера",
+    "text": "Я тоже богиня.",
+    "locator": "Илиада, песнь 4",
+    "pattern": "Отказывается принимать чужой ранг как основание забыть её собственный.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of The Iliad",
+      "url": "https://www.gutenberg.org/cache/epub/2199/pg2199.txt"
+    }
+  },
+  "olympus-athena": {
+    "id": "olympus-athena",
+    "workId": "homer-odyssey",
+    "work": "Гомер — Одиссея, перевод Сэмюэла Батлера",
+    "speaker": "Афина под видом Мента",
+    "text": "Расскажу правду, всё по порядку.",
+    "locator": "Одиссея, песнь 1",
+    "pattern": "Обещает ясное объяснение, одновременно управляя тем, как собеседник увидит ситуацию.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of The Odyssey",
+      "url": "https://www.gutenberg.org/cache/epub/1727/pg1727.txt"
+    }
+  },
+  "olympus-poseidon": {
+    "id": "olympus-poseidon",
+    "workId": "homer-iliad",
+    "work": "Гомер — Илиада, перевод Сэмюэла Батлера",
+    "speaker": "Посейдон в переводе Сэмюэла Батлера",
+    "text": "Нас было трое братьев.",
+    "locator": "Илиада, песнь 15",
+    "pattern": "Возвращает разговор от верховного приказа к исходному равенству долей.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of The Iliad",
+      "url": "https://www.gutenberg.org/cache/epub/2199/pg2199.txt"
+    }
+  },
+  "olympus-hades": {
+    "id": "olympus-hades",
+    "workId": "homeric-hymns",
+    "work": "Гомеровские гимны, перевод Хью Эвелин-Уайта",
+    "speaker": "Аид, гимн Деметре",
+    "text": "Не печалься так сильно.",
+    "locator": "Гомеровский гимн Деметре, 360–369",
+    "pattern": "Спокойно смягчает чужую реакцию, не отказываясь от собственных условий.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of Hesiod, the Homeric Hymns, and Homerica",
+      "url": "https://www.gutenberg.org/cache/epub/348/pg348.txt"
+    }
+  },
+  "olympus-hermes": {
+    "id": "olympus-hermes",
+    "workId": "homeric-hymns",
+    "work": "Гомеровские гимны, перевод Хью Эвелин-Уайта",
+    "speaker": "Гермес, гимн Гермесу",
+    "text": "Я родился вчера.",
+    "locator": "Гомеровский гимн Гермесу, 260–277",
+    "pattern": "Подаёт удобную видимость невинности как ответ на конкретное обвинение; возраст не переносить в сюжет.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of Hesiod, the Homeric Hymns, and Homerica",
+      "url": "https://www.gutenberg.org/cache/epub/348/pg348.txt"
+    }
+  },
+  "an-goku": {
+    "id": "an-goku",
+    "workId": "dragon-ball-z-s3",
+    "work": "Dragon Ball Z, сезон 3",
+    "speaker": "Сон Гоку",
+    "text": "Я на это не куплюсь.",
+    "locator": "сезон 3, перепалка с Фризой",
+    "pattern": "Прямо отвергает очевидную уловку, затем объясняет буквально простую причину.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Dragon Ball Z: Season 3 - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Dragon_Ball_Z:_Season_3"
+    }
+  },
+  "detective-marple": {
+    "id": "detective-marple",
+    "workId": "marple-official-profile",
+    "work": "Miss Marple - Characters - Agatha Christie",
+    "speaker": "Мисс Марпл",
+    "text": "В деревенской жизни немало зла.",
+    "locator": "цитата в официальном профиле персонажа",
+    "pattern": "Спокойно помещает неприятный вывод в знакомую бытовую среду, не усиливая голос.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Miss Marple - Characters - Agatha Christie",
+      "url": "https://www.agathachristie.com/characters/miss-marple"
+    }
+  },
+  "after-michael": {
+    "id": "after-michael",
+    "workId": "jude-1-9",
+    "work": "Послание Иуды, 1:9, KJV",
+    "speaker": "Архангел Михаил, Послание Иуды",
+    "text": "Да запретит тебе Господь.",
+    "locator": "Послание Иуды, 1:9",
+    "pattern": "Формальным обращением устанавливает границу; не объявлять сверхъестественный результат фактом.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Jude 1:9 KJV - Yet Michael the archangel, when - Bible Gateway",
+      "url": "https://www.biblegateway.com/passage/?search=Jude%201%3A9&version=KJV"
+    }
+  },
+  "olympus-dionysus": {
+    "id": "olympus-dionysus",
+    "workId": "homeric-hymns",
+    "work": "Гомеровские гимны, перевод Хью Эвелин-Уайта",
+    "speaker": "Дионис, гимн Дионису",
+    "text": "Ты пришёлся мне по сердцу.",
+    "locator": "Гомеровский гимн Дионису, 55–57",
+    "pattern": "Выражает личное расположение как самостоятельное достаточное основание своего выбора.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "The Project Gutenberg eBook of Hesiod, the Homeric Hymns, and Homerica",
+      "url": "https://www.gutenberg.org/cache/epub/348/pg348.txt"
+    }
+  },
+  "heist-neil": {
+    "id": "heist-neil",
+    "workId": "heat-1995",
+    "work": "Схватка (1995)",
+    "speaker": "Нил Макколи",
+    "text": "Не привязывайся к тому, с чем не готов расстаться.",
+    "locator": "беседа о личном правиле, фрагмент",
+    "pattern": "Короткий запрет самому себе объясняет границу допустимого риска.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Heat (1995 film) - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Heat_(1995_film)"
+    }
+  },
+  "villain-harley-day": {
+    "id": "villain-harley-day",
+    "workId": "batman-animated-harley-holiday",
+    "work": "Batman: The Animated Series - Wikiquote",
+    "speaker": "Харли Квинн, анимация",
+    "text": "У меня ПЛОХОЙ ДЕНЬ!",
+    "locator": "Harley's Holiday",
+    "pattern": "Сворачивает огромный хаос в смешно-бытовую личную жалобу.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Batman: The Animated Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
+    }
+  },
+  "villain-harley-paid": {
+    "id": "villain-harley-paid",
+    "workId": "batman-animated-harley-holiday",
+    "work": "Batman: The Animated Series - Wikiquote",
+    "speaker": "Харли Квинн, анимация",
+    "text": "Я ведь за него ЗАПЛАТИЛА!",
+    "locator": "Harley's Holiday, фрагмент",
+    "pattern": "Неожиданным ударением выделяет маленькую личную несправедливость посреди большой опасности.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Batman: The Animated Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
+    }
+  },
+  "villain-joker-steal": {
+    "id": "villain-joker-steal",
+    "workId": "batman-animated-christmas",
+    "work": "Batman: The Animated Series - Wikiquote",
+    "speaker": "Джокер, анимация",
+    "text": "Решил УКРАСТЬ.",
+    "locator": "Christmas with the Joker, фрагмент",
+    "pattern": "Бытовой эмоциональный заход внезапно заканчивается вызывающе неправильным решением.",
+    "translation": "рабочий перевод короткого фрагмента для Кворума, не официальная русская озвучка",
+    "source": {
+      "title": "Batman: The Animated Series - Wikiquote",
+      "url": "https://en.wikiquote.org/wiki/Batman:_The_Animated_Series"
+    }
+  }
+};
 export const CHARACTER_ARCHETYPES=Object.fromEntries(Object.entries(CHARACTER_VOICE_PROFILES).map(([id,profiles])=>[id,profiles.map(profile=>profile.sentences.join(" "))]));
-export const storyBible=id=>{const key=Object.hasOwn(STORY_BIBLE,id)?id:"diner";return {...STORY_BIBLE[key],archetypes:CHARACTER_ARCHETYPES[key],voiceProfiles:CHARACTER_VOICE_PROFILES[key]};};
+export const storyBible=id=>{const key=Object.hasOwn(STORY_BIBLE,id)?id:"diner";return {...STORY_BIBLE[key],archetypes:CHARACTER_ARCHETYPES[key],voiceProfiles:CHARACTER_VOICE_PROFILES[key],quoteAnchors:CHARACTER_VOICE_PROFILES[key].map(profile=>profile.quoteIds.map(id=>CHARACTER_QUOTE_BANK[id]))};};

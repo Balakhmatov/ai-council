@@ -2,6 +2,7 @@ import {writeFileSync,mkdirSync} from 'node:fs';
 import {dirname,resolve} from 'node:path';
 import {SHOW_SCENARIOS} from '../public/show.js';
 import {CHARACTER_VOICE_PROFILES} from '../public/show-stories.js';
+import {quoteCatalogLines} from './export-character-quotes.mjs';
 
 const target=resolve(process.argv[2]||'docs/character-voices-researched.md');
 const lines=[
@@ -18,12 +19,13 @@ for(const scenario of SHOW_SCENARIOS){
  lines.push('## '+scenario.title,'');
  profiles.forEach((profile,slot)=>{
   if(profile.name!==scenario.roles[slot][0]||profile.sentences.length!==10)throw Error('Неверный портрет: '+profile.name);
-  lines.push('### '+profile.name,'','**Основа:** '+profile.prototype,'');
+  lines.push('### '+profile.name,'','**Основа:** '+profile.prototype,'','**Цитатные опоры:** '+profile.quoteIds.map(id=>'['+id+'](#'+id+')').join(', '),'');
   lines.push(...profile.sentences.map((line,i)=>(i+1)+'. '+line),'','**Источники:**','');
   for(const source of profile.sources){lines.push('- ['+source.title+'](<'+source.url+'>)');sources.add(source.url);}
   lines.push('');characters++;sentences+=profile.sentences.length;
  });
 }
+lines.push(...quoteCatalogLines());
 if(characters!==98||sentences!==980)throw Error('Неполный каталог');
 mkdirSync(dirname(target),{recursive:true});writeFileSync(target,lines.join('\n'),'utf8');
 console.log(JSON.stringify({file:target,characters,sentences,sources:sources.size}));

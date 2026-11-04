@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {SHOW_SCENARIOS,SHOW_TONES,showScenario,showCast,clipShowLine,runShow} from '../public/show.js';
-import {STORY_BIBLE,CHARACTER_ARCHETYPES,CHARACTER_VOICE_PROFILES} from '../public/show-stories.js';
+import {STORY_BIBLE,CHARACTER_ARCHETYPES,CHARACTER_VOICE_PROFILES,CHARACTER_QUOTE_BANK} from '../public/show-stories.js';
 
 const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'grok',name:'Grok'}];
 const scene=showScenario('villains');
@@ -210,4 +210,34 @@ test('each researched voice specifies a source version and exactly ten sentences
  assert(CHARACTER_VOICE_PROFILES.kombat[0].prototype.includes('Ханзо'));
  assert(CHARACTER_VOICE_PROFILES.kombat[1].prototype.includes('Куай'));
  assert(CHARACTER_VOICE_PROFILES.time[1].sentences.join(' ').includes('реконструирована'));
+});
+
+
+test("every actor has quote anchors without other actors anchors in its prompt",async()=>{
+ const budgets=new Map();
+ const crew=['openai','mistral','grok','claude','gemini','qwen','deepseek'].map(id=>({id,name:id}));
+ for(const quote of Object.values(CHARACTER_QUOTE_BANK)){
+  assert(quote.text.length>0&&quote.text.length<=90);
+  assert(quote.speaker&&quote.locator&&quote.pattern&&quote.translation);
+  assert.equal(new URL(quote.source.url).protocol,'https:');
+  budgets.set(quote.workId,(budgets.get(quote.workId)||0)+quote.text.length);
+ }
+ for(const count of budgets.values())assert(count<=90,'keep each source extract short');
+ for(const scenario of SHOW_SCENARIOS){
+  const profiles=CHARACTER_VOICE_PROFILES[scenario.id];
+  for(const profile of profiles){assert(profile.quoteIds.length>0);for(const id of profile.quoteIds)assert(CHARACTER_QUOTE_BANK[id]);}
+  const parts=showCast(scenario,Object.fromEntries(crew.map((agent,slot)=>[slot,agent.id]))),seen=new Set();
+  await runShow({agents:crew,scenario,cast:parts,scenes:3,emit:()=>{},request:async(agent,m,signal,stage)=>{
+   if(stage.stage!=='final'){
+    seen.add(agent.id);
+    const own=parts.find(p=>p.provider===agent.id),ids=profiles[own.slot].quoteIds;
+    assert(m[0].content.includes('АДАПТАЦИЯ ЦИТАТЫ:'));
+    for(const id of ids)assert(m[0].content.includes('«'+CHARACTER_QUOTE_BANK[id].text+'»'));
+    for(const other of profiles)for(const id of other.quoteIds)if(!ids.includes(id))assert(!m[0].content.includes('«'+CHARACTER_QUOTE_BANK[id].text+'»'));
+    assert(m.every(message=>message.content.length<=9500));
+   }
+   return stage.stage==='final'?JSON.stringify({epilogue:'Спор остался открытым.'}):JSON.stringify({speech:'Я услышал условие, теперь назови свою цену.',action:null});
+  }});
+  assert.equal(seen.size,7,'all seven voices exercised in '+scenario.id);
+ }
 });
