@@ -7,22 +7,22 @@ const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'gro
 const scene=showScenario('villains');
 const cast=showCast(scene,{0:'mistral',1:'grok',2:'openai'});
 
-test('twelve show worlds have private motives and six free versus six three-way endings',()=>{
- assert.equal(SHOW_SCENARIOS.length,12);
- assert.equal(new Set(SHOW_SCENARIOS.map(s=>s.id)).size,12);
+test('fourteen show worlds have private motives and seven free versus seven three-way endings',()=>{
+ assert.equal(SHOW_SCENARIOS.length,14);
+ assert.equal(new Set(SHOW_SCENARIOS.map(s=>s.id)).size,14);
  for(const s of SHOW_SCENARIOS){
   const b=STORY_BIBLE[s.id];
   assert(s.title&&s.description&&s.setting&&s.genre&&s.emoji);
   assert.equal(s.roles.length,7);assert.equal(b.roles.length,7);
   assert(b.place.length>45&&b.conflict.length>50&&b.stakes.length>50);
-  assert(b.roles.every(r=>r.length>35));assert(b.clock.minutes>0&&b.clock.label);
+  assert(b.roles.every(r=>r.length>35));assert(b.pressure.length>50&&!('clock' in b));
   assert(!('truth'in b)&&!('ending'in b)&&!('beats'in b));
   assert.equal(b.outcomes.length,b.endingMode==='three'?3:0);
   assert.equal(new Set(b.outcomes.map(o=>o.id)).size,b.outcomes.length);
   if(b.endingMode==='three')assert(b.outcomes.some(o=>o.id===b.fallbackOutcome));
  }
- assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='three').length,6);
- assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='free').length,6);
+ assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='three').length,7);
+ assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='free').length,7);
  assert.equal(Object.keys(SHOW_TONES).length,5);
 });
 test('a fictional role can be played by any model, independent of the role name',()=>{

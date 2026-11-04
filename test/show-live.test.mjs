@@ -176,7 +176,7 @@ test('only parenthetical directions are italic after malformed model emphasis',a
  assert.equal(formatShowSpeech('*(Отодвигает чашку.)* Ответь мне.'),'*(Отодвигает чашку.)* Ответь мне.');
 });
 
-test('all twelve shows isolate private roles, hide ending options and use their own clock and genre',async()=>{
+test('all fourteen shows isolate private roles, hide ending options and use their own pressure and genre',async()=>{
  const {SHOW_SCENARIOS}=await import('../public/show.js');
  for(const scenario of SHOW_SCENARIOS){
   const book=STORY_BIBLE[scenario.id];
@@ -186,7 +186,7 @@ test('all twelve shows isolate private roles, hide ending options and use their 
    assert.ok(prompt.includes(book.roles[own.slot]),scenario.id);
    for(const part of parts.filter(p=>p.slot!==own.slot))assert.ok(!prompt.includes(book.roles[part.slot]),scenario.id+' private role leaked');
    assert.ok(call.m[0].content.includes(book.actionContext));
-   assert.ok(call.m[1].content.includes(book.clock.label));
+   assert.ok(call.m[1].content.includes(book.pressure));
    assert.ok(!call.m[0].content.includes('ТРИ ВОЗМОЖНЫЕ РАЗВЯЗКИ'));
    for(const option of book.outcomes)assert.ok(!prompt.includes(option.condition));
    assert.equal(call.stage.outputSchema,'actor');
@@ -200,7 +200,7 @@ test('all twelve shows isolate private roles, hide ending options and use their 
  }
 });
 
-test('each of the eighteen ending directions can be returned and none is selected before the epilogue',async()=>{
+test('each of the twenty-one ending directions can be returned and none is selected before the epilogue',async()=>{
  const {parseShowEpilogue}=await import('../public/show-live.js');
  for(const [id,book] of Object.entries(STORY_BIBLE).filter(([,b])=>b.endingMode==='three')){
   for(const option of book.outcomes){
@@ -239,4 +239,30 @@ test('historical, satirical and franchise casts retain private roles and their f
   if(id==='reality')assert.ok(b.castingContext.includes('сатирический')&&b.castingContext.includes('тайные преступления'));
  }
  assert.equal(STORY_BIBLE.anime.endingMode,'three');assert.equal(STORY_BIBLE.kombat.endingMode,'free');
+});
+
+test('real-world anime and tournament disputes replace the mystical station and name-erasure plots',async()=>{
+ const anime=STORY_BIBLE.anime,kombat=STORY_BIBLE.kombat;
+ assert.ok(anime.conflict.includes('распознавания')||anime.place.includes('распознавания'));
+ assert.ok(anime.stakes.includes('частная жизнь'));assert.ok(kombat.conflict.includes('лечение'));assert.ok(kombat.place.includes('контракт'));
+ for(const id of ['anime','kombat']){
+  const {calls}=await simulate(id);
+  for(const call of calls.filter(c=>c.stage.stage==='intermediate')){
+   const prompt=call.m.map(m=>m.content).join('\n');assert.doesNotMatch(prompt,/украденных завтра|мелового перрона|сотрёт имя победителя|песок поднимается вверх/);
+  }
+ }
+});
+
+test('all shows use decision-driven pressure instead of an automatic minute countdown',async()=>{
+ const {SHOW_SCENARIOS}=await import('../public/show.js');
+ assert.equal(new Set(Object.values(STORY_BIBLE).map(b=>b.pressure)).size,14);
+ for(const scene of SHOW_SCENARIOS){
+  const book=STORY_BIBLE[scene.id];assert.ok(!('clock'in book));
+  const {calls}=await simulate(scene.id);
+  for(const call of calls.filter(c=>c.stage.stage==='intermediate')){
+   assert.ok(call.m[1].content.includes(book.pressure));
+   assert.doesNotMatch(call.m[1].content,/(?:До [^\n]+примерно|осталось) \d+ минут/);
+  }
+ }
+ for(const id of ['afterlife','olympus']){assert.equal(showScenario(id).roles.length,7);assert.ok(STORY_BIBLE[id].speechRhythm.includes('Комедия'));}
 });

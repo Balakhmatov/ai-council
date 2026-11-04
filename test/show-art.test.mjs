@@ -6,10 +6,10 @@ import {scenePoster,characterPortrait} from '../public/show-art.js';
 
 test('every story and every casting role has its own local illustration cell',()=>{
  const posters=SHOW_SCENARIOS.map(s=>scenePoster(s.id));
- assert.equal(new Set(posters).size,12);
+ assert.equal(new Set(posters).size,14);
  const portraits=SHOW_SCENARIOS.flatMap(s=>s.roles.map((_,i)=>characterPortrait(s.id,i)));
- assert.equal(portraits.length,84);
- assert.equal(new Set(portraits).size,84);
+ assert.equal(portraits.length,98);
+ assert.equal(new Set(portraits).size,98);
  assert.equal(scenePoster('unknown'),scenePoster('diner'));
  assert.equal(characterPortrait('unknown',0),characterPortrait('diner',0));
  for(const art of [...posters,...portraits])assert.ok(!art.includes('href="https:')&&!art.includes('undefined'));
@@ -38,5 +38,14 @@ test('new casts use new local artwork and correct named comic portraits instead 
   for(const markup of [scenePoster(id),...Array.from({length:7},(_,i)=>characterPortrait(id,i))]){
    const file=/href="\.\/assets\/([^?]+)\?/.exec(markup)[1];assert.ok(statSync(new URL('../public/assets/'+file,import.meta.url)).size>1000,file);
   }
+ }
+});
+
+test('every landscape poster contains the actual seven participants, including the two comedies',()=>{
+ for(const scene of SHOW_SCENARIOS){
+  const poster=scenePoster(scene.id);
+  assert.ok(poster.includes('0 0 900 540'));
+  assert.equal((poster.match(/data-poster-slot=/g)||[]).length,7,scene.id);
+  for(let slot=0;slot<7;slot++)assert.ok(poster.includes(characterPortrait(scene.id,slot)),scene.id+' missing cast '+slot);
  }
 });

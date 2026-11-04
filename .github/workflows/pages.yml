@@ -63,13 +63,13 @@ jobs:
             bytes=$(wc -c < /tmp/quorum-live.html 2>/dev/null || echo 0)
             csscode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-live.css --write-out '%{http_code}' 'https://cityai.site/quorum/uiux32.css?v=show65' || true)
             enginecode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-engine.js --write-out '%{http_code}' 'https://cityai.site/quorum/engine.js' || true)
-            appcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-app.js --write-out '%{http_code}' 'https://cityai.site/quorum/app.js?v=show75' || true)
+            appcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-app.js --write-out '%{http_code}' 'https://cityai.site/quorum/app.js?v=show76' || true)
             showcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-show.js --write-out '%{http_code}' 'https://cityai.site/quorum/show.js' || true)
             artcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-show-art.js --write-out '%{http_code}' 'https://cityai.site/quorum/show-art.js' || true)
             healthcode=$(curl --silent --show-error --location --max-time 20 --output /tmp/quorum-health.json --write-out '%{http_code}' 'https://cityai.site/quorum/healthz' || true)
             echo "Attempt $i: HTML=$code CSS=$csscode ENGINE=$enginecode APP=$appcode SHOW=$showcode ART=$artcode HEALTH=$healthcode bytes=$bytes"
             if [ "$code" = "200" ] && [ "$csscode" = "200" ] && [ "$enginecode" = "200" ] && [ "$appcode" = "200" ] && [ "$showcode" = "200" ] && [ "$artcode" = "200" ] && [ "$healthcode" = "200" ] \
-              && grep -qF 'app.js?v=show75' /tmp/quorum-live.html \
+              && grep -qF 'app.js?v=show76' /tmp/quorum-live.html \
               && grep -qF 'uiux32.css?v=show65' /tmp/quorum-live.html \
               && grep -qF 'data:image/webp;base64,UklGR' /tmp/quorum-live.html \
               && grep -qF 'html:has(body.landing-visible){height:100%' /tmp/quorum-live.css \
