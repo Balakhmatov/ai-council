@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {SHOW_SCENARIOS,SHOW_TONES,showScenario,showCast,clipShowLine,runShow} from '../public/show.js';
-import {STORY_BIBLE,CHARACTER_ARCHETYPES} from '../public/show-stories.js';
+import {STORY_BIBLE,CHARACTER_ARCHETYPES,CHARACTER_VOICE_PROFILES} from '../public/show-stories.js';
 
 const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'grok',name:'Grok'}];
 const scene=showScenario('villains');
@@ -169,13 +169,13 @@ test('all fourteen stories sustain eight scenes with changing guidance and priva
 });
 
 
-test('all 98 characters have compact distinct archetypes passed only to their own actor',async()=>{
+test('all 98 characters have researched ten-sentence archetypes passed only to their own actor',async()=>{
  let total=0;
  for(const scenario of SHOW_SCENARIOS){
   const voices=CHARACTER_ARCHETYPES[scenario.id];
   assert.equal(voices.length,scenario.roles.length);
   assert.equal(new Set(voices).size,7);
-  for(const voice of voices){assert(voice.length>80&&voice.length<350);total++;}
+  for(const voice of voices){assert(voice.length>500&&voice.length<1300);total++;}
   const parts=showCast(scenario,{0:'openai',1:'mistral',2:'grok'});
   await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:()=>{},request:async(agent,m,signal,stage)=>{
    if(stage.stage!=='final'){
@@ -189,4 +189,25 @@ test('all 98 characters have compact distinct archetypes passed only to their ow
   }});
  }
  assert.equal(total,98);
+});
+
+
+test('each researched voice specifies a source version and exactly ten sentences with two original examples',()=>{
+ let sentenceCount=0,exampleCount=0;
+ for(const scenario of SHOW_SCENARIOS){
+  const profiles=CHARACTER_VOICE_PROFILES[scenario.id];
+  assert.equal(profiles.length,7);
+  profiles.forEach((profile,slot)=>{
+   assert.equal(profile.name,scenario.roles[slot][0]);assert(profile.prototype.length>5);
+   assert.equal(profile.sentences.length,10);sentenceCount+=profile.sentences.length;
+   assert.equal(profile.sentences.filter(line=>line.startsWith('Пример ')).length,2);exampleCount+=2;
+   assert.equal(CHARACTER_ARCHETYPES[scenario.id][slot],profile.sentences.join(' '));
+   assert(profile.sources.length>=1);
+   for(const source of profile.sources){assert.equal(new URL(source.url).protocol,'https:');assert(source.title.length>3);}
+  });
+ }
+ assert.equal(sentenceCount,980);assert.equal(exampleCount,196);
+ assert(CHARACTER_VOICE_PROFILES.kombat[0].prototype.includes('Ханзо'));
+ assert(CHARACTER_VOICE_PROFILES.kombat[1].prototype.includes('Куай'));
+ assert(CHARACTER_VOICE_PROFILES.time[1].sentences.join(' ').includes('реконструирована'));
 });

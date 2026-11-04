@@ -1,6 +1,6 @@
-import {runLiveShow} from './show-live.js?v=voices1';
+import {runLiveShow} from './show-live.js?v=voices2';
 import {ambiences} from './engine.js';
-import {storyBible} from './show-stories.js?v=voices1';
+import {storyBible} from './show-stories.js?v=voices2';
 // Quorum Show: original situations and fictional crossovers. AI providers play the selected roles.
 export const SHOW_SCENARIOS=[
   {
