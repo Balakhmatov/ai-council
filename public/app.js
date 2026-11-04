@@ -1,6 +1,6 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
 import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=scenes2';
-import {scenePoster,characterPortrait} from './show-art.js?v=vertical1';
+import {scenePoster,characterPortrait} from './show-art.js?v=villainsUser1';
 import {STORY_CORE_ROLES,storyBible} from './show-stories.js?v=scenes2';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';

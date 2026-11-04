@@ -33,7 +33,7 @@ test('new casts use new local artwork and correct named comic portraits instead 
   for(let i=0;i<7;i++){const portrait=characterPortrait(id,i);assert.ok(portrait.includes('show-'+id+'-cast.webp'));assert.notEqual(portrait,poster);}
  }
  const comics=['joker','thanos','doom','loki','harley','luthor','magneto'];
- for(let i=0;i<7;i++)assert.ok(characterPortrait('villains',i).includes('show-comic-'+comics[i]+(i===5?'-generated':'')+'.webp'));
+ for(let i=0;i<7;i++)assert.ok(characterPortrait('villains',i).includes('show-villains-user-'+comics[i]+'.webp'));
  for(const id of ['time','reality','villains','anime','kombat']){
   for(const markup of [scenePoster(id),...Array.from({length:7},(_,i)=>characterPortrait(id,i))]){
    const file=/href="\.\/assets\/([^?]+)\?/.exec(markup)[1];assert.ok(statSync(new URL('../public/assets/'+file,import.meta.url)).size>1000,file);
@@ -72,5 +72,18 @@ test('new scene files are genuinely vertical and their full composition is fitte
   assert.equal(size.width,1024,id);assert.equal(size.height,1536,id);
   assert.ok(poster.includes('viewBox="0 0 '+size.width+' '+size.height+'"'));
   assert.ok(poster.includes('preserveAspectRatio="xMidYMid meet"'),id+' must show the whole scene');
+ }
+});
+
+test('uploaded villain poster and seven portraits use all eight full-size WebP assets without old crops',()=>{
+ const art=[scenePoster('villains'),...Array.from({length:7},(_,i)=>characterPortrait('villains',i))];
+ assert.equal(new Set(art).size,8);
+ for(const markup of art){
+  const file=/href="\.\/assets\/([^?]+)\?/.exec(markup)[1];
+  assert.ok(file.startsWith('show-villains-user-'));
+  const size=webpDimensions(readFileSync(new URL('../public/assets/'+file,import.meta.url)));
+  assert.deepEqual(size,{width:784,height:1168});
+  assert.ok(markup.includes('viewBox="0 0 784 1168"'));
+  assert.ok(markup.includes('preserveAspectRatio="xMidYMid meet"'));
  }
 });
