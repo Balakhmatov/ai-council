@@ -7,9 +7,9 @@ const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'gro
 const scene=showScenario('villains');
 const cast=showCast(scene,{0:'mistral',1:'grok',2:'openai'});
 
-test('ten show worlds have private motives, genre stakes and five free versus five three-way endings',()=>{
- assert.equal(SHOW_SCENARIOS.length,10);
- assert.equal(new Set(SHOW_SCENARIOS.map(s=>s.id)).size,10);
+test('twelve show worlds have private motives and six free versus six three-way endings',()=>{
+ assert.equal(SHOW_SCENARIOS.length,12);
+ assert.equal(new Set(SHOW_SCENARIOS.map(s=>s.id)).size,12);
  for(const s of SHOW_SCENARIOS){
   const b=STORY_BIBLE[s.id];
   assert(s.title&&s.description&&s.setting&&s.genre&&s.emoji);
@@ -21,15 +21,15 @@ test('ten show worlds have private motives, genre stakes and five free versus fi
   assert.equal(new Set(b.outcomes.map(o=>o.id)).size,b.outcomes.length);
   if(b.endingMode==='three')assert(b.outcomes.some(o=>o.id===b.fallbackOutcome));
  }
- assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='three').length,5);
- assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='free').length,5);
+ assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='three').length,6);
+ assert.equal(Object.values(STORY_BIBLE).filter(b=>b.endingMode==='free').length,6);
  assert.equal(Object.keys(SHOW_TONES).length,5);
 });
 test('a fictional role can be played by any model, independent of the role name',()=>{
  const before=showCast(scene,{0:'openai',1:'grok',2:'mistral'});
  const after=showCast(scene,{0:'grok',1:'openai',2:'mistral'});
- assert.equal(before[0].name,'Куро');
- assert.equal(after[0].name,'Куро');
+ assert.equal(before[0].name,'Джокер');
+ assert.equal(after[0].name,'Джокер');
  assert.equal(before[0].provider,'openai');
  assert.equal(after[0].provider,'grok');
  assert(!showCast(scene,{}).length);
@@ -41,7 +41,7 @@ test('one reply stays compact without adding administrative truncation notices',
 });
 test('Show alternates speakers between scenes and does not do a fixed full roster round',async()=>{
  const calls=[],emitted=[];
- const out=await runShow({agents:actors,scenario:scene,cast,scenes:3,tonality:'brutal',extra:'Контроль над куполом',
+ const out=await runShow({agents:actors,scenario:scene,cast,scenes:3,tonality:'brutal',extra:'Цена аукционного ключа',
   request:async(a,chat,signal,stage)=>{calls.push({id:a.id,chat,stage});return 'Кай, предъяви ключ. Я хочу увидеть доказательства.';},
   emit:m=>emitted.push(m)});
  assert.equal(calls.length,10,'3 scenes x 3 actors + epilogue');
@@ -57,7 +57,7 @@ test('Show alternates speakers between scenes and does not do a fixed full roste
  assert(calls.some(c=>c.chat[1].content.includes('СЕЙЧАС ГОВОРИТ')));
  assert(calls.some(c=>c.chat[1].content.includes('Последние')||c.chat[1].content.includes('ПРЕДЫДУЩИЕ РЕПЛИКИ')));
  assert(calls.some(c=>c.chat[0].content.includes('жёсткие решения')));
- assert(calls.some(c=>c.chat[1].content.includes('Куро:')));
+ assert(calls.some(c=>c.chat[1].content.includes('Джокер:')));
  assert.equal(emitted.at(-1).stage,'Эпилог');
 });
 test('director notes accept all 5000 characters without silent truncation',async()=>{

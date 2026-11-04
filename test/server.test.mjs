@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show74/);
+  assert.match(html.body,/app\.js\?v=show75/);
  }finally{await t.close();}
 });
 
@@ -973,4 +973,12 @@ test('Show epilogue preserves a valid branch id and rejects an invented or missi
   const good=await t.send('/api/chat',talk,'admin-test-only');assert.equal(good.status,200);assert.equal(JSON.parse(good.data.text).outcome,'standoff');
   for(outcome of ['invented',undefined])assert.equal((await t.send('/api/chat',talk,'admin-test-only')).status,502);
  }finally{await t.close();}
+});
+
+test('every new cast illustration referenced by the UI is served as a local WebP',async()=>{
+ const {scenePoster,characterPortrait}=await import('../public/show-art.js');
+ const files=new Set();
+ for(const id of ['time','reality','villains','anime','kombat'])for(const art of [scenePoster(id),...Array.from({length:7},(_,i)=>characterPortrait(id,i))])files.add(/href="\.\/assets\/([^?]+)\?/.exec(art)[1]);
+ const t=await setup();
+ try{for(const file of files){const r=await t.asset('/assets/'+file+'?v=crossovers1');assert.equal(r.status,200,file);assert.equal(r.type,'image/webp');assert.ok(r.body.startsWith('RIFF'));}}finally{await t.close();}
 });

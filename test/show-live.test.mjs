@@ -176,7 +176,7 @@ test('only parenthetical directions are italic after malformed model emphasis',a
  assert.equal(formatShowSpeech('*(Отодвигает чашку.)* Ответь мне.'),'*(Отодвигает чашку.)* Ответь мне.');
 });
 
-test('all ten shows isolate private roles, hide ending options and use their own clock and genre',async()=>{
+test('all twelve shows isolate private roles, hide ending options and use their own clock and genre',async()=>{
  const {SHOW_SCENARIOS}=await import('../public/show.js');
  for(const scenario of SHOW_SCENARIOS){
   const book=STORY_BIBLE[scenario.id];
@@ -200,7 +200,7 @@ test('all ten shows isolate private roles, hide ending options and use their own
  }
 });
 
-test('each of the fifteen ending directions can be returned and none is selected before the epilogue',async()=>{
+test('each of the eighteen ending directions can be returned and none is selected before the epilogue',async()=>{
  const {parseShowEpilogue}=await import('../public/show-live.js');
  for(const [id,book] of Object.entries(STORY_BIBLE).filter(([,b])=>b.endingMode==='three')){
   for(const option of book.outcomes){
@@ -225,4 +225,18 @@ test('failed epilogue preserves irreversible consequences rather than forcing a 
   assert.ok(events.at(-1).text.includes(parts[0].name+' покидает комнату'));
   assert.equal(events.at(-1).outcome,id==='court'?STORY_BIBLE[id].fallbackOutcome:STORY_BIBLE[id].outcomes[1].id);
  }
+});
+
+test('historical, satirical and franchise casts retain private roles and their fictional casting context',async()=>{
+ const expected={time:['Наполеон Бонапарт','Клеопатра','Чингисхан','Уинстон Черчилль','Иосиф Сталин','Альберт Эйнштейн','Жанна д’Арк'],reality:['Илон Маск','Дональд Трамп','Владимир Жириновский','Павел Дуров','Ксения Собчак','Гордон Рамзи','Канье Уэст'],villains:['Джокер','Танос','Доктор Дум','Локи','Харли Квинн','Лекс Лютор','Магнето'],anime:['Наруто Узумаки','Монки Д. Луффи','Сон Гоку','Леви Аккерман','Сайтама','Эдвард Элрик','Сейлор Мун'],kombat:['Скорпион','Саб-Зиро','Рейден','Лю Кан','Джонни Кейдж','Китана','Шан Цзун']};
+ for(const [id,names] of Object.entries(expected)){
+  assert.deepEqual(showScenario(id).roles.map(r=>r[0]),names);
+  const {calls}=await simulate(id);const b=STORY_BIBLE[id];
+  assert.ok(calls.every(c=>c.m[0].content.includes(b.castingContext)),id);
+  assert.ok(calls[0].m[0].content.includes(b.roles[0]));
+  assert.ok(!calls[0].m[0].content.includes(b.roles[1]));
+  if(id==='time')assert.ok(b.castingContext.includes('не подлинные цитаты'));
+  if(id==='reality')assert.ok(b.castingContext.includes('сатирический')&&b.castingContext.includes('тайные преступления'));
+ }
+ assert.equal(STORY_BIBLE.anime.endingMode,'three');assert.equal(STORY_BIBLE.kombat.endingMode,'free');
 });
