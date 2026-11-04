@@ -152,3 +152,18 @@ test('requested first four shows are ordered heroes, Mortal Kombat, toxic broadc
  assert.ok(STORY_BIBLE.court.roles.every(r=>r.includes('ИИ')));
  assert.ok(STORY_BIBLE.olympus.conflict.includes('Афганистана'));assert.ok(STORY_BIBLE.olympus.conflict.includes('без божественных сил'));
 });
+
+test('all fourteen stories sustain eight scenes with changing guidance and private role knowledge',async()=>{
+ for(const scenario of SHOW_SCENARIOS){
+  const calls=[];
+  await runShow({agents:actors,scenario,cast:showCast(scenario,{0:'openai',1:'mistral',2:'grok'}),scenes:8,emit:()=>{},request:async(a,m,s,stage)=>{
+   calls.push({m,stage});
+   return stage.stage==='final'?JSON.stringify({epilogue:'Они остались при своих решениях. Соглашения пока нет.',...(STORY_BIBLE[scenario.id].outcomes?{outcome:STORY_BIBLE[scenario.id].outcomes[0].id}:{})}):JSON.stringify({speech:'Я услышал твой ответ. Теперь объясни, что ты предлагаешь взамен.',action:null});
+  }});
+  const actorsCalls=calls.filter(c=>c.stage.stage!=='final');
+  assert.equal(actorsCalls.length,24,scenario.id);
+  const guidance=new Set(actorsCalls.map(c=>c.m[1].content.match(/РАЗВИТИЕ КОНФЛИКТА: ([^\n]+)/)?.[1]));
+  assert.equal(guidance.size,8,scenario.id);
+  assert.equal(calls.filter(c=>c.stage.stage==='final').length,1);
+ }
+});

@@ -291,3 +291,17 @@ test('model preferences persist independently per account and do not alter balan
   assert.equal(restored.access('account:a').remainingFreeTasks,10);
  }finally{rmSync(dir,{recursive:true,force:true});}
 });
+
+test('public playtest permits seven actors and eight scenes without debits, refunds or administrator privileges',()=>{
+ const env={PUBLIC_PLAYTEST:'1'},e=createEconomy({env});
+ const models=['openai','mistral','grok','claude','gemini','qwen','deepseek'];
+ const identity='guest:'+'a'.repeat(32);
+ for(let i=0;i<12;i++){
+  const t=e.start(identity,false,{participants:models,mode:'show',rounds:8},models);
+  assert.equal(t.maxCalls,33);assert.equal(t.chargedTokens,0);assert.equal(t.historyEnabled,false);
+  assert.equal(e.checkCall(t.taskId,'guest:other','openai'),false);
+  assert.equal(e.finish(t.taskId,identity).refundedTokens,0);
+ }
+ assert.equal(e.access(identity).admin,false);assert.equal(e.access(identity).maxModels,7);
+ assert.equal(e.access(identity).freeRemaining,10,'free quota remains intact');
+});

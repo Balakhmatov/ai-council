@@ -17,7 +17,7 @@ export function createSessionStore({env,now=Date.now}){
    const records=JSON.parse(Buffer.concat([decipher.update(Buffer.from(saved.data,'base64')),decipher.final()]).toString());
    if(!Array.isArray(records)||records.length>10000)throw Error();
    for(const [token,session]of records){
-    if(!/^[a-f0-9]{64}$/.test(token)||!Number.isFinite(session?.expires)||!(session.emailUser||session.telegramUser))throw Error();
+    if(!/^[a-f0-9]{64}$/.test(token)||!Number.isFinite(session?.expires)||!(session.emailUser||session.telegramUser||/^[a-f0-9]{32}$/.test(session.guestId||'')))throw Error();
     if(session.expires>now())sessions.set(token,session);
    }
   }catch(error){if(error.code!=='ENOENT')throw Error('Session store unreadable');}

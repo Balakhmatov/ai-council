@@ -35,6 +35,7 @@ if(!config.DEEPSEEK_MODEL)config.DEEPSEEK_MODEL='deepseek-v4.1-flash';
 if(!config.QWEN_BASE_URL)config.QWEN_BASE_URL='https://ddtnew.com/v1';
 if(!config.DEEPSEEK_BASE_URL)config.DEEPSEEK_BASE_URL='https://ddtnew.com/v1';
 config.QUOTA_FILE='/var/lib/quorum/quota.json';config.ACCOUNTING_FILE='/var/lib/quorum/accounting.json';config.HISTORY_FILE='/var/lib/quorum/history.json';config.ANALYTICS_FILE='/var/lib/quorum/analytics.json';
+config.PUBLIC_PLAYTEST='1';
 config.SESSION_FILE='/var/lib/quorum/sessions.enc';config.PASSWORD_FILE='/var/lib/quorum/passwords.json';
 config.ACCOUNT_MONTHLY_TASKS=(!config.ACCOUNT_MONTHLY_TASKS||config.ACCOUNT_MONTHLY_TASKS==='5')?'10':config.ACCOUNT_MONTHLY_TASKS;delete config.FREE_START_TASKS;delete config.GUEST_DAILY_TASKS;delete config.PUBLIC_IP_DAILY_LIMIT;delete config.FREE_START_COINS;delete config.TASK_COIN_COST;config.TELEGRAM_STATE_FILE='/var/lib/quorum/telegram-updates.json';
 config.TELEGRAM_ADMIN_IDS=config.TELEGRAM_ADMIN_IDS||'1296951270';config.TELEGRAM_APP_URL='https://cityai.site/quorum/';

@@ -166,6 +166,7 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
    const previous=dialogue.at(-1);
    const fixed=[
     'КРУГ РАЗГОВОРА '+round+'. ДАВЛЕНИЕ СИТУАЦИИ: '+book.pressure+' Не выдумывай обратный отсчёт или новые сроки. Развивай последствия уже состоявшихся решений.',
+    'РАЗВИТИЕ КОНФЛИКТА: '+conversationPhase(round,scenes)+' Не повторяй уже предъявленное требование без нового аргумента, цены или собственного поступка. Смена этапа не создаёт новых фактов и не требует насилия. Чужие тайны остаются неизвестными.',
     'ПОЖЕЛАНИЯ ПОЛЬЗОВАТЕЛЯ: '+(director||'Развивай ситуацию из роли и происходящего; конец не задан.'),
     'ТЕКУЩЕЕ СОСТОЯНИЕ (важнее исходных сведений):\n'+describeState(participants,state),
     'ПОДТВЕРЖДЁННЫЕ ДЕЙСТВИЯ И СОБЫТИЯ:\n'+(tailWithin(facts,2200)||'Пока нет.'),
@@ -219,4 +220,18 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
  output({id:narrator.provider,name:narrator.agent.name,nickname:'Эпилог',stage:'Эпилог',show:true,final:true,text:ending,...(outcome?{outcome,outcomeTitle:book.outcomes.find(o=>o.id===outcome)?.title}:{})});
  onProgress({stage:'Эпилог',status:'done'});onProgress({stage:'Готово',status:'done'});
  return all;
+}
+
+function conversationPhase(round,total){
+ const phases=[
+  'Обозначь свою позицию и зацепись за конкретные слова собеседника.',
+  'Проверь чужие обещания вопросом или предложи свою цену.',
+  'Ответь на возражение; предложи конкретный шаг вместо повторения спора.',
+  'Оцени, кому теперь доверяешь; можешь изменить союз или собственную тактику.',
+  'Разбери последствия того, что уже произошло. Сказанное не делает обвинение доказанным.',
+  'Проверь, чем готов рискнуть сам; можно принять, отвергнуть или изменить предложение.',
+  'Потребуй ответа за уже принятые решения или действуй в пределах своей роли.',
+  'Отреагируй на достигнутое. Конфликт может остаться открытым; не объявляй общий финал.'
+ ];
+ return phases[Math.min(7,Math.floor((round-1)*8/total))];
 }

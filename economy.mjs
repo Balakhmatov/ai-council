@@ -40,6 +40,7 @@ function addMetrics(target,entry){
  else target.unknownCostCalls=(target.unknownCostCalls||0)+1;
 }
 export function createEconomy({env,now=Date.now}){
+ const publicPlaytest=env.PUBLIC_PLAYTEST==='1';
  const file=env.ACCOUNTING_FILE||'';
  const logFile=env.ACCOUNTING_LOG_FILE||(file?file+'.requests.jsonl':'');
  const monthlyTasks=safeInt(env.ACCOUNT_MONTHLY_TASKS,10);
@@ -97,17 +98,18 @@ export function createEconomy({env,now=Date.now}){
   const packs=identity?Math.max(0,state.purchasedCredits[identity]||0):0;
   return {
    accountRef:identity||null,
+   unlimited:publicPlaytest,
    plan:isAdmin?'admin':sub?'subscription':'free',
    subscriptionActive:!!sub,
    subscriptionExpiresAt:sub?.expiresAt||null,
    subscriptionRemaining:sub?.remainingTasks??0,
    purchasedTasks:packs,
-   remainingFreeTasks:isAdmin?null:(sub?sub.remainingTasks+(packs||0):free.remainingFreeTasks+packs),
+   remainingFreeTasks:isAdmin||publicPlaytest?null:(sub?sub.remainingTasks+(packs||0):free.remainingFreeTasks+packs),
    freeRemaining:free?.remainingFreeTasks??0,
    freeStartingTasks:limitFor(identity),
    period:'lifetime',resetTimezone:null,
-   maxModels:isAdmin||sub?7:3,
-   historyEnabled:!!identity&&(isAdmin||!!sub),
+   maxModels:isAdmin||publicPlaytest||sub?7:3,
+   historyEnabled:!!identity&&!identity.startsWith('guest:')&&(isAdmin||publicPlaytest||!!sub),
    authenticated:true,admin:isAdmin,
    paidPlansAvailable:false,
    catalog:BILLING_CATALOG
@@ -141,7 +143,7 @@ export function createEconomy({env,now=Date.now}){
  }
  function activeTaskAccess(id,identity){
   const task=tasks.get(id);
-  return task&&task.identity===identity?{mode:task.mode,historyEnabled:!!task.historyEnabled,detailedEnabled:!!task.isAdmin||!!subscription(identity),successful:task.successful,taskId:id}:null;
+  return task&&task.identity===identity?{mode:task.mode,historyEnabled:!!task.historyEnabled,detailedEnabled:publicPlaytest||!!task.isAdmin||!!subscription(identity),successful:task.successful,taskId:id}:null;
  }
  function exchangeRates(){return state.fx||null;}
  function updateExchangeRates(rates){
@@ -174,14 +176,14 @@ export function createEconomy({env,now=Date.now}){
  }
  function start(identity,isAdmin,params,available){
   const models=params?.participants,rounds=Number(params?.rounds),mode=params?.mode;
-  if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>5||!['consensus','vote','judge','roles','brainstorm','roast','show'].includes(mode))return null;
-  const allowedModels=isAdmin||!!subscription(identity)?7:3;
-  if(mode==='show'&&(rounds<3||rounds>5))return null;
+  if(!Array.isArray(models)||models.length<2||models.length>7||new Set(models).size!==models.length||models.some(id=>typeof id!=='string'||!available.includes(id))||!Number.isInteger(rounds)||rounds<2||rounds>(mode==='show'?8:5)||!['consensus','vote','judge','roles','brainstorm','roast','show'].includes(mode))return null;
+  const allowedModels=isAdmin||publicPlaytest||!!subscription(identity)?7:3;
+  if(mode==='show'&&(rounds<3||rounds>8))return null;
   if(!isAdmin&&models.length>allowedModels)return {upgradeRequired:true};
   const sub=isAdmin?null:subscription(identity);
-  let source='admin';
+  let source=publicPlaytest&&!isAdmin?'playtest':'admin';
   const debits={subscription:0,free:0,pack:0};
-  if(!isAdmin){
+  if(!isAdmin&&!publicPlaytest){
    const needed=models.length;
    const availableBase=sub?sub.remainingTasks:allowance(identity).remainingFreeTasks;
    const availablePacks=Math.max(0,state.purchasedCredits[identity]||0);
@@ -196,13 +198,13 @@ export function createEconomy({env,now=Date.now}){
   }
   const id=crypto.randomBytes(24).toString('hex');
   const limit=mode==='show'?Math.min(models.length,4)*rounds+1:models.length*rounds+models.length+(['vote','consensus'].includes(mode)?models.length:0);
-  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:'lifetime',source,debits,creditSourceByModel:Object.fromEntries(models.map((provider,i)=>[provider,i<(debits.subscription+debits.free)?(sub?'subscription':'free'):'pack'])),roundOutcomes:new Map(),mode,rounds,chargedTokens:models.length,historyEnabled:!!identity&&(isAdmin||!!sub)});
+  tasks.set(id,{identity,allowed:new Set(models),maxCalls:limit,calls:0,finalCalls:0,finalProviders:new Set(),successful:0,createdAt:now(),isAdmin,period:'lifetime',source,debits,creditSourceByModel:Object.fromEntries(models.map((provider,i)=>[provider,i<(debits.subscription+debits.free)?(sub?'subscription':'free'):'pack'])),roundOutcomes:new Map(),mode,rounds,chargedTokens:isAdmin||publicPlaytest?0:models.length,historyEnabled:!!identity&&!identity.startsWith('guest:')&&(isAdmin||publicPlaytest||!!sub)});
   const group={taskId:id,startedAt:new Date(now()).toISOString(),endedAt:null,mode,rounds,
    participants:models,status:'running',...emptyMetrics(),byModel:{}};
   state.discussions.push(group);
   if(state.discussions.length>300)state.discussions.splice(0,state.discussions.length-300);
   save();
-  return {taskId:id,maxCalls:limit,chargedTokens:isAdmin?0:models.length,remainingFreeTasks:isAdmin?null:access(identity).remainingFreeTasks,historyEnabled:!!identity&&(isAdmin||!!sub)};
+  return {taskId:id,maxCalls:limit,chargedTokens:isAdmin||publicPlaytest?0:models.length,remainingFreeTasks:isAdmin||publicPlaytest?null:access(identity).remainingFreeTasks,historyEnabled:!!identity&&!identity.startsWith('guest:')&&(isAdmin||publicPlaytest||!!sub)};
  }
  function checkCall(id,identity,provider,stage='intermediate'){
   const task=tasks.get(id);
@@ -219,7 +221,7 @@ export function createEconomy({env,now=Date.now}){
   // Voting, consensus checks and the final synthesis are not discussion rounds.
   const noResult=!cancelled&&task.successful===0;
   const refunds=[];
-  if(!cancelled&&!task.isAdmin){
+  if(!cancelled&&!task.isAdmin&&task.source!=='playtest'){
    for(const provider of task.allowed){
     const outcomes=task.roundOutcomes.get(provider)||new Map();
     const failed=[...outcomes.values()].filter(status=>status==='error').length;

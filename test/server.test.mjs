@@ -499,7 +499,7 @@ test('model-priority module is served to real browser, preserving Claude-first d
   assert.match(result.body,/'grok'\]/);
   assert.match(result.body,/export function chooseModerator/);
   const html=await t.asset('/');
-  assert.match(html.body,/app\.js\?v=show79/);
+  assert.match(html.body,/app\.js\?v=show80/);
  }finally{await t.close();}
 });
 
@@ -822,7 +822,7 @@ test('Mistral Large 4 accepts mixed thinking/text chunks, prices calls, and choo
 
 
 
-test('Show API honors 3–5 scene budgets and one final epilogue, rejects long prompts without charging calls',async()=>{
+test('Show API honors 3–8 scene budgets and one final epilogue, rejects long prompts without charging calls',async()=>{
  const t=await setup({OPENAI_MODEL:'gpt-6-luna',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4',ACCOUNT_DAILY_CALL_LIMIT:'16'});
  try{
   const user=(await t.login('show-rework@example.com')).data;
@@ -849,16 +849,17 @@ test('Show API honors 3–5 scene budgets and one final epilogue, rejects long p
   assert.equal((await t.send('/api/task/finish',{taskId:created.data.taskId},user.token)).status,200);
  }finally{await t.close();}
 });
-test('Show rejects obsolete two-scene requests and allows valid three to five scene choices',async()=>{
- const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4'});
+test('Show rejects obsolete two-scene requests and allows valid three to eight scene choices',async()=>{
+ const t=await setup({MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4',ACCOUNT_MONTHLY_TASKS:'100'});
  try{
   const user=(await t.login('show-scenes@example.com')).data;
   const start=rounds=>t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds},user.token);
   assert.equal((await start(2)).status,400);
-  assert.equal((await start(6)).status,400);
+  assert.equal((await start(9)).status,400);
   assert.equal((await start(3)).data.maxCalls,7);
   assert.equal((await start(4)).data.maxCalls,9);
   assert.equal((await start(5)).data.maxCalls,11);
+  for(const rounds of [6,7,8])assert.equal((await start(rounds)).data.maxCalls,rounds*2+1);
  }finally{await t.close();}
 });
 test('Original story canon, show art and compact dialogue scripts are served on actual routes',async()=>{
@@ -981,4 +982,48 @@ test('every new cast illustration referenced by the UI is served as a local WebP
  for(const id of ['time','reality','villains','anime','kombat','afterlife','olympus'])for(const art of [scenePoster(id),...Array.from({length:7},(_,i)=>characterPortrait(id,i))])files.add(/href="\.\/assets\/([^?]+)\?/.exec(art)[1]);
  const t=await setup();
  try{for(const file of files){const r=await t.asset('/assets/'+file+'?v=crossovers1');assert.equal(r.status,200,file);assert.equal(r.type,'image/webp');assert.ok(r.body.startsWith('RIFF'));}}finally{await t.close();}
+});
+
+test('public playtest runs eight scenes for anonymous visitors without charging or daily quotas, preserving ownership and costs',async()=>{
+ const t=await setup({PUBLIC_PLAYTEST:'1',ACCOUNT_DAILY_CALL_LIMIT:'1',PUBLIC_DAILY_LIMIT:'1',OPENAI_MODEL:'gpt-6-luna',MISTRAL_API_KEY:'m',MISTRAL_MODEL:'mistral-large-4'},{upstream:async()=>Response.json({choices:[{message:{content:JSON.stringify({speech:'Хорошо, обсудим это.',action:null,epilogue:'Спор остался открытым, участники не пришли к соглашению.'})}}],usage:{prompt_tokens:1200,completion_tokens:100}})});
+ try{
+  const config=(await t.send('/api/config')).data;
+  assert.equal(config.authRequired,false);assert.equal(config.publicPlaytest,true);assert.equal(config.paymentsAvailable,false);
+  const guest=(await t.send('/api/guest/session',{})).data,other=(await t.send('/api/guest/session',{})).data;
+  assert.equal(guest.guest,true);assert.equal(guest.user,null);assert.equal(guest.isAdmin,false);
+  const access=(await t.send('/api/access',undefined,guest.token)).data;
+  assert.equal(access.unlimited,true);assert.equal(access.maxModels,7);assert.equal(access.admin,false);assert.equal(access.historyEnabled,false);
+  assert.equal((await t.send('/api/auth/session',undefined,guest.token)).data.guest,true);
+  assert.equal((await t.send('/api/admin',undefined,guest.token)).status,401);
+  assert.equal((await t.send('/api/history',undefined,guest.token)).status,401);
+  const create=()=>t.send('/api/task/start',{participants:['openai','mistral'],mode:'show',rounds:8},guest.token);
+  const task=(await create()).data;assert.equal(task.maxCalls,17);assert.equal(task.chargedTokens,0);assert.equal(task.remainingFreeTasks,null);
+  const talk={provider:'mistral',taskId:task.taskId,format:'show',messages:[{role:'system',content:'Играй свою роль.'},{role:'user',content:'Продолжай разговор.'}]};
+  assert.equal((await t.send('/api/chat',talk,other.token)).status,403);
+  for(let i=0;i<16;i++)assert.equal((await t.send('/api/chat',talk,guest.token)).status,200);
+  assert.equal((await t.send('/api/chat',{...talk,stage:'final'},guest.token)).status,200);
+  assert.equal((await t.send('/api/chat',talk,guest.token)).status,403);
+  assert.equal((await t.send('/api/task/finish',{taskId:task.taskId},other.token)).status,404);
+  const finished=(await t.send('/api/task/finish',{taskId:task.taskId},guest.token)).data;
+  assert.equal(finished.refundedTokens,0);assert.equal(finished.historySaved,false);
+  for(let i=0;i<8;i++)assert.equal((await create()).status,200,'repeated launches are free');
+  const logs=(await t.send('/api/admin/logs',undefined,'admin-test-only')).data;
+  assert.match(JSON.stringify(logs),/mistral-large-4/);assert.equal(t.calls.length,17);
+  assert.equal(logs.calls.length,17);assert(logs.calls.every(call=>call.costRub>0),'anonymous calls retain provider costs');
+  const user=(await t.login('optional@example.com')).data;
+  assert.equal(user.guest,false);assert.equal((await t.send('/api/access',undefined,user.token)).data.historyEnabled,true);
+ }finally{await t.close();}
+});
+
+test('anonymous playtest sessions survive restart without becoming account sessions and are disabled with the test flag',async()=>{
+ const dir=mkdtempSync(join(tmpdir(),'quorum-guest-'));
+ const env={PUBLIC_PLAYTEST:'1',SESSION_FILE:join(dir,'sessions.enc')};let t;
+ try{
+  t=await setup(env);const guest=(await t.send('/api/guest/session',{})).data;await t.close();t=null;
+  t=await setup(env);assert.equal((await t.send('/api/auth/session',undefined,guest.token)).data.guest,true);
+  assert.equal((await t.send('/api/access',undefined,guest.token)).data.admin,false);await t.close();t=null;
+  t=await setup({...env,PUBLIC_PLAYTEST:'0'});
+  assert.equal((await t.send('/api/auth/session',undefined,guest.token)).status,401);
+  assert.equal((await t.send('/api/guest/session',{})).status,404);
+ }finally{if(t)await t.close();rmSync(dir,{recursive:true,force:true});}
 });

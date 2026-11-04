@@ -1,6 +1,6 @@
-import {runLiveShow} from './show-live.js?v=scenes2';
+import {runLiveShow} from './show-live.js?v=scenes3';
 import {ambiences} from './engine.js';
-import {storyBible} from './show-stories.js?v=scenes2';
+import {storyBible} from './show-stories.js?v=scenes3';
 // Quorum Show: original situations and fictional crossovers. AI providers play the selected roles.
 export const SHOW_SCENARIOS=[
   {
@@ -629,10 +629,10 @@ export function showSpeechGuide(id,tonality){
  (tonality==='wild'?'. Конкретные образцы словаря необязательны, но уровень грубости режима «Без тормозов» сохраняй: не используй необязательность примеров как повод перейти на вежливую речь. Придумывай свои матерные выпады, не повторяй чужие заготовки.':'. Это необязательная палитра: можно не использовать ни одного примера, придумывай свои обороты; не повторяй чужие заготовки.')+
  ' Сохраняй индивидуальный голос, цель и секрет своей роли. Придумывай оригинальные реплики.'+(['diner','heist'].includes(id)?' Не копируй диалоги фильма. Пользовательский пример с «трахнуть» — разговорная метафора обмана, не сексуальная сцена.':'');
 }
-export async function runShow({agents,scenario,cast,extra='',scenes=4,turns,tonality='brutal',request,emit,signal,onProgress=()=>{},random=Math.random}){
+export async function runShow({agents,scenario,cast,extra='',scenes=8,turns,tonality='wild',request,emit,signal,onProgress=()=>{},random=Math.random}){
  // "turns" was the previous internal name; kept only for old test fixtures.
  if(Number.isInteger(turns)&&!Number.isInteger(scenes))scenes=turns;
- if(!Array.isArray(agents)||agents.length<2||agents.length>7||![3,4,5].includes(scenes))throw Error('Выберите от 3 до 5 сцен и минимум две нейросети');
+ if(!Array.isArray(agents)||agents.length<2||agents.length>7||!Number.isInteger(scenes)||scenes<3||scenes>8)throw Error('Выберите от 3 до 8 сцен и минимум две нейросети');
  if(!Array.isArray(cast)||cast.length!==agents.length||new Set(cast.map(c=>c.provider)).size!==agents.length||cast.some(c=>!agents.some(a=>a.id===c.provider)))throw Error('Роли должны быть назначены разным нейросетям');
  const book={...storyBible(scenario?.id),id:scenario?.id||'diner'};
  return runLiveShow({agents,scenario,cast,extra,scenes,tonality,request,emit,signal,onProgress,book,tone:toneInstruction(tonality),speech:showSpeechGuide(scenario.id,tonality),clip:clipShowLine,silenceLine,random});

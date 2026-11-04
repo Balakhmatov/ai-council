@@ -1,7 +1,7 @@
 import {modes,ambiences,discuss,parseBallotDetail} from './engine.js';
-import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=scenes2';
+import {SHOW_SCENARIOS,showScenario,showCast,clipShowLine,runShow} from './show.js?v=scenes3';
 import {scenePoster,characterPortrait} from './show-art.js?v=villainsUser1';
-import {STORY_CORE_ROLES,storyBible} from './show-stories.js?v=scenes2';
+import {STORY_CORE_ROLES,storyBible} from './show-stories.js?v=scenes3';
 import {profiles,resolveProfile} from './profiles.js';
 import {getTaskHint} from './examples.js?v=purpose8';
 import {getTelegramContext} from './telegram-bridge.js';
@@ -25,7 +25,7 @@ const agentDetails={
 const agents=MODEL_PRIORITY.map(id=>({id,...agentDetails[id]}));
 const API=location.hostname.endsWith('github.io')?'https://cityai.site/quorum':new URL('./',location.href).pathname.replace(/\/$/,'');
 let telegramContext=null,telegramIdentity=null;
-let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null;
+let adminToken=sessionStorage.getItem('quorum-admin')||'',publicSession=null,available=new Set(),connected=false,access=null,publicPlaytest=false;
 let experience='show',showScenarioId=SHOW_SCENARIOS[0].id,showAssigned={},mode='consensus',ambience='none',profileId='smm',taskId='',controller=null,messages=[],events=[],running=false,activeTask=null,stopRequested=false,lastTaskContext=null;
 let priceCatalog=null,historyOffset=0,historyTotal=0,historyBusy=false,historyListVersion=0,historySearchVersion=0,historySearchTimer=null;
 const chosen=new Set(MODEL_PRIORITY.slice(0,3));
@@ -338,7 +338,7 @@ $('showScenes').addEventListener('change',update);
 $('showTone').addEventListener('change',update);
 
 function update(){
- const premium=!!(access?.admin||access?.subscriptionActive);
+ const premium=!!(access?.unlimited||access?.admin||access?.subscriptionActive);
  const detailed=$('length').querySelector('option[value="detailed"]');
  detailed.disabled=!premium;
  $('lengthNote').textContent=premium?'Финальный результат не ограничивается длиной обсуждения.':'«Подробно» доступно по подписке.';
@@ -356,9 +356,11 @@ function update(){
  const judgeName=agents.find(a=>a.id===$('judge').value)?.name||'выбранная модель';
  const showScenes=Number($('showScenes').value)||4,showCallCount=showScenes*Math.min(4,chosen.size)+1;
  $('budget').textContent=experience==='show'?chosen.size+' модели · '+showScenes+' сцены · до '+showCallCount+' вызовов · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог подготовит '+judgeName;
+ if(publicPlaytest)$('budget').textContent=experience==='show'?chosen.size+' ИИ · '+showScenes+' сцен · бесплатно':chosen.size+' ИИ · бесплатно';
  const mq=$('mobileQuorumText');
  if(mq) mq.textContent=experience==='show'?chosen.size+' ИИ · '+showScenes+' сцены · '+chosen.size+' токенов':chosen.size+' модели · '+$('rounds').value+' раунда · '+chosen.size+' токенов · итог '+judgeName;
- const enough=access?.admin||access?.remainingFreeTasks>=chosen.size;
+ if(mq&&publicPlaytest)mq.textContent=chosen.size+' ИИ · '+(experience==='show'?showScenes+' сцен · ':'')+'бесплатно';
+ const enough=access?.unlimited||access?.admin||access?.remainingFreeTasks>=chosen.size;
  $('start').textContent=access?'Запустить историю':'Войти и запустить';
  $('start').disabled=running||chosen.size<2||chosen.size>(access?.maxModels??3)||!connected||(!!access&&!enough);
  document.querySelectorAll('.agent').forEach((label,i)=>{
@@ -449,7 +451,7 @@ $('loginOpen').onclick=async()=>{
 $('authBack').onclick=showLoginMethods;
 $('emailDialog').addEventListener('close',stopLoginPolling);
 $('emailOpen').onclick=()=>{
- $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;$('emailStatus').textContent='';$('emailPasswordLogin').hidden=false;$('emailRecovery').hidden=true;$('emailPasswordSetup').hidden=true;$('loginPasswordEmail').focus();
+ $('authMethods').hidden=true;$('emailFlow').hidden=false;$('authBack').hidden=false;$('emailStatus').textContent='';$('emailPasswordLogin').hidden=publicPlaytest;$('emailRecovery').hidden=!publicPlaytest;$('emailPasswordSetup').hidden=true;(publicPlaytest?$('emailAddress'):$('loginPasswordEmail')).focus();
 };
 $('passwordSettings').onclick=()=>{
  showLoginMethods();
@@ -496,6 +498,7 @@ $('emailVerify').onsubmit=async e=>{
  e.preventDefault();const button=e.submitter;button.disabled=true;
  try{
   saveIdentity(await api('/api/email/verify',{method:'POST',body:{email:loginEmail,code:$('emailCode').value.trim()}}));
+  if(publicPlaytest){$('emailDialog').close();await refreshAccess();return;}
   $('emailRecovery').hidden=true;$('emailPasswordLogin').hidden=true;$('emailPasswordSetup').hidden=false;
   $('emailStatus').textContent='Email подтверждён. Сохраните постоянный пароль.';
   $('emailNewPassword').focus();
@@ -533,12 +536,13 @@ $('telegramOpen').onclick=async()=>{
 };
 window.addEventListener('focus',()=>{if(pendingLogin){clearTimeout(pollTimer);pollTelegramLogin();}});
 $('emailLogout').onclick=async()=>{
- try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();landingExploring=false;$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;showSignedOut();}
+ try{await api('/api/logout',{method:'POST',token:publicSession?.token,body:{}});clearIdentity();landingExploring=false;$('settingsOpen').hidden=true;$('adminPanel').hidden=true;$('adminLogin').hidden=false;showSignedOut();if(publicPlaytest)await refreshAccess();}
  catch(error){$('status').textContent=error.message;}
 };
 async function ensureSession(){
  if(publicSession?.expires>Date.now())return publicSession.token||null;
  if(adminToken)return adminToken;
+ if(publicPlaytest&&!telegramContext){saveIdentity(await api('/api/guest/session',{method:'POST',body:{}}));return publicSession.token||null;}
  if(telegramContext){saveIdentity(await api('/api/telegram/auth',{method:'POST',body:{initData:telegramContext.initData}}));return publicSession.token||null;}
  return null;
 }
@@ -611,12 +615,12 @@ async function refreshAccess(){
  }
  try{access=await api('/api/access',{token:await ensureSession()});}catch(error){
   if(error.status!==401){access=null;$('accessChip').hidden=false;$('accessChip').textContent='Доступ не проверен';$('accessInfo').textContent='Не удалось проверить остаток токенов. '+error.message;update();throw error;}
-  clearIdentity();showSignedOut();return;
+  clearIdentity();if(publicPlaytest)return refreshAccess();showSignedOut();return;
  }
  syncLanding();
- $('loginOpen').hidden=true;$('emailLogout').hidden=false;$('accountName').hidden=false;
- $('historyJump').hidden=false;
- $('passwordSettings').hidden=!publicSession?.user?.email;
+ $('loginOpen').hidden=!publicSession?.guest;$('emailLogout').hidden=!!publicSession?.guest;$('accountName').hidden=!!publicSession?.guest;
+ $('historyJump').hidden=!!publicSession?.guest;
+ $('passwordSettings').hidden=publicPlaytest||!publicSession?.user?.email;
  $('accountName').textContent=publicSession?.user?.email||publicSession?.user?.firstName||'Аккаунт';
  $('settingsOpen').hidden=!access.admin;
  
@@ -627,7 +631,7 @@ async function refreshAccess(){
  }
  await restoreModelSelection();
  trackVisit();
- renderAccess();refreshHistory(true).catch(e=>{$('status').textContent='Не удалось загрузить историю: '+e.message;});
+ renderAccess();if(publicSession?.guest){$('historySection').hidden=true;$('historyLinkBox').hidden=true;return;}refreshHistory(true).catch(e=>{$('status').textContent='Не удалось загрузить историю: '+e.message;});
  refreshHistoryLinkState().catch(()=>{$('historyLinkBox').hidden=true;});
  if(new URLSearchParams(location.search).has('payment'))checkPayment().catch(()=>{});
 }
@@ -637,6 +641,13 @@ function taskCount(value){
 }
 function renderAccess(){
  if(!access)return;
+ if(access.unlimited){
+  $('accessChip').hidden=false;$('accessChip').textContent=access.admin?'Администратор':'Открытый тест';
+  $('accessInfo').textContent='Все нейросети бесплатно, без лимита запусков. Вход необязателен.';
+  document.querySelector('.access-title').textContent='Открытый тест';
+  document.querySelector('.access-panel .hint').textContent=publicSession?.guest?'Войдите, если хотите сохранять историю в аккаунте.':'Истории сохраняются в вашем аккаунте.';
+  update();return;
+ }
  $('accessChip').hidden=false;
  $('accessChip').textContent=access.admin?'Администратор':access.subscriptionActive?'Подписка: '+access.subscriptionRemaining+' '+taskCount(access.subscriptionRemaining):'Доступно: '+access.remainingFreeTasks+' '+taskCount(access.remainingFreeTasks);
  const plan=access.subscriptionActive;
@@ -832,6 +843,7 @@ document.addEventListener('visibilitychange',()=>{
 async function loadConfig(){
  try{
   await loginTelegram();const config=await api('/api/config');
+  publicPlaytest=!!config.publicPlaytest;$('pricingOpen').hidden=publicPlaytest;
   if(publicSession||!adminToken){
    try{
     let identity;
@@ -849,7 +861,7 @@ async function loadConfig(){
   moderatorChosenByUser=false;
   for(const a of agents)document.querySelector('.agent input[aria-label="'+a.name+'"]').checked=chosen.has(a.id);
   await refreshAccess();syncLanding();if(access?.admin)await showAdmin();
-  $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.admin&&access.remainingFreeTasks<chosen.size?'Недостаточно токенов для выбранных моделей.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
+  $('status').textContent=!access?'Для запуска обсуждения войдите через Telegram или email.':!access.unlimited&&!access.admin&&access.remainingFreeTasks<chosen.size?'Недостаточно токенов для выбранных моделей.':available.size>=2?'Опишите задачу, и несколько нейросетей подготовят результат.':'Пока доступно меньше двух моделей.';
  }catch(e){$('status').textContent=e.message||'Не удалось подключиться к сервису.';}update();
 }
 let latestAccounting=null;
@@ -1397,7 +1409,7 @@ $('start').onclick=async()=>{
    catch(error){
     if(error.status!==401||adminToken)throw error;
     clearIdentity();
-    if(!telegramContext){showSignedOut();throw Error('Войдите через Telegram или email заново.');}
+    if(!publicPlaytest&&!telegramContext){showSignedOut();throw Error('Войдите через Telegram или email заново.');}
     token=await ensureSession();
     activeTask=await api('/api/task/start',{method:'POST',token,body:startBody});
    }

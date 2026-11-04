@@ -17,6 +17,7 @@ import {fileURLToPath} from 'node:url';
 const providers={openai:['https://api.openai.com/v1/chat/completions','OPENAI_API_KEY'],grok:['https://api.x.ai/v1/chat/completions','XAI_API_KEY'],mistral:['https://api.mistral.ai/v1/chat/completions','MISTRAL_API_KEY'],qwen:['https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions','QWEN_API_KEY'],deepseek:['https://api.deepseek.com/chat/completions','DEEPSEEK_API_KEY'],gemini:['https://generativelanguage.googleapis.com/v1beta/openai/chat/completions','GEMINI_API_KEY'],claude:['https://api.anthropic.com/v1/messages','CLAUDE_API_KEY']};
 export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetchImpl=globalThis.fetch,emailFetchImpl=globalThis.fetch,paymentFetchImpl=globalThis.fetch,now=Date.now}={}){
  const adminToken=env.PROXY_TOKEN||'';
+ const publicPlaytest=env.PUBLIC_PLAYTEST==='1';
  const emailAuth=createEmailAuth({env,now,fetchImpl:emailFetchImpl});
  const economy=createEconomy({env,now});
  const payments=createPayments({env,economy,fetchImpl:paymentFetchImpl,now});
@@ -101,24 +102,36 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    const cookie=String(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('quorum_session='))?.slice(15)||'';
    const bearer=String(req.headers.authorization||'').replace(/^Bearer /,'')||cookie;
    const session=sessions.get(bearer);const validSession=session&&session.expires>now()&&!!(session.telegramUser||session.emailUser);
+   const validGuest=publicPlaytest&&session?.expires>now()&&/^[a-f0-9]{32}$/.test(session.guestId||'');
+   const canGenerate=validSession||validGuest;
    const isAdmin=tokenEquals(bearer)||(validSession&&isOwnerAccount(session));
    const sessionCookie=(token,expires)=>res.setHeader('Set-Cookie','quorum_session='+token+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+Math.max(0,Math.floor((expires-now())/1000))+(String(env.TELEGRAM_APP_URL||'').startsWith('https:')?'; Secure':''));
-   const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser,isAdmin:isOwnerAccount(value)});
+   const sessionIdentity=(value,token)=>({...(token?{token}:{}),expires:value.expires,user:value.emailUser?{email:value.emailUser.email}:value.telegramUser||null,guest:!!value.guestId,isAdmin:isOwnerAccount(value)});
    const issueSession=value=>{sessions.prune();if(sessions.size>=10000)throw Object.assign(Error('Слишком много подключений. Повторите позже.'),{status:429});const token=crypto.randomBytes(32).toString('hex');value.expires=now()+SESSION_LIFETIME;sessions.set(token,value);sessionCookie(token,value.expires);
     try{analytics.login(value.telegramUser?accountHash('telegram',value.telegramUser.id):accountHash('email',value.emailUser.id),{method:value.telegramUser?'telegram':'email',owner:isOwnerAccount(value)});}catch(e){console.error('Analytics login logging failed',e);}
     return sessionIdentity(value,token);};
    const accountHash=(type,id)=>'account:'+crypto.createHmac('sha256',adminToken).update(type+':'+id).digest('hex').slice(0,32);
-   const visitorHash=validSession?(session.telegramUser?accountHash('telegram',session.telegramUser.id):accountHash('email',session.emailUser.id)):null;
+   const accountIdentity=validSession?(session.telegramUser?accountHash('telegram',session.telegramUser.id):accountHash('email',session.emailUser.id)):null;
+   const visitorHash=accountIdentity||(validGuest?'guest:'+session.guestId:null);
+   if(path==='/api/guest/session'&&req.method==='POST'){
+    if(!publicPlaytest)return fail(404,'Гостевой запуск отключён.');
+    if(canGenerate)return json(200,sessionIdentity(session));
+    sessions.prune();
+    if(sessions.size>=10000)return fail(429,'Сервер занят. Повторите позже.');
+    const token=crypto.randomBytes(32).toString('hex'),value={guestId:crypto.randomBytes(16).toString('hex'),expires:now()+SESSION_LIFETIME};
+    try{sessions.set(token,value);sessionCookie(token,value.expires);return json(200,sessionIdentity(value,token));}
+    catch(error){return fail(error.status||503,'Не удалось начать гостевой сеанс.');}
+   }
    if(path==='/api/analytics/visit'&&req.method==='POST'){
     let payload;try{payload=await readBody(500);}catch{return fail(400,'Некорректный визит');}
     // A raw administrator token has no end-user account and must not enter the visitor funnel.
     if(isAdmin&&!validSession)return json(200,{ok:true});
-    try{if(!analytics.visit(payload?.visitorId,visitorHash,{owner:isAdmin,pageView:payload?.pageView===true}))return fail(400,'Некорректный визит');}
+    try{if(!analytics.visit(payload?.visitorId,accountIdentity,{owner:isAdmin,pageView:payload?.pageView===true}))return fail(400,'Некорректный визит');}
     catch(error){console.error('Analytics visit logging failed',error);return fail(503,'Аналитика временно недоступна');}
     return json(200,{ok:true});
    }
    if(path==='/api/auth/session'&&req.method==='GET'){
-    if(!validSession)return fail(401,'Войдите в аккаунт.');
+    if(!canGenerate)return fail(401,'Войдите в аккаунт.');
     return json(200,sessionIdentity(session));
    }
    if(path==='/api/telegram/login/start'&&req.method==='POST'){
@@ -161,7 +174,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     try{return json(200,issueSession({telegramUser:user}));}catch(error){return fail(error.status||503,error.message);}
    }
    if(path==='/api/logout'&&req.method==='POST'){try{sessions.delete(bearer);sessionCookie('',now());return json(200,{ok:true});}catch{return fail(503,'Не удалось завершить выход. Попробуйте ещё раз.');}}
-   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:true,catalog:economy.catalog(),paymentsAvailable:payments.ready,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
+   if(path==='/api/config'&&req.method==='GET')return json(200,{providers:Object.keys(models),authRequired:!publicPlaytest,publicPlaytest,catalog:economy.catalog(),paymentsAvailable:!publicPlaytest&&payments.ready,telegramUrl:/^[A-Za-z0-9_]{5,32}$/.test(env.TELEGRAM_BOT_USERNAME||'')?'https://t.me/'+env.TELEGRAM_BOT_USERNAME+'?startapp':null});
    if(path==='/api/admin/product-analytics'&&req.method==='GET'){
     if(!isAdmin)return fail(403,'Доступ запрещён');
     const days=Number(new URL(req.url,'http://localhost').searchParams.get('days')||30);
@@ -189,8 +202,8 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(path==='/api/session')return fail(401,'Войдите через Telegram или email.');
 
    if(path==='/api/access'&&req.method==='GET'){
-    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
-    return json(200,{...economy.access(visitorHash,isAdmin),paidPlansAvailable:payments.ready});
+    if(!isAdmin&&!canGenerate)return fail(401,'Сессия истекла.');
+    return json(200,{...economy.access(visitorHash,isAdmin),paidPlansAvailable:!publicPlaytest&&payments.ready});
    }
    if(path==='/api/preferences/models'){
     if(!validSession||!visitorHash)return fail(401,'Войдите в аккаунт, чтобы сохранить выбор ИИ.');
@@ -205,7 +218,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    }
    if(path==='/api/payments'&&req.method==='GET'){
     if(!validSession||!visitorHash)return fail(401,'Для оплаты войдите в аккаунт.');
-    try{return json(200,{...await payments.refresh(visitorHash),access:{...economy.access(visitorHash,isAdmin),paidPlansAvailable:payments.ready}});}
+    try{return json(200,{...await payments.refresh(visitorHash),access:{...economy.access(visitorHash,isAdmin),paidPlansAvailable:!publicPlaytest&&payments.ready}});}
     catch(e){return fail(e.status||502,e.message);}
    }
    if(path==='/api/payments'&&req.method==='POST'){
@@ -256,7 +269,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     catch(e){return fail(400,e.message);}
    }
    if(path==='/api/task/start'&&req.method==='POST'){
-    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
+    if(!isAdmin&&!canGenerate)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(15000);}catch{return fail(400,'Некорректная задача');}
     await fx.refresh();
     const task=economy.start(visitorHash,isAdmin,info,Object.keys(models));
@@ -285,7 +298,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
     try{return json(200,await work);}catch{return json(200,{status:'unavailable',reason:'Проверка открытых источников сейчас недоступна',sources:[],facts:[]});}
    }
    if(path==='/api/task/finish'&&req.method==='POST'){
-    if(!isAdmin&&!validSession)return fail(401,'Сессия истекла.');
+    if(!isAdmin&&!canGenerate)return fail(401,'Сессия истекла.');
     let info;try{info=await readBody(800000);}catch{return fail(400,'Некорректная задача');}
     const entitlement=economy.activeTaskAccess(info.taskId,visitorHash);
     if(!entitlement)return fail(404,'Задача не найдена');
@@ -316,7 +329,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    }
    if(path!=='/api/chat')return fail(404,'Не найдено');
    if(req.method!=='POST')return fail(405,'Нужен POST');
-   if(!isAdmin&&!validSession)return fail(401,'Сессия истекла. Запустите обсуждение заново.');
+   if(!isAdmin&&!canGenerate)return fail(401,'Сессия истекла. Запустите обсуждение заново.');
    if(active>=10||(!isAdmin&&(accountActive.get(visitorHash)||0)>=7))return fail(429,'Сервер занят. Повторите позже.');
    let raw='';try{for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>150000)return fail(413,'Слишком большой запрос');}}catch{return fail(400,'Ошибка чтения запроса');}
    let body;try{body=JSON.parse(raw);}catch{return fail(400,'Неверный JSON');}
@@ -327,7 +340,7 @@ export function createServer({env=process.env,fetchImpl=globalThis.fetch,fxFetch
    if(body.format==='show'&&taskMode!=='show'&&!isAdmin)return fail(403,'Неверный формат задачи');
    if(taskMode==='show'&&(body.format!=='show'||body.messages.length!==2||body.messages[0].role!=='system'||body.messages[1].role!=='user'||body.messages.some(m=>m.content.length>9500)))return fail(400,'Слишком длинный контекст шоу');
    if(!isAdmin&&!economy.checkCall(body.taskId,visitorHash,body.provider,body.stage))return fail(403,'Запрос не принадлежит активной задаче либо лимит исчерпан');
-   if(!isAdmin){resetDay();if(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
+   if(!isAdmin){resetDay();if(!publicPlaytest&&(ledger.total>=dailyLimit||(ledger.accounts[visitorHash]||0)>=(economy.access(visitorHash).subscriptionActive?paidAccountLimit:accountLimit)))return fail(429,'Лимит API-вызовов на сегодня исчерпан. Попробуйте завтра.');ledger.total++;ledger.accounts[visitorHash]=(ledger.accounts[visitorHash]||0)+1;try{save();}catch{return fail(503,'Сервис временно недоступен');}}
    active++;accountActive.set(visitorHash,(accountActive.get(visitorHash)||0)+1);const controller=new AbortController();res.on('close',()=>controller.abort());
    const callStarted=now();let upstreamLogged=false;
    let metering=null,repairing=false;
