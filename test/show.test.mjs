@@ -80,7 +80,7 @@ test('silence becomes a cinematic action and later actors can react, never a vis
   emit:m=>out.push(m)});
  const silences=out.filter(m=>m.silent);
  assert(silences.length>0);
- assert(silences.every(m=>m.text.startsWith('(')&&m.text.includes(m.nickname)&&!m.error));
+ assert(silences.every(m=>m.text.startsWith('*(')&&m.text.endsWith(')*')&&m.text.includes(m.nickname)&&!m.error));
  assert(out.every(m=>!m.text.includes('Service unavailable')));
  assert(out.at(-1).final);
  assert(out.at(-1).text.includes('купол'));

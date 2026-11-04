@@ -54,7 +54,7 @@ function describeState(actors,state){
  return actors.map(a=>{
   const s=state.get(a.name);
   return a.name+': '+(!s.alive?(feminine(a.name)?'погибла; больше не говорит':'погиб; больше не говорит'):s.detained?(feminine(a.name)?'задержана полицией; вне сцены':'задержан полицией; вне сцены'):!s.present?(feminine(a.name)?'ушла из сцены':'ушёл из сцены'):[
-   s.injured?(feminine(a.name)?'ранена':'ранен'):(feminine(a.name)?'невредима':'невредим'),s.bound?(feminine(a.name)?'связана; может говорить, но не может нападать':'связан; может говорить, но не может нападать'):(feminine(a.name)?'свободна':'свободен')
+   s.injured?(feminine(a.name)?'ранена':'ранен'):(feminine(a.name)?'невредима':'невредим'),s.bound?(feminine(a.name)?'связана; не может нападать':'связан; не может нападать'):(feminine(a.name)?'свободна':'свободен')
   ].join(', '));
  }).join('\n');
 }
@@ -83,7 +83,7 @@ function resolveAction(actor,action,actors,state,random){
  if(action.kind==='bind'){
   if(other.bound)return null;
   if(!other.injured&&clampRandom(random)<.35)return {text:actor.name+' пытается связать '+objectName(target.name)+', но тот вырывается.',target:target.name};
-  other.bound=true;return {text:actor.name+' связывает '+objectName(target.name)+'. '+target.name+' остаётся в сознании и может говорить.',target:target.name};
+  other.bound=true;return {text:actor.name+' связывает '+objectName(target.name)+'. '+target.name+' остаётся в сознании.',target:target.name};
  }
  if(action.kind==='kill'){
   // A lethal attempt can fail. Confirmed outcomes, not the actor's boasts, become shared facts.
@@ -140,9 +140,9 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
     'УЧАСТНИКИ: '+actors.map(a=>a.name+' ('+a.agent.name+')').join('; '),
     'МАНЕРА: '+tone,speech,
     'ЖИВОЙ ТЕМП: выбирай длину по ситуации. Резкая реакция может занимать одну фразу, спор или признание — несколько предложений. Не заполняй лимит ради длины. Сейчас допустимо до '+maxWords+' слов, без заголовков и отчётов.',
-    'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти или сдаться полиции. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Не обязан применять насилие, но не обнуляй конфликт разговором. Связанный может говорить, раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. В этой криминальной истории возможны убийство и тюрьма; не своди ставки к потере денег. Это возможные исходы, не обязательный финал.',
-    'СВОБОДА: можешь врать, блефовать, торговаться, отступать, обвинять и менять цель после событий. Нет обязательного признания или счастливого исхода. Не действуй и не говори за всех. Не объявляй, что твоя атака уже удалась: результат действия подтверждает сцена отдельной ремаркой.',
-    'ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай.'
+    'ДРАМА И ДЕЙСТВИЯ: можно перейти от слов к поступкам: ударить, попытаться связать, освободить, совершить смертельное нападение, уйти или сдаться полиции. Это художественная криминальная сцена; последствия описывай ясно, без натуралистических подробностей. Раненый остаётся раненым, погибший не возвращается. Уход, травма, предательство, смерть и арест меняют отношения и дальнейшие решения. В этой криминальной истории возможны убийство и тюрьма; не своди ставки к потере денег.',
+    'СВОБОДА: можешь врать, блефовать, торговаться, отступать, обвинять и менять цель после событий. Нет обязательного признания или счастливого исхода. Не действуй и не говори за всех.',
+    'Ремарки и описания своих действий в speech оформляй курсивом: *(отодвигает чашку)*. Прямую речь оставляй обычным текстом. ФОРМАТ (служебный, зритель увидит только речь и сцену): верни JSON {"speech":"реплика и при желании короткая ремарка от своего лица","action":null}. Если совершаешь физическое действие, action={"kind":"hit|bind|kill|release|escape|surrender","target":"точное имя участника"}. Для ухода или сдачи полиции target пустой. Сдаться может только твой персонаж; не объявляй арест других без подтверждения сцены. Угроза словами не равна нападению: для неё action=null. Не пиши успешное ранение, связывание или смерть в speech вместо action. Других действий за персонажей не назначай.'
    ].filter(Boolean).join('\n');
    const minutesLeft=Math.max(1,(scenario.id==='diner'?18:38)-(round-1)*maxTurns-turn);
    const previous=dialogue.at(-1);
@@ -160,18 +160,18 @@ export async function runLiveShow({agents,scenario,cast,extra,scenes,tonality,re
    try{
     const raw=await request(part.agent,[{role:'system',content:system},{role:'user',content:user}],signal,{stage:'intermediate',step:stage,format:'show',maxWords,maxChars:2400,liveShow:true});
     const reply=parseLiveReply(raw);
-    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:clip(reply.speech,maxChars),show:true};
+    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:clip(reply.speech,maxChars).replace(/(?<!\*)\(([^()\n]+)\)(?!\*)/g,'*($1)*'),show:true};
     output(event);dialogue.push(event);successes.set(part.provider,(successes.get(part.provider)||0)+1);
     const action=resolveAction(part,reply.action,actors,state,random);
     if(action){
      facts.push(action.text);pending=action.target;
-     const consequence={id:'narrator',name:'Сцена',nickname:'Действие',stage,text:action.text,show:true,narrator:true,action:true};
+     const consequence={id:'narrator',name:'Сцена',nickname:'Действие',stage,text:'*('+action.text+')*',show:true,narrator:true,action:true};
      output(consequence);dialogue.push(consequence);
     }
    }catch(e){
     if(signal?.aborted||e.name==='AbortError')throw e;
     const count=silences.get(part.name)||0;silences.set(part.name,count+1);failures.set(part.provider,(failures.get(part.provider)||0)+1);
-    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:state.get(part.name).bound?'('+part.name+' молчит, оставаясь связанным.)':silenceLine(scenario.id,part.name,count),show:true,silent:true};
+    event={id:part.provider,name:part.agent.name,nickname:part.name,stage,text:state.get(part.name).bound?'*('+part.name+' молчит, оставаясь связанным.)*':silenceLine(scenario.id,part.name,count),show:true,silent:true};
     dialogue.push(event);output(event);
    }
   }

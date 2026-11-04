@@ -145,3 +145,20 @@ test('surrender causes lasting detention, removes the actor from dialogue and re
  assert.ok(calls.at(-1).m[1].content.includes('Мистер Чёрный: задержан полицией; вне сцены'));
  assert.ok(calls.at(-1).m[0].content.includes('Не выдумывай судебный приговор'));
 });
+
+test('live prompts omit removed instructions and display actions in italics',async()=>{
+ for(const id of ['diner','heist']){
+  let first=true;
+  const {calls,events}=await simulate(id,{request:(a,m,s,stage)=>{
+   if(stage.stage==='final')return JSON.stringify({epilogue:'Ссора оставила участников без доверия.'});
+   const action=first?{kind:'hit',target:showCast(showScenario(id),{0:'openai',1:'mistral',2:'grok'}).find(p=>p.provider!==a.id).name}:null;first=false;
+   return JSON.stringify({speech:'(Отодвигает чашку.) Ответь мне. *(Смотрит на дверь.)*',action});
+  }});
+  for(const {m,stage} of calls.filter(c=>c.stage.stage!=='final')){
+   for(const phrase of ['Не обязан применять насилие','Связанный может говорить','Это возможные исходы, не обязательный финал','Не объявляй, что твоя атака уже удалась'])assert.ok(!m[0].content.includes(phrase));
+   assert.ok(m[0].content.includes('оформляй курсивом'));
+  }
+  assert.ok(events.some(e=>e.action&&e.text.startsWith('*(')&&e.text.endsWith(')*')));
+  assert.ok(events.some(e=>e.text==='*(Отодвигает чашку.)* Ответь мне. *(Смотрит на дверь.)*'));
+ }
+});

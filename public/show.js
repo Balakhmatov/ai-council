@@ -1,4 +1,4 @@
-import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=stakes1';
+import {runLiveShow,ACTOR_FICTION_CONTEXT,EPILOGUE_FORMAT,parseShowEpilogue} from './show-live.js?v=actions1';
 import {ambiences} from './engine.js';
 import {storyBible,storyBeat} from './show-stories.js?v=stakes1';
 // Quorum Show: original worlds and casting parts. AI providers are actors, not character identities.
@@ -105,9 +105,9 @@ function silenceLine(scenarioId, name, silenceCount=0){
  const action=SILENCE_ACTIONS[scenarioId]||SILENCE_ACTIONS.diner;
  if(Array.isArray(action)){
   const pick=action[Math.min(silenceCount, action.length-1)];
-  return '('+name+' '+pick+'.)';
+  return '*('+name+' '+pick+'.)*';
  }
- return '('+name+' '+action+'.)';
+ return '*('+name+' '+action+'.)*';
 }
 function abortIfNeeded(signal){if(signal?.aborted){const e=new Error('Шоу остановлено');e.name='AbortError';throw e;}}
 function chooseSpeaker(cast,used,recent,sceneNumber,turn){
