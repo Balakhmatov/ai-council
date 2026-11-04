@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {SHOW_SCENARIOS,SHOW_TONES,showScenario,showCast,clipShowLine,runShow} from '../public/show.js';
-import {STORY_BIBLE} from '../public/show-stories.js';
+import {STORY_BIBLE,CHARACTER_ARCHETYPES} from '../public/show-stories.js';
 
 const actors=[{id:'openai',name:'OpenAI'},{id:'mistral',name:'Mistral'},{id:'grok',name:'Grok'}];
 const scene=showScenario('villains');
@@ -166,4 +166,27 @@ test('all fourteen stories sustain eight scenes with changing guidance and priva
   assert.equal(guidance.size,8,scenario.id);
   assert.equal(calls.filter(c=>c.stage.stage==='final').length,1);
  }
+});
+
+
+test('all 98 characters have compact distinct archetypes passed only to their own actor',async()=>{
+ let total=0;
+ for(const scenario of SHOW_SCENARIOS){
+  const voices=CHARACTER_ARCHETYPES[scenario.id];
+  assert.equal(voices.length,scenario.roles.length);
+  assert.equal(new Set(voices).size,7);
+  for(const voice of voices){assert(voice.length>80&&voice.length<350);total++;}
+  const parts=showCast(scenario,{0:'openai',1:'mistral',2:'grok'});
+  await runShow({agents:actors,scenario,cast:parts,scenes:3,emit:()=>{},request:async(agent,m,signal,stage)=>{
+   if(stage.stage!=='final'){
+    const own=parts.find(p=>p.provider===agent.id);
+    assert(m[0].content.includes('ЛИЧНЫЙ РЕЧЕВОЙ АРХЕТИП: '+voices[own.slot]));
+    assert(m[0].content.includes('ПРИОРИТЕТ ГОЛОСА:'));
+    for(const [slot,voice] of voices.entries())if(slot!==own.slot)assert(!m[0].content.includes(voice));
+    assert(m.every(message=>message.content.length<=9500),'actor context fits server limit');
+   }
+   return stage.stage==='final'?JSON.stringify({epilogue:'Они не пришли к соглашению.'}):JSON.stringify({speech:'Объясни, что ты предлагаешь взамен.',action:null});
+  }});
+ }
+ assert.equal(total,98);
 });
